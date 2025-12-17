@@ -5,6 +5,7 @@
 
 import SwiftUI
 import AppKit
+import Carbon
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
@@ -15,6 +16,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingController: RecordingWindowController?
     private var resultController: ResultWindowController?
     private var settingsController: SettingsWindowController?
+    private var historyController: HistoryWindowController?
+
+    private var recordingStartTime: Date?
+    private let historyService = HistoryService.shared
 
     enum AppState {
         case idle
@@ -60,12 +65,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
 
-        let hotkey = HotkeySettings.loadToggleHotkey()
-        let hotkeyString = hotkey.displayParts.joined()
-        toggleMenuItem = NSMenuItem(title: "Toggle Recording  \(hotkeyString)", action: #selector(toggleRecording), keyEquivalent: "")
+        toggleMenuItem = NSMenuItem(title: "Toggle Recording", action: #selector(toggleRecording), keyEquivalent: "")
+        applyHotkeyToMenuItem(toggleMenuItem!)
         menu.addItem(toggleMenuItem!)
 
         menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "History...", action: #selector(openHistory), keyEquivalent: "h"))
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
@@ -74,9 +79,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func updateMenuHotkey() {
+        if let menuItem = toggleMenuItem {
+            applyHotkeyToMenuItem(menuItem)
+        }
+    }
+
+    private func applyHotkeyToMenuItem(_ menuItem: NSMenuItem) {
         let hotkey = HotkeySettings.loadToggleHotkey()
-        let hotkeyString = hotkey.displayParts.joined()
-        toggleMenuItem?.title = "Toggle Recording  \(hotkeyString)"
+
+        // Convert keyCode to character
+        if let keyString = Hotkey.keyCodeToName(hotkey.keyCode)?.lowercased() {
+            menuItem.keyEquivalent = keyString
+        }
+
+        // Convert Carbon modifiers to NSEvent modifiers
+        var modifiers: NSEvent.ModifierFlags = []
+        if hotkey.modifiers & UInt32(cmdKey) != 0 { modifiers.insert(.command) }
+        if hotkey.modifiers & UInt32(optionKey) != 0 { modifiers.insert(.option) }
+        if hotkey.modifiers & UInt32(controlKey) != 0 { modifiers.insert(.control) }
+        if hotkey.modifiers & UInt32(shiftKey) != 0 { modifiers.insert(.shift) }
+        menuItem.keyEquivalentModifierMask = modifiers
     }
 
     private func setupServices() {
@@ -112,6 +134,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRecording() {
         state = .recording
+        recordingStartTime = Date()
 
         recordingController = RecordingWindowController(
             audioRecorder: audioRecorder,
@@ -128,10 +151,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         state = .transcribing
 
         let audioURL = audioRecorder.stopRecording()
+        let duration = Date().timeIntervalSince(recordingStartTime ?? Date())
         recordingController?.showTranscribing()
 
         let service = self.transcriptionService!
         let useDaemon = keepDaemonRunning
+        let language = UserDefaults.standard.string(forKey: "language") ?? "ru"
+
         Task.detached {
             do {
                 let text = try await service.transcribe(audioURL: audioURL, useDaemon: useDaemon)
@@ -140,6 +166,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self.recordingController = nil
                     self.showResult(text: text)
                     self.state = .idle
+
+                    // Save to history
+                    let record = TranscriptionRecord(
+                        text: text,
+                        language: language,
+                        duration: duration
+                    )
+                    self.historyService.save(record: record)
+
+                    // Delete audio file
+                    try? FileManager.default.removeItem(at: audioURL)
                 }
             } catch {
                 await MainActor.run {
@@ -147,6 +184,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self.recordingController = nil
                     self.showResult(text: "Error: \(error.localizedDescription)")
                     self.state = .idle
+
+                    // Delete audio file even on error
+                    try? FileManager.default.removeItem(at: audioURL)
                 }
             }
         }
@@ -159,6 +199,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         recordingController?.close()
         recordingController = nil
         state = .idle
+    }
+
+    @objc func openHistory() {
+        if historyController == nil {
+            historyController = HistoryWindowController()
+        }
+        historyController?.showWindow(nil)
     }
 
     @objc func openSettings() {

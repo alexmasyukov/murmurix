@@ -6,7 +6,7 @@
 import Foundation
 import AVFoundation
 
-class AudioRecorder: NSObject, ObservableObject {
+class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     @Published var isRecording = false
     @Published var audioLevel: Float = 0.0
 

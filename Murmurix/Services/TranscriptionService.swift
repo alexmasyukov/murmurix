@@ -5,7 +5,7 @@
 
 import Foundation
 
-final class TranscriptionService: @unchecked Sendable {
+final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProtocol {
     enum TranscriptionError: Error, LocalizedError {
         case pythonNotFound
         case scriptNotFound
