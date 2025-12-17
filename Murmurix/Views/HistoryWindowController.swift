@@ -8,6 +8,8 @@ import SwiftUI
 
 class HistoryWindowController: NSWindowController, NSWindowDelegate {
 
+    private var historyViewModel = HistoryViewModel()
+
     convenience init() {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
@@ -24,11 +26,12 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
         self.init(window: window)
         window.delegate = self
 
-        let contentView = HistoryView()
+        let contentView = HistoryView(viewModel: historyViewModel)
         window.contentView = NSHostingView(rootView: contentView)
     }
 
     override func showWindow(_ sender: Any?) {
+        historyViewModel.loadRecords()
         window?.center()
         super.showWindow(sender)
         NSApp.activate(ignoringOtherApps: true)
