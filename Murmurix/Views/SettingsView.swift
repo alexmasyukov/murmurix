@@ -12,10 +12,17 @@ struct SettingsView: View {
     @State private var toggleHotkey: Hotkey
     @State private var cancelHotkey: Hotkey
 
+    @Binding var isDaemonRunning: Bool
+
     var onDaemonToggle: ((Bool) -> Void)?
     var onHotkeysChanged: ((Hotkey, Hotkey) -> Void)?
 
-    init(onDaemonToggle: ((Bool) -> Void)? = nil, onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil) {
+    init(
+        isDaemonRunning: Binding<Bool>,
+        onDaemonToggle: ((Bool) -> Void)? = nil,
+        onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil
+    ) {
+        self._isDaemonRunning = isDaemonRunning
         self.onDaemonToggle = onDaemonToggle
         self.onHotkeysChanged = onHotkeysChanged
 
@@ -68,9 +75,20 @@ struct SettingsView: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Keep model in memory")
-                        .font(.system(size: 13))
-                        .foregroundColor(.white)
+                    HStack(spacing: 6) {
+                        Text("Keep model in memory")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white)
+
+                        // Daemon status indicator
+                        Circle()
+                            .fill(isDaemonRunning ? Color.green : Color.gray.opacity(0.5))
+                            .frame(width: 8, height: 8)
+
+                        Text(isDaemonRunning ? "Running" : "Stopped")
+                            .font(.system(size: 10))
+                            .foregroundColor(isDaemonRunning ? .green : .gray)
+                    }
                     Text("Faster transcription, uses ~500MB RAM")
                         .font(.system(size: 11))
                         .foregroundColor(.gray)
@@ -174,5 +192,5 @@ struct HotkeySettings {
 }
 
 #Preview {
-    SettingsView()
+    SettingsView(isDaemonRunning: .constant(true))
 }
