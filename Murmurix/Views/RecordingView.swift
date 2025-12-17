@@ -102,9 +102,9 @@ struct RecordingView: View {
     let audioLevel: Float
     let onStop: () -> Void
 
-    // Sound detected if above threshold (0.45 filters out background noise)
+    // Sound detected if above threshold
     private var isSoundActive: Bool {
-        audioLevel > 0.45
+        audioLevel > 0.20
     }
 
     private var timeString: String {

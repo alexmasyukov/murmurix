@@ -21,12 +21,12 @@ struct ResultView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                        .background(Color.white.opacity(0.1))
+                        .clipShape(Circle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .frame(width: 24, height: 24)
-                .background(Color.white.opacity(0.1))
-                .clipShape(Circle())
-                .contentShape(Circle())
             }
             .padding(.top, 12)
             .padding(.trailing, 12)
@@ -45,10 +45,11 @@ struct ResultView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.6))
                         .frame(width: 32, height: 32)
+                        .background(Color.white.opacity(0.08))
+                        .cornerRadius(8)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .background(Color.white.opacity(0.08))
-                .cornerRadius(8)
 
                 Spacer()
 
@@ -75,10 +76,11 @@ struct ResultView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.15))
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .background(Color.white.opacity(0.15))
-                .cornerRadius(8)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)

@@ -16,9 +16,14 @@ class HistoryViewModel: ObservableObject {
     }
 
     func loadRecords() {
-        records = historyService.fetchAll()
-        if selectedRecord == nil, let first = records.first {
-            selectedRecord = first
+        let fetched = historyService.fetchAll()
+        records = fetched
+
+        // Defer selection update to next run loop to avoid multiple updates per frame
+        if selectedRecord == nil, let first = fetched.first {
+            DispatchQueue.main.async {
+                self.selectedRecord = first
+            }
         }
     }
 
@@ -268,18 +273,18 @@ struct HistoryDetailView: View {
     @State private var copied = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header with metadata
+        VStack(alignment: .leading, spacing: 0) {
+            // Top toolbar with metadata
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(record.formattedTime)
-                        .font(.headline)
+                        .font(.system(size: 12, weight: .medium))
 
-                    HStack(spacing: 16) {
+                    HStack(spacing: 12) {
                         Label(record.formattedDuration, systemImage: "clock")
                         Label(record.language.uppercased(), systemImage: "globe")
                     }
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(.secondary)
                 }
 
@@ -304,7 +309,8 @@ struct HistoryDetailView: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
-            .padding()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .background(Color(NSColor.controlBackgroundColor))
 
             // Text content
