@@ -11,6 +11,7 @@ import Foundation
 final class MockAudioRecorder: AudioRecorderProtocol {
     var isRecording: Bool = false
     var audioLevel: Float = 0.0
+    var hadVoiceActivity: Bool = true  // Default to true for existing tests
 
     var startRecordingCallCount = 0
     var stopRecordingCallCount = 0
@@ -130,9 +131,11 @@ final class MockSettings: SettingsStorageProtocol {
 final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
     var recordingDidStartCallCount = 0
     var recordingDidStopCallCount = 0
+    var recordingDidStopWithoutVoiceCallCount = 0
     var transcriptionDidStartCallCount = 0
     var transcriptionDidCompleteCallCount = 0
     var transcriptionDidFailCallCount = 0
+    var transcriptionDidCancelCallCount = 0
 
     var lastCompletedText: String?
     var lastCompletedDuration: TimeInterval?
@@ -145,6 +148,10 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
 
     func recordingDidStop() {
         recordingDidStopCallCount += 1
+    }
+
+    func recordingDidStopWithoutVoice() {
+        recordingDidStopWithoutVoiceCallCount += 1
     }
 
     func transcriptionDidStart() {
@@ -161,5 +168,9 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
     func transcriptionDidFail(error: Error) {
         transcriptionDidFailCallCount += 1
         lastError = error
+    }
+
+    func transcriptionDidCancel() {
+        transcriptionDidCancelCallCount += 1
     }
 }

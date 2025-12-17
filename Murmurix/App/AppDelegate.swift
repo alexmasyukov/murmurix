@@ -175,6 +175,9 @@ extension AppDelegate: RecordingCoordinatorDelegate {
             audioRecorder: audioRecorder,
             onStop: { [weak self] in
                 self?.coordinator.toggleRecording()
+            },
+            onCancelTranscription: { [weak self] in
+                self?.coordinator.cancelTranscription()
             }
         )
         recordingController?.showWindow(nil)
@@ -182,10 +185,17 @@ extension AppDelegate: RecordingCoordinatorDelegate {
 
     func recordingDidStop() {
         hotkeyManager.isRecording = false
+        // Close window if no transcription will happen (no voice detected)
+        // transcriptionDidStart will be called if transcription proceeds
     }
 
     func transcriptionDidStart() {
         recordingController?.showTranscribing()
+    }
+
+    func recordingDidStopWithoutVoice() {
+        recordingController?.close()
+        recordingController = nil
     }
 
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID) {
@@ -199,5 +209,10 @@ extension AppDelegate: RecordingCoordinatorDelegate {
         recordingController?.close()
         recordingController = nil
         showResult(text: "Error: \(error.localizedDescription)", duration: 0)
+    }
+
+    func transcriptionDidCancel() {
+        recordingController?.close()
+        recordingController = nil
     }
 }

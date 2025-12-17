@@ -24,13 +24,14 @@ class AudioLevelObserver: ObservableObject {
 class RecordingWindowController: NSWindowController {
     private var audioRecorder: AudioRecorder
     private var onStop: () -> Void
+    private var onCancelTranscription: (() -> Void)?
     private let recordingTimer = RecordingTimer()
     private var audioLevelObserver: AudioLevelObserver!
-    private var isTranscribing = false
 
-    init(audioRecorder: AudioRecorder, onStop: @escaping () -> Void) {
+    init(audioRecorder: AudioRecorder, onStop: @escaping () -> Void, onCancelTranscription: (() -> Void)? = nil) {
         self.audioRecorder = audioRecorder
         self.onStop = onStop
+        self.onCancelTranscription = onCancelTranscription
 
         // Dynamic Island style window - borderless, transparent
         let window = NSWindow(
@@ -70,12 +71,14 @@ class RecordingWindowController: NSWindowController {
 
     func showTranscribing() {
         recordingTimer.stop()
-        let contentView = TranscribingView()
+        let contentView = TranscribingView(onCancel: { [weak self] in
+            self?.onCancelTranscription?()
+        })
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.layer?.backgroundColor = .clear
         window?.contentView = hostingView
 
-        // Re-center window for smaller TranscribingView
+        // Re-center window for slightly wider TranscribingView
         if let screen = NSScreen.main, let window = window {
             window.layoutIfNeeded()
             let screenFrame = screen.visibleFrame

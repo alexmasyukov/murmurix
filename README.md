@@ -8,7 +8,8 @@ A native macOS menubar app for local voice-to-text transcription using [faster-w
 - **Local Processing** — All transcription happens on-device, no cloud services
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
 - **Dynamic Island UI** — Minimal floating window with voice-reactive equalizer
-- **Transcription History** — SQLite database stores all transcriptions with search
+- **Voice Activity Detection** — Automatically skips transcription if no voice detected
+- **Transcription History** — SQLite database stores all transcriptions with statistics
 - **Dark Theme** — Native macOS dark appearance throughout
 
 ## Requirements
@@ -56,6 +57,8 @@ The app requires:
 3. Press the hotkey again or click Stop to finish
 4. Transcription appears in a result window — click Copy to clipboard
 
+> **Note:** If no voice is detected during recording, transcription is skipped to prevent Whisper hallucinations.
+
 ### Keyboard Shortcuts
 
 | Action | Default | Menu |
@@ -97,7 +100,7 @@ Murmurix/
 
 ## Testing
 
-The project includes 25 unit tests with mocks for all services:
+The project includes 33 unit tests with mocks for all services:
 
 ```bash
 # Run tests in Xcode
@@ -112,6 +115,8 @@ xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:Mur
 - `HistoryServiceTests` — SQLite CRUD operations
 - `HistoryViewModelTests` — ViewModel logic, statistics
 - `HotkeyTests` — Hotkey encoding, display
+- `AudioRecorderTests` — Recording state, audio levels
+- `GlobalHotkeyManagerTests` — Hotkey callbacks, state
 - `RecordingCoordinatorTests` — Recording state machine
 - `ResultWindowControllerTests` — Window properties
 - `SettingsTests` — UserDefaults persistence

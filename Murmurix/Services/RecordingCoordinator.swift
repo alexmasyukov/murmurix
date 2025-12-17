@@ -14,9 +14,11 @@ enum RecordingState: Equatable {
 protocol RecordingCoordinatorDelegate: AnyObject {
     func recordingDidStart()
     func recordingDidStop()
+    func recordingDidStopWithoutVoice()
     func transcriptionDidStart()
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID)
     func transcriptionDidFail(error: Error)
+    func transcriptionDidCancel()
 }
 
 final class RecordingCoordinator {
@@ -24,6 +26,8 @@ final class RecordingCoordinator {
 
     private(set) var state: RecordingState = .idle
     private var recordingStartTime: Date?
+    private var transcriptionTask: Task<Void, Never>?
+    private var currentAudioURL: URL?
 
     private let audioRecorder: AudioRecorderProtocol
     private let transcriptionService: TranscriptionServiceProtocol
@@ -63,6 +67,22 @@ final class RecordingCoordinator {
         recordingStartTime = nil
     }
 
+    func cancelTranscription() {
+        guard state == .transcribing else { return }
+
+        transcriptionTask?.cancel()
+        transcriptionTask = nil
+
+        // Clean up audio file
+        if let audioURL = currentAudioURL {
+            try? FileManager.default.removeItem(at: audioURL)
+            currentAudioURL = nil
+        }
+
+        state = .idle
+        delegate?.transcriptionDidCancel()
+    }
+
     private func startRecording() {
         state = .recording
         recordingStartTime = Date()
@@ -73,29 +93,46 @@ final class RecordingCoordinator {
     private func stopRecording() {
         guard state == .recording else { return }
 
-        state = .transcribing
+        let hadVoice = audioRecorder.hadVoiceActivity
         let audioURL = audioRecorder.stopRecording()
         let duration = Date().timeIntervalSince(recordingStartTime ?? Date())
 
         delegate?.recordingDidStop()
+
+        // Skip transcription if no voice was detected (prevents Whisper hallucinations)
+        guard hadVoice else {
+            state = .idle
+            try? FileManager.default.removeItem(at: audioURL)
+            print("No voice activity detected, skipping transcription")
+            delegate?.recordingDidStopWithoutVoice()
+            return
+        }
+
+        state = .transcribing
         delegate?.transcriptionDidStart()
 
         performTranscription(audioURL: audioURL, duration: duration)
     }
 
     private func performTranscription(audioURL: URL, duration: TimeInterval) {
+        currentAudioURL = audioURL
         let service = transcriptionService
         let useDaemon = settings.keepDaemonRunning
         let language = settings.language
 
-        Task.detached { [weak self] in
+        transcriptionTask = Task.detached { [weak self] in
             guard let self = self else { return }
 
             do {
                 let text = try await service.transcribe(audioURL: audioURL, useDaemon: useDaemon)
 
+                // Check if cancelled
+                if Task.isCancelled { return }
+
                 await MainActor.run {
                     self.state = .idle
+                    self.currentAudioURL = nil
+                    self.transcriptionTask = nil
 
                     // Save to history
                     let record = TranscriptionRecord(
@@ -111,8 +148,13 @@ final class RecordingCoordinator {
                     self.delegate?.transcriptionDidComplete(text: text, duration: duration, recordId: record.id)
                 }
             } catch {
+                // Check if cancelled
+                if Task.isCancelled { return }
+
                 await MainActor.run {
                     self.state = .idle
+                    self.currentAudioURL = nil
+                    self.transcriptionTask = nil
 
                     // Delete audio file even on error
                     try? FileManager.default.removeItem(at: audioURL)
