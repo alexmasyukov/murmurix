@@ -136,6 +136,7 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
 
     var lastCompletedText: String?
     var lastCompletedDuration: TimeInterval?
+    var lastCompletedRecordId: UUID?
     var lastError: Error?
 
     func recordingDidStart() {
@@ -150,10 +151,11 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
         transcriptionDidStartCallCount += 1
     }
 
-    func transcriptionDidComplete(text: String, duration: TimeInterval) {
+    func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID) {
         transcriptionDidCompleteCallCount += 1
         lastCompletedText = text
         lastCompletedDuration = duration
+        lastCompletedRecordId = recordId
     }
 
     func transcriptionDidFail(error: Error) {

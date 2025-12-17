@@ -104,7 +104,7 @@ struct RecordingView: View {
 
     // Sound detected if above threshold
     private var isSoundActive: Bool {
-        audioLevel > 0.20
+        audioLevel > 0.33
     }
 
     private var timeString: String {

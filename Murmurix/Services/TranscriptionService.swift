@@ -159,13 +159,20 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         }
         defer { close(fd) }
 
+        // Set socket timeout (30 seconds for transcription)
+        var timeout = timeval(tv_sec: 30, tv_usec: 0)
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
 
+        // Safe copy with bounds checking (sun_path is 104 bytes on macOS)
+        let maxPathLen = MemoryLayout.size(ofValue: addr.sun_path) - 1
         socketPath.withCString { ptr in
             withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
                 let pathBuf = UnsafeMutableRawPointer(pathPtr).assumingMemoryBound(to: CChar.self)
-                strcpy(pathBuf, ptr)
+                strncpy(pathBuf, ptr, maxPathLen)
+                pathBuf[maxPathLen] = 0 // Ensure null termination
             }
         }
 
@@ -195,6 +202,9 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         let bytesRead = recv(fd, &buffer, buffer.count - 1, 0)
 
         guard bytesRead > 0 else {
+            if errno == EAGAIN || errno == EWOULDBLOCK {
+                throw TranscriptionError.transcriptionFailed("Daemon timeout (30s)")
+            }
             throw TranscriptionError.transcriptionFailed("No response from daemon")
         }
 

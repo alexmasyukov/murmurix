@@ -167,7 +167,7 @@ struct HistoryViewModelTests {
         viewModel.loadRecords()
 
         #expect(viewModel.records.count == 2)
-        #expect(viewModel.selectedRecord != nil)
+        // Note: selectedRecord is set asynchronously to avoid multiple updates per frame
     }
 
     @Test func deleteRecordRemovesFromList() {

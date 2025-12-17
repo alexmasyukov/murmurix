@@ -15,7 +15,7 @@ protocol RecordingCoordinatorDelegate: AnyObject {
     func recordingDidStart()
     func recordingDidStop()
     func transcriptionDidStart()
-    func transcriptionDidComplete(text: String, duration: TimeInterval)
+    func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID)
     func transcriptionDidFail(error: Error)
 }
 
@@ -108,7 +108,7 @@ final class RecordingCoordinator {
                     // Delete audio file
                     try? FileManager.default.removeItem(at: audioURL)
 
-                    self.delegate?.transcriptionDidComplete(text: text, duration: duration)
+                    self.delegate?.transcriptionDidComplete(text: text, duration: duration, recordId: record.id)
                 }
             } catch {
                 await MainActor.run {
