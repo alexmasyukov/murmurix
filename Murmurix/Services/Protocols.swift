@@ -10,6 +10,7 @@ import Foundation
 protocol AudioRecorderProtocol: AnyObject {
     var isRecording: Bool { get }
     var audioLevel: Float { get }
+    var hadVoiceActivity: Bool { get }  // True if audio level exceeded threshold during recording
 
     func startRecording()
     func stopRecording() -> URL

@@ -352,3 +352,104 @@ struct HotkeyTests {
         #expect(decoded == original)
     }
 }
+
+// MARK: - AudioRecorder Tests
+
+struct AudioRecorderTests {
+
+    @Test func mockAudioRecorderStartsAndStops() {
+        let recorder = MockAudioRecorder()
+
+        #expect(recorder.isRecording == false)
+        #expect(recorder.startRecordingCallCount == 0)
+
+        recorder.startRecording()
+
+        #expect(recorder.isRecording == true)
+        #expect(recorder.startRecordingCallCount == 1)
+
+        _ = recorder.stopRecording()
+
+        #expect(recorder.isRecording == false)
+        #expect(recorder.stopRecordingCallCount == 1)
+    }
+
+    @Test func mockAudioRecorderReturnsConfiguredURL() {
+        let recorder = MockAudioRecorder()
+        let expectedURL = URL(fileURLWithPath: "/tmp/custom.wav")
+        recorder.recordingURL = expectedURL
+
+        let returnedURL = recorder.stopRecording()
+
+        #expect(returnedURL == expectedURL)
+    }
+
+    @Test func mockAudioRecorderTracksAudioLevel() {
+        let recorder = MockAudioRecorder()
+
+        #expect(recorder.audioLevel == 0.0)
+
+        recorder.audioLevel = 0.75
+
+        #expect(recorder.audioLevel == 0.75)
+    }
+
+    @Test func audioRecorderInitialState() {
+        let recorder = AudioRecorder()
+
+        #expect(recorder.isRecording == false)
+        #expect(recorder.audioLevel == 0.0)
+    }
+}
+
+// MARK: - GlobalHotkeyManager Tests
+
+struct GlobalHotkeyManagerTests {
+
+    @Test func hotkeyManagerInitialState() {
+        let manager = GlobalHotkeyManager()
+
+        #expect(manager.isRecording == false)
+        #expect(manager.onToggleRecording == nil)
+        #expect(manager.onCancelRecording == nil)
+    }
+
+    @Test func hotkeyManagerUpdatesHotkeys() {
+        let manager = GlobalHotkeyManager()
+        let newToggle = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey))
+        let newCancel = Hotkey(keyCode: 2, modifiers: UInt32(optionKey))
+
+        manager.updateHotkeys(toggle: newToggle, cancel: newCancel)
+
+        // Manager should accept the update without crashing
+        #expect(manager.isRecording == false)
+    }
+
+    @Test func hotkeyManagerCallbacksCanBeSet() {
+        let manager = GlobalHotkeyManager()
+        var toggleCalled = false
+        var cancelCalled = false
+
+        manager.onToggleRecording = { toggleCalled = true }
+        manager.onCancelRecording = { cancelCalled = true }
+
+        #expect(manager.onToggleRecording != nil)
+        #expect(manager.onCancelRecording != nil)
+
+        manager.onToggleRecording?()
+        manager.onCancelRecording?()
+
+        #expect(toggleCalled == true)
+        #expect(cancelCalled == true)
+    }
+
+    @Test func hotkeyManagerIsRecordingFlag() {
+        let manager = GlobalHotkeyManager()
+
+        manager.isRecording = true
+        #expect(manager.isRecording == true)
+
+        manager.isRecording = false
+        #expect(manager.isRecording == false)
+    }
+}

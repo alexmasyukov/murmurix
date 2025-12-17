@@ -9,10 +9,13 @@ import AVFoundation
 class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     @Published var isRecording = false
     @Published var audioLevel: Float = 0.0
+    @Published var hadVoiceActivity = false
 
     private var audioRecorder: AVAudioRecorder?
     private var currentRecordingURL: URL?
     private var levelTimer: Timer?
+
+    private let voiceActivityThreshold: Float = 0.33  // Same as RecordingView
 
     // MARK: - Permission Handling
 
@@ -82,6 +85,7 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
             audioRecorder?.isMeteringEnabled = true
             audioRecorder?.record()
             isRecording = true
+            hadVoiceActivity = false  // Reset voice activity flag
 
             // Start monitoring audio levels
             startLevelMonitoring()
@@ -117,6 +121,11 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
             DispatchQueue.main.async {
                 // Smooth the transition
                 self.audioLevel = self.audioLevel * 0.3 + normalizedLevel * 0.7
+
+                // Track voice activity
+                if self.audioLevel > self.voiceActivityThreshold {
+                    self.hadVoiceActivity = true
+                }
             }
         }
     }

@@ -144,29 +144,43 @@ struct RecordingView: View {
     }
 }
 
-// MARK: - Transcribing View (pulsing dots)
+// MARK: - Transcribing View (pulsing dots + cancel)
 
 struct TranscribingView: View {
+    let onCancel: () -> Void
     @State private var dotAnimation = false
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 5, height: 5)
-                    .scaleEffect(dotAnimation ? 1.0 : 0.5)
-                    .opacity(dotAnimation ? 1.0 : 0.5)
-                    .animation(
-                        Animation.easeInOut(duration: 0.6)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(index) * 0.2),
-                        value: dotAnimation
-                    )
+        HStack(spacing: 10) {
+            // Pulsing dots
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 5, height: 5)
+                        .scaleEffect(dotAnimation ? 1.0 : 0.5)
+                        .opacity(dotAnimation ? 1.0 : 0.5)
+                        .animation(
+                            Animation.easeInOut(duration: 0.6)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(index) * 0.2),
+                            value: dotAnimation
+                        )
+                }
             }
+
+            // Cancel button
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 18, height: 18)
+                    .background(Circle().fill(Color.white.opacity(0.2)))
+            }
+            .buttonStyle(.plain)
         }
         .frame(height: 28)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
             Capsule()
@@ -186,6 +200,6 @@ struct TranscribingView: View {
 #Preview("Transcribing") {
     ZStack {
         Color.gray
-        TranscribingView()
+        TranscribingView(onCancel: {})
     }
 }
