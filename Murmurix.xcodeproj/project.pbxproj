@@ -1,0 +1,558 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		564D38612EF3119500598DBA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 564D38472EF3119300598DBA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 564D384E2EF3119300598DBA;
+			remoteInfo = Murmurix;
+		};
+		564D386B2EF3119500598DBA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 564D38472EF3119300598DBA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 564D384E2EF3119300598DBA;
+			remoteInfo = Murmurix;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		564D384F2EF3119300598DBA /* Murmurix.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Murmurix.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		564D38602EF3119500598DBA /* MurmurixTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MurmurixTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		564D386A2EF3119500598DBA /* MurmurixUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MurmurixUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		564D387D2EF311DA00598DBA /* voicetyper-spec.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "voicetyper-spec.md"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		564D38512EF3119300598DBA /* Murmurix */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Murmurix;
+			sourceTree = "<group>";
+		};
+		564D38632EF3119500598DBA /* MurmurixTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MurmurixTests;
+			sourceTree = "<group>";
+		};
+		564D386D2EF3119500598DBA /* MurmurixUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MurmurixUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		564D384C2EF3119300598DBA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		564D385D2EF3119500598DBA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		564D38672EF3119500598DBA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		564D38462EF3119300598DBA = {
+			isa = PBXGroup;
+			children = (
+				564D38512EF3119300598DBA /* Murmurix */,
+				564D38632EF3119500598DBA /* MurmurixTests */,
+				564D386D2EF3119500598DBA /* MurmurixUITests */,
+				564D38502EF3119300598DBA /* Products */,
+				564D387D2EF311DA00598DBA /* voicetyper-spec.md */,
+			);
+			sourceTree = "<group>";
+		};
+		564D38502EF3119300598DBA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				564D384F2EF3119300598DBA /* Murmurix.app */,
+				564D38602EF3119500598DBA /* MurmurixTests.xctest */,
+				564D386A2EF3119500598DBA /* MurmurixUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		564D384E2EF3119300598DBA /* Murmurix */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 564D38742EF3119500598DBA /* Build configuration list for PBXNativeTarget "Murmurix" */;
+			buildPhases = (
+				564D384B2EF3119300598DBA /* Sources */,
+				564D384C2EF3119300598DBA /* Frameworks */,
+				564D384D2EF3119300598DBA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				564D38512EF3119300598DBA /* Murmurix */,
+			);
+			name = Murmurix;
+			packageProductDependencies = (
+			);
+			productName = Murmurix;
+			productReference = 564D384F2EF3119300598DBA /* Murmurix.app */;
+			productType = "com.apple.product-type.application";
+		};
+		564D385F2EF3119500598DBA /* MurmurixTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 564D38772EF3119500598DBA /* Build configuration list for PBXNativeTarget "MurmurixTests" */;
+			buildPhases = (
+				564D385C2EF3119500598DBA /* Sources */,
+				564D385D2EF3119500598DBA /* Frameworks */,
+				564D385E2EF3119500598DBA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				564D38622EF3119500598DBA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				564D38632EF3119500598DBA /* MurmurixTests */,
+			);
+			name = MurmurixTests;
+			packageProductDependencies = (
+			);
+			productName = MurmurixTests;
+			productReference = 564D38602EF3119500598DBA /* MurmurixTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		564D38692EF3119500598DBA /* MurmurixUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 564D387A2EF3119500598DBA /* Build configuration list for PBXNativeTarget "MurmurixUITests" */;
+			buildPhases = (
+				564D38662EF3119500598DBA /* Sources */,
+				564D38672EF3119500598DBA /* Frameworks */,
+				564D38682EF3119500598DBA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				564D386C2EF3119500598DBA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				564D386D2EF3119500598DBA /* MurmurixUITests */,
+			);
+			name = MurmurixUITests;
+			packageProductDependencies = (
+			);
+			productName = MurmurixUITests;
+			productReference = 564D386A2EF3119500598DBA /* MurmurixUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		564D38472EF3119300598DBA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					564D384E2EF3119300598DBA = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					564D385F2EF3119500598DBA = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 564D384E2EF3119300598DBA;
+					};
+					564D38692EF3119500598DBA = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 564D384E2EF3119300598DBA;
+					};
+				};
+			};
+			buildConfigurationList = 564D384A2EF3119300598DBA /* Build configuration list for PBXProject "Murmurix" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 564D38462EF3119300598DBA;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 564D38502EF3119300598DBA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				564D384E2EF3119300598DBA /* Murmurix */,
+				564D385F2EF3119500598DBA /* MurmurixTests */,
+				564D38692EF3119500598DBA /* MurmurixUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		564D384D2EF3119300598DBA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		564D385E2EF3119500598DBA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		564D38682EF3119500598DBA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		564D384B2EF3119300598DBA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		564D385C2EF3119500598DBA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		564D38662EF3119500598DBA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		564D38622EF3119500598DBA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 564D384E2EF3119300598DBA /* Murmurix */;
+			targetProxy = 564D38612EF3119500598DBA /* PBXContainerItemProxy */;
+		};
+		564D386C2EF3119500598DBA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 564D384E2EF3119300598DBA /* Murmurix */;
+			targetProxy = 564D386B2EF3119500598DBA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		564D38722EF3119500598DBA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = Murmurix/Info.plist;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		564D38732EF3119500598DBA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = Murmurix/Info.plist;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		564D38752EF3119500598DBA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Murmurix/Murmurix.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Murmurix/Preview Content\"";
+				DEVELOPMENT_TEAM = S7S2G4ZHAL;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = alexmasyukov.Murmurix;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		564D38762EF3119500598DBA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Murmurix/Murmurix.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Murmurix/Preview Content\"";
+				DEVELOPMENT_TEAM = S7S2G4ZHAL;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = alexmasyukov.Murmurix;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		564D38782EF3119500598DBA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S7S2G4ZHAL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = alexmasyukov.MurmurixTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Murmurix.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Murmurix";
+			};
+			name = Debug;
+		};
+		564D38792EF3119500598DBA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S7S2G4ZHAL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = alexmasyukov.MurmurixTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Murmurix.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Murmurix";
+			};
+			name = Release;
+		};
+		564D387B2EF3119500598DBA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S7S2G4ZHAL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = alexmasyukov.MurmurixUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Murmurix;
+			};
+			name = Debug;
+		};
+		564D387C2EF3119500598DBA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S7S2G4ZHAL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = alexmasyukov.MurmurixUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Murmurix;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		564D384A2EF3119300598DBA /* Build configuration list for PBXProject "Murmurix" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				564D38722EF3119500598DBA /* Debug */,
+				564D38732EF3119500598DBA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		564D38742EF3119500598DBA /* Build configuration list for PBXNativeTarget "Murmurix" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				564D38752EF3119500598DBA /* Debug */,
+				564D38762EF3119500598DBA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		564D38772EF3119500598DBA /* Build configuration list for PBXNativeTarget "MurmurixTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				564D38782EF3119500598DBA /* Debug */,
+				564D38792EF3119500598DBA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		564D387A2EF3119500598DBA /* Build configuration list for PBXNativeTarget "MurmurixUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				564D387B2EF3119500598DBA /* Debug */,
+				564D387C2EF3119500598DBA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 564D38472EF3119300598DBA /* Project object */;
+}
