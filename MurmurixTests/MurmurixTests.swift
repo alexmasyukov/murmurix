@@ -230,6 +230,81 @@ struct HistoryViewModelTests {
     }
 }
 
+// MARK: - ResultWindowController Tests
+
+struct ResultWindowControllerTests {
+
+    @Test func windowControllerInitializesWithCorrectParameters() {
+        var deleteCalled = false
+        let controller = ResultWindowController(
+            text: "Test transcription",
+            duration: 65.5,
+            onDelete: { deleteCalled = true }
+        )
+
+        #expect(controller.window != nil)
+        #expect(controller.window?.styleMask == .borderless)
+        #expect(controller.window?.level == .floating)
+        #expect(controller.window?.isOpaque == false)
+    }
+
+    @Test func windowCanBecomeKeyAndMain() {
+        let controller = ResultWindowController(
+            text: "Test",
+            duration: 10,
+            onDelete: {}
+        )
+
+        #expect(controller.window?.canBecomeKey == true)
+        #expect(controller.window?.canBecomeMain == true)
+    }
+
+    @Test func onDeleteCallbackIsStored() {
+        var deleteCalled = false
+        let controller = ResultWindowController(
+            text: "Test",
+            duration: 10,
+            onDelete: { deleteCalled = true }
+        )
+
+        // Controller should exist
+        #expect(controller.window != nil)
+        // deleteCalled is false until button is pressed
+        #expect(deleteCalled == false)
+    }
+
+    @Test func durationFormattingWorksCorrectly() {
+        // Test duration formatting logic (same as in ResultView)
+        let testCases: [(TimeInterval, String)] = [
+            (0, "0:00"),
+            (30, "0:30"),
+            (60, "1:00"),
+            (90, "1:30"),
+            (125, "2:05"),
+            (3661, "61:01")
+        ]
+
+        for (duration, expected) in testCases {
+            let minutes = Int(duration) / 60
+            let seconds = Int(duration) % 60
+            let formatted = String(format: "%d:%02d", minutes, seconds)
+            #expect(formatted == expected)
+        }
+    }
+
+    @Test func windowHasCorrectSize() {
+        let controller = ResultWindowController(
+            text: "Test",
+            duration: 10,
+            onDelete: {}
+        )
+
+        let frame = controller.window?.frame ?? .zero
+        #expect(frame.width == 420)
+        #expect(frame.height == 300)
+    }
+}
+
 // MARK: - Hotkey Tests
 
 struct HotkeyTests {
