@@ -7,7 +7,7 @@ import Foundation
 import Carbon
 import AppKit
 
-class GlobalHotkeyManager {
+class GlobalHotkeyManager: HotkeyManagerProtocol {
     var onToggleRecording: (() -> Void)?
     var onCancelRecording: (() -> Void)?
 

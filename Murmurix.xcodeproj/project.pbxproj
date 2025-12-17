@@ -30,9 +30,22 @@
 		564D387D2EF311DA00598DBA /* voicetyper-spec.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "voicetyper-spec.md"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5627C1052EF331B600106B82 /* Exceptions for "Murmurix" folder in "Murmurix" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 564D384E2EF3119300598DBA /* Murmurix */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		564D38512EF3119300598DBA /* Murmurix */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5627C1052EF331B600106B82 /* Exceptions for "Murmurix" folder in "Murmurix" target */,
+			);
 			path = Murmurix;
 			sourceTree = "<group>";
 		};
