@@ -12,16 +12,12 @@ class ResultWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    // Try both methods
     override func cancelOperation(_ sender: Any?) {
-        print("cancelOperation called")
         onEscape?()
     }
 
     override func keyDown(with event: NSEvent) {
-        print("keyDown: \(event.keyCode)")
         if event.keyCode == 53 { // ESC
-            print("ESC detected in keyDown")
             onEscape?()
         } else {
             super.keyDown(with: event)

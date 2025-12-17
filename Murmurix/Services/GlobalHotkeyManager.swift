@@ -11,6 +11,9 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     var onToggleRecording: (() -> Void)?
     var onCancelRecording: (() -> Void)?
 
+    // Only intercept cancel hotkey when recording is active
+    var isRecording: Bool = false
+
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
@@ -84,8 +87,8 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
                 return nil // consume the event
             }
 
-            // Check cancel hotkey
-            if keyCode == cancelHotkey.keyCode && carbonModifiers == cancelHotkey.modifiers {
+            // Check cancel hotkey - only when recording
+            if isRecording && keyCode == cancelHotkey.keyCode && carbonModifiers == cancelHotkey.modifiers {
                 onCancelRecording?()
                 return nil // consume the event
             }

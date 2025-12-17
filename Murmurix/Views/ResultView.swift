@@ -12,20 +12,11 @@ struct ResultView: View {
     let onDelete: () -> Void
     let onClose: () -> Void
 
-    @State private var lastKeyPress: String = "—"
-
     var body: some View {
         VStack(spacing: 0) {
-            // Header with debug label and close button
+            // Header with close button
             HStack {
-                // Debug: last key press
-                Text("Key: \(lastKeyPress)")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.yellow.opacity(0.7))
-                    .padding(.leading, 12)
-
                 Spacer()
-
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .semibold))
@@ -40,23 +31,11 @@ struct ResultView: View {
             .padding(.top, 12)
             .padding(.trailing, 12)
             .padding(.bottom, 4)
-            .background(
-                KeyEventCatcher(onKeyPress: { key in
-                    lastKeyPress = key
-                })
-            )
 
-            // Text content - temporarily disabled for ESC debug
-            // SelectableTextView(text: text)
-            //     .padding(.horizontal, 16)
-            //     .padding(.bottom, 8)
-
-            // Placeholder
-            Text(text)
-                .foregroundColor(.white.opacity(0.9))
+            // Text content - selectable textarea
+            SelectableTextView(text: text)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             // Bottom toolbar
             HStack(spacing: 0) {
@@ -126,78 +105,6 @@ struct ResultView: View {
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
         onClose()
-    }
-}
-
-// MARK: - Key Event Catcher (for debugging)
-
-struct KeyEventCatcher: NSViewRepresentable {
-    let onKeyPress: (String) -> Void
-
-    func makeNSView(context: Context) -> NSView {
-        let view = KeyCatcherView()
-        view.onKeyPress = onKeyPress
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
-
-    class KeyCatcherView: NSView {
-        var onKeyPress: ((String) -> Void)?
-        private var monitor: Any?
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            if window != nil && monitor == nil {
-                monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
-                    self?.handleEvent(event)
-                    return event
-                }
-            }
-        }
-
-        override func removeFromSuperview() {
-            if let monitor = monitor {
-                NSEvent.removeMonitor(monitor)
-                self.monitor = nil
-            }
-            super.removeFromSuperview()
-        }
-
-        private func handleEvent(_ event: NSEvent) {
-            if event.type == .flagsChanged {
-                var mods: [String] = []
-                if event.modifierFlags.contains(.command) { mods.append("⌘") }
-                if event.modifierFlags.contains(.option) { mods.append("⌥") }
-                if event.modifierFlags.contains(.control) { mods.append("⌃") }
-                if event.modifierFlags.contains(.shift) { mods.append("⇧") }
-                onKeyPress?(mods.isEmpty ? "—" : mods.joined())
-            } else {
-                let keyName: String
-                switch event.keyCode {
-                case 53: keyName = "ESC"
-                case 51: keyName = "⌫"
-                case 36: keyName = "↩"
-                case 48: keyName = "⇥"
-                case 49: keyName = "Space"
-                default:
-                    if let chars = event.charactersIgnoringModifiers, !chars.isEmpty {
-                        keyName = chars.uppercased()
-                    } else {
-                        keyName = "[\(event.keyCode)]"
-                    }
-                }
-
-                var mods: [String] = []
-                if event.modifierFlags.contains(.command) { mods.append("⌘") }
-                if event.modifierFlags.contains(.option) { mods.append("⌥") }
-                if event.modifierFlags.contains(.control) { mods.append("⌃") }
-                if event.modifierFlags.contains(.shift) { mods.append("⇧") }
-
-                let fullKey = mods.isEmpty ? keyName : mods.joined() + keyName
-                onKeyPress?(fullKey)
-            }
-        }
     }
 }
 

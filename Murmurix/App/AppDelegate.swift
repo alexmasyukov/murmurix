@@ -135,6 +135,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRecording() {
         state = .recording
+        hotkeyManager.isRecording = true
         recordingStartTime = Date()
 
         recordingController = RecordingWindowController(
@@ -150,6 +151,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func stopRecording() {
         guard state == .recording else { return }
         state = .transcribing
+        hotkeyManager.isRecording = false
 
         let audioURL = audioRecorder.stopRecording()
         let duration = Date().timeIntervalSince(recordingStartTime ?? Date())
@@ -198,7 +200,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func cancelRecording() {
         guard state == .recording else { return }
 
-        _ = audioRecorder.stopRecording()
+        hotkeyManager.isRecording = false
+        let audioURL = audioRecorder.stopRecording()
+        try? FileManager.default.removeItem(at: audioURL) // Delete cancelled recording
         recordingController?.close()
         recordingController = nil
         state = .idle
@@ -214,6 +218,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func openSettings() {
         if settingsController == nil {
             settingsController = SettingsWindowController(
+                isDaemonRunning: transcriptionService.isDaemonRunning,
                 onDaemonToggle: { [weak self] enabled in
                     guard let self = self else { return }
                     if enabled {
@@ -227,6 +232,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self?.updateMenuHotkey()
                 }
             )
+        } else {
+            // Update daemon status when reopening settings
+            settingsController?.updateDaemonStatus(transcriptionService.isDaemonRunning)
         }
         settingsController?.showWindow(nil)
     }
