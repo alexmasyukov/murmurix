@@ -9,7 +9,9 @@ A native macOS menubar app for local voice-to-text transcription using [faster-w
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
 - **Dynamic Island UI** — Minimal floating window with voice-reactive equalizer
 - **Voice Activity Detection** — Automatically skips transcription if no voice detected
+- **Smart Text Insertion** — Pastes directly into text fields, shows result window otherwise
 - **Transcription History** — SQLite database stores all transcriptions with statistics
+- **Cancel Transcription** — Abort long-running transcriptions with cancel button
 - **Dark Theme** — Native macOS dark appearance throughout
 
 ## Requirements
@@ -52,10 +54,12 @@ The app requires:
 
 ## Usage
 
-1. Click the waveform icon in the menubar or press the hotkey (default: `⌃⌘C`)
+1. Click the waveform icon in the menubar or press the hotkey (default: `⌃D`)
 2. Speak — the equalizer animates when voice is detected
 3. Press the hotkey again or click Stop to finish
-4. Transcription appears in a result window — click Copy to clipboard
+4. Transcription appears:
+   - **In text fields** — Text is pasted directly at cursor position
+   - **Elsewhere** — Result window appears with Copy button
 
 > **Note:** If no voice is detected during recording, transcription is skipped to prevent Whisper hallucinations.
 
@@ -63,7 +67,7 @@ The app requires:
 
 | Action | Default | Menu |
 |--------|---------|------|
-| Toggle Recording | `⌃⌘C` | Shown in menu |
+| Toggle Recording | `⌃D` | Shown in menu |
 | Cancel Recording | `Esc` | — |
 | History | `⌘H` | History... |
 | Settings | `⌘,` | Settings... |
@@ -78,6 +82,7 @@ Murmurix/
 ├── App/
 │   └── AppDelegate.swift          # App lifecycle, menu bar
 ├── Models/
+│   ├── Hotkey.swift               # Hotkey model with key codes
 │   ├── TranscriptionRecord.swift  # History record model
 │   └── Settings.swift             # Settings storage wrapper
 ├── Services/
@@ -86,7 +91,8 @@ Murmurix/
 │   ├── GlobalHotkeyManager.swift  # CGEvent tap for shortcuts
 │   ├── TranscriptionService.swift # Python subprocess & daemon
 │   ├── HistoryService.swift       # SQLite history storage
-│   └── RecordingCoordinator.swift # Recording business logic
+│   ├── RecordingCoordinator.swift # Recording business logic
+│   └── TextPaster.swift           # Clipboard & keyboard paste
 ├── Views/
 │   ├── RecordingView.swift        # Dynamic Island-style UI
 │   ├── ResultView.swift           # Transcription result
@@ -100,7 +106,7 @@ Murmurix/
 
 ## Testing
 
-The project includes 33 unit tests with mocks for all services:
+The project includes 36 unit tests with mocks for all services:
 
 ```bash
 # Run tests in Xcode
@@ -120,6 +126,7 @@ xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:Mur
 - `RecordingCoordinatorTests` — Recording state machine
 - `ResultWindowControllerTests` — Window properties
 - `SettingsTests` — UserDefaults persistence
+- `TextPasterTests` — Text focus detection, paste
 
 ## Settings
 

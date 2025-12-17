@@ -58,10 +58,6 @@ class HistoryViewModel: ObservableObject {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
-    var totalCharacters: Int {
-        records.reduce(0) { $0 + $1.text.count }
-    }
-
     var totalWords: Int {
         records.reduce(0) { $0 + $1.text.split(separator: " ").count }
     }
@@ -186,25 +182,10 @@ struct HistoryStatsView: View {
                 value: "\(viewModel.totalWords)",
                 label: "words"
             )
-
-            StatDivider()
-
-            StatItemView(
-                icon: "character",
-                value: formatNumber(viewModel.totalCharacters),
-                label: "characters"
-            )
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(Color(NSColor.controlBackgroundColor))
-    }
-
-    private func formatNumber(_ n: Int) -> String {
-        if n >= 1000 {
-            return String(format: "%.1fk", Double(n) / 1000)
-        }
-        return "\(n)"
     }
 }
 
