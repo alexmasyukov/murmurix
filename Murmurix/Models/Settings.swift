@@ -13,6 +13,9 @@ final class Settings: SettingsStorageProtocol {
     private let cancelHotkeyKey = "cancelHotkey"
     private let keepDaemonRunningKey = "keepDaemonRunning"
     private let languageKey = "language"
+    private let aiPostProcessingEnabledKey = "aiPostProcessingEnabled"
+    private let aiModelKey = "aiModel"
+    private let aiPromptKey = "aiPrompt"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -71,4 +74,70 @@ final class Settings: SettingsStorageProtocol {
             defaults.set(data, forKey: cancelHotkeyKey)
         }
     }
+
+    // MARK: - AI Post-Processing Settings
+
+    var aiPostProcessingEnabled: Bool {
+        get { defaults.bool(forKey: aiPostProcessingEnabledKey) }
+        set { defaults.set(newValue, forKey: aiPostProcessingEnabledKey) }
+    }
+
+    var aiModel: String {
+        get { defaults.string(forKey: aiModelKey) ?? AIModel.haiku.rawValue }
+        set { defaults.set(newValue, forKey: aiModelKey) }
+    }
+
+    var aiPrompt: String {
+        get { defaults.string(forKey: aiPromptKey) ?? Self.defaultAIPrompt }
+        set { defaults.set(newValue, forKey: aiPromptKey) }
+    }
+
+    // API key stored in Keychain for security
+    var claudeApiKey: String {
+        get { KeychainService.load(key: "claudeApiKey") ?? "" }
+        set {
+            if newValue.isEmpty {
+                KeychainService.delete(key: "claudeApiKey")
+            } else {
+                KeychainService.save(key: "claudeApiKey", value: newValue)
+            }
+        }
+    }
+
+    static let defaultAIPrompt = """
+        You are a post-processor for speech-to-text transcription in a software development context.
+
+        Your task: Fix technical terms that were transcribed as Russian phonetic equivalents.
+
+        Common replacements:
+        - "кафка" → "Kafka"
+        - "реакт" → "React"
+        - "гоуэнг", "голэнг", "го лэнг" → "Go/Golang"
+        - "питон" → "Python"
+        - "джава скрипт" → "JavaScript"
+        - "тайп скрипт" → "TypeScript"
+        - "ноуд" → "Node.js"
+        - "докер" → "Docker"
+        - "кубернетис" → "Kubernetes"
+        - "редис" → "Redis"
+        - "постгрес" → "PostgreSQL"
+        - "монго" → "MongoDB"
+        - "гит" → "Git"
+        - "гитхаб" → "GitHub"
+        - "апи" → "API"
+        - "рест" → "REST"
+        - "джейсон" → "JSON"
+        - "эндпоинт" → "endpoint"
+        - "фреймворк" → "framework"
+        - "либа", "либы" → "library/libraries"
+        - "клауд", "клод" → "Claude"
+        - "юз стейт" → "useState"
+        - "юз эффект" → "useEffect"
+        - "консоль лог" → "console.log"
+
+        Rules:
+        1. Only fix obvious technical terms, preserve the rest of the text exactly
+        2. Keep punctuation and structure
+        3. Return ONLY the corrected text, no explanations
+        """
 }

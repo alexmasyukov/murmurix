@@ -9,6 +9,7 @@ enum RecordingState: Equatable {
     case idle
     case recording
     case transcribing
+    case processing  // AI post-processing
 }
 
 protocol RecordingCoordinatorDelegate: AnyObject {
@@ -16,6 +17,7 @@ protocol RecordingCoordinatorDelegate: AnyObject {
     func recordingDidStop()
     func recordingDidStopWithoutVoice()
     func transcriptionDidStart()
+    func processingDidStart()  // AI post-processing started
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID)
     func transcriptionDidFail(error: Error)
     func transcriptionDidCancel()
@@ -33,17 +35,20 @@ final class RecordingCoordinator {
     private let transcriptionService: TranscriptionServiceProtocol
     private let historyService: HistoryServiceProtocol
     private let settings: SettingsStorageProtocol
+    private let aiService: AIPostProcessingServiceProtocol
 
     init(
         audioRecorder: AudioRecorderProtocol,
         transcriptionService: TranscriptionServiceProtocol,
         historyService: HistoryServiceProtocol,
-        settings: SettingsStorageProtocol
+        settings: SettingsStorageProtocol,
+        aiService: AIPostProcessingServiceProtocol = AIPostProcessingService()
     ) {
         self.audioRecorder = audioRecorder
         self.transcriptionService = transcriptionService
         self.historyService = historyService
         self.settings = settings
+        self.aiService = aiService
     }
 
     // MARK: - Recording Control
@@ -54,8 +59,8 @@ final class RecordingCoordinator {
             startRecording()
         case .recording:
             stopRecording()
-        case .transcribing:
-            break // Ignore while transcribing
+        case .transcribing, .processing:
+            break // Ignore while transcribing or processing
         }
     }
 
@@ -68,7 +73,7 @@ final class RecordingCoordinator {
     }
 
     func cancelTranscription() {
-        guard state == .transcribing else { return }
+        guard state == .transcribing || state == .processing else { return }
 
         transcriptionTask?.cancel()
         transcriptionTask = nil
@@ -119,16 +124,39 @@ final class RecordingCoordinator {
         let service = transcriptionService
         let useDaemon = settings.keepDaemonRunning
         let language = settings.language
+        let aiEnabled = Settings.shared.aiPostProcessingEnabled
+        let aiProcessor = aiService
 
         transcriptionTask = Task.detached { [weak self] in
             guard let self = self else { return }
 
             do {
-                let text = try await service.transcribe(audioURL: audioURL, useDaemon: useDaemon)
+                let transcribedText = try await service.transcribe(audioURL: audioURL, useDaemon: useDaemon)
 
                 // Check if cancelled
                 if Task.isCancelled { return }
 
+                // AI Post-processing if enabled
+                var finalText = transcribedText
+                if aiEnabled {
+                    await MainActor.run {
+                        self.state = .processing
+                        self.delegate?.processingDidStart()
+                    }
+
+                    if Task.isCancelled { return }
+
+                    do {
+                        finalText = try await aiProcessor.process(text: transcribedText)
+                    } catch {
+                        // Log error but continue with original text
+                        print("AI post-processing failed: \(error.localizedDescription)")
+                    }
+
+                    if Task.isCancelled { return }
+                }
+
+                let resultText = finalText
                 await MainActor.run {
                     self.state = .idle
                     self.currentAudioURL = nil
@@ -136,7 +164,7 @@ final class RecordingCoordinator {
 
                     // Save to history
                     let record = TranscriptionRecord(
-                        text: text,
+                        text: resultText,
                         language: language,
                         duration: duration
                     )
@@ -145,7 +173,7 @@ final class RecordingCoordinator {
                     // Delete audio file
                     try? FileManager.default.removeItem(at: audioURL)
 
-                    self.delegate?.transcriptionDidComplete(text: text, duration: duration, recordId: record.id)
+                    self.delegate?.transcriptionDidComplete(text: resultText, duration: duration, recordId: record.id)
                 }
             } catch {
                 // Check if cancelled

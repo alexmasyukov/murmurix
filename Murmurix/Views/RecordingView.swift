@@ -190,6 +190,49 @@ struct TranscribingView: View {
     }
 }
 
+// MARK: - Processing View (AI post-processing with sparkle animation)
+
+struct ProcessingView: View {
+    let onCancel: () -> Void
+    @State private var rotation: Double = 0
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Sparkle icon with rotation
+            Image(systemName: "sparkles")
+                .font(.system(size: 12))
+                .foregroundColor(.purple)
+                .rotationEffect(.degrees(rotation))
+                .onAppear {
+                    withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
+                        rotation = 360
+                    }
+                }
+
+            Text("AI")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
+
+            // Cancel button
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(.white.opacity(0.7))
+                    .frame(width: 18, height: 18)
+                    .background(Circle().fill(Color.white.opacity(0.2)))
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(height: 28)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.9))
+        )
+    }
+}
+
 #Preview("Recording") {
     ZStack {
         Color.gray
@@ -201,5 +244,12 @@ struct TranscribingView: View {
     ZStack {
         Color.gray
         TranscribingView(onCancel: {})
+    }
+}
+
+#Preview("Processing") {
+    ZStack {
+        Color.gray
+        ProcessingView(onCancel: {})
     }
 }

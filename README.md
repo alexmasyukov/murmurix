@@ -6,6 +6,7 @@ A native macOS menubar app for local voice-to-text transcription using [faster-w
 
 - **Global Hotkeys** — Trigger recording from anywhere with customizable shortcuts
 - **Local Processing** — All transcription happens on-device, no cloud services
+- **AI Post-Processing** — Optional Claude API integration to fix technical terms
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
 - **Dynamic Island UI** — Minimal floating window with voice-reactive equalizer
 - **Voice Activity Detection** — Automatically skips transcription if no voice detected
@@ -92,7 +93,9 @@ Murmurix/
 │   ├── TranscriptionService.swift # Python subprocess & daemon
 │   ├── HistoryService.swift       # SQLite history storage
 │   ├── RecordingCoordinator.swift # Recording business logic
-│   └── TextPaster.swift           # Clipboard & keyboard paste
+│   ├── TextPaster.swift           # Clipboard & keyboard paste
+│   ├── KeychainService.swift      # Secure API key storage
+│   └── AIPostProcessingService.swift # Claude API integration
 ├── Views/
 │   ├── RecordingView.swift        # Dynamic Island-style UI
 │   ├── ResultView.swift           # Transcription result
@@ -130,6 +133,7 @@ xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:Mur
 
 ## Settings
 
+### General
 | Setting | Description |
 |---------|-------------|
 | Keep model in memory | Faster transcription, uses ~500MB RAM |
@@ -137,11 +141,25 @@ xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:Mur
 | Toggle Recording | Customizable hotkey |
 | Cancel Recording | Customizable hotkey |
 
+### AI Processing
+| Setting | Description |
+|---------|-------------|
+| Enable AI post-processing | Send transcription to Claude for term correction |
+| API Key | Your Claude API key (stored in Keychain) |
+| Model | Haiku (fast), Sonnet, or Opus (best) |
+| Prompt | Customizable instructions for term replacement |
+
+The AI post-processing is designed to fix technical terms that Whisper transcribes as Russian phonetic equivalents. For example:
+- "кафка" → "Kafka"
+- "реакт" → "React"
+- "гоуэнг" → "Go/Golang"
+
 ## Data Storage
 
 | Data | Location | Retention |
 |------|----------|-----------|
 | Settings | `~/Library/Preferences/` | Persistent |
+| API Key | macOS Keychain | Persistent, encrypted |
 | History | `~/Library/Application Support/Murmurix/history.sqlite` | Persistent |
 | Audio files | `/tmp/` | Deleted after transcription |
 | Model | `~/Library/Application Support/Murmurix/models/` | Persistent |

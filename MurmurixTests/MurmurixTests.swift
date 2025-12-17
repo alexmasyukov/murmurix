@@ -223,14 +223,14 @@ struct HistoryViewModelTests {
 
 // MARK: - ResultWindowController Tests
 
+@MainActor
 struct ResultWindowControllerTests {
 
     @Test func windowControllerInitializesWithCorrectParameters() {
-        var deleteCalled = false
         let controller = ResultWindowController(
             text: "Test transcription",
             duration: 65.5,
-            onDelete: { deleteCalled = true }
+            onDelete: {}
         )
 
         #expect(controller.window != nil)
@@ -251,17 +251,14 @@ struct ResultWindowControllerTests {
     }
 
     @Test func onDeleteCallbackIsStored() {
-        var deleteCalled = false
         let controller = ResultWindowController(
             text: "Test",
             duration: 10,
-            onDelete: { deleteCalled = true }
+            onDelete: {}
         )
 
-        // Controller should exist
+        // Controller should exist and have a window
         #expect(controller.window != nil)
-        // deleteCalled is false until button is pressed
-        #expect(deleteCalled == false)
     }
 
     @Test func durationFormattingWorksCorrectly() {
@@ -475,3 +472,4 @@ struct TextPasterTests {
         #expect(true) // If we get here, no crash occurred
     }
 }
+
