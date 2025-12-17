@@ -8,11 +8,24 @@ import Carbon
 import AppKit
 
 class GlobalHotkeyManager {
-    var onStartRecording: (() -> Void)?
-    var onStopRecording: (() -> Void)?
+    var onToggleRecording: (() -> Void)?
+    var onCancelRecording: (() -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+
+    private var toggleHotkey: Hotkey
+    private var cancelHotkey: Hotkey
+
+    init() {
+        toggleHotkey = HotkeySettings.loadToggleHotkey()
+        cancelHotkey = HotkeySettings.loadCancelHotkey()
+    }
+
+    func updateHotkeys(toggle: Hotkey, cancel: Hotkey) {
+        toggleHotkey = toggle
+        cancelHotkey = cancel
+    }
 
     func start() {
         let eventMask = (1 << CGEventType.keyDown.rawValue)
@@ -55,23 +68,26 @@ class GlobalHotkeyManager {
 
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .keyDown {
-            let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+            let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
             let flags = event.flags
 
-            // Check for Cmd+Shift modifier
-            let hasOnlyCmdShift = flags.contains(.maskCommand) && flags.contains(.maskShift) && !flags.contains(.maskControl) && !flags.contains(.maskAlternate)
+            // Convert CGEventFlags to Carbon modifiers
+            var carbonModifiers: UInt32 = 0
+            if flags.contains(.maskCommand) { carbonModifiers |= UInt32(cmdKey) }
+            if flags.contains(.maskAlternate) { carbonModifiers |= UInt32(optionKey) }
+            if flags.contains(.maskControl) { carbonModifiers |= UInt32(controlKey) }
+            if flags.contains(.maskShift) { carbonModifiers |= UInt32(shiftKey) }
 
-            if hasOnlyCmdShift {
-                // R key = 15
-                if keyCode == 15 {
-                    onStartRecording?()
-                    return nil // consume the event
-                }
-                // S key = 1
-                if keyCode == 1 {
-                    onStopRecording?()
-                    return nil // consume the event
-                }
+            // Check toggle hotkey
+            if keyCode == toggleHotkey.keyCode && carbonModifiers == toggleHotkey.modifiers {
+                onToggleRecording?()
+                return nil // consume the event
+            }
+
+            // Check cancel hotkey
+            if keyCode == cancelHotkey.keyCode && carbonModifiers == cancelHotkey.modifiers {
+                onCancelRecording?()
+                return nil // consume the event
             }
         }
 

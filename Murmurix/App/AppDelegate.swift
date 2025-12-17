@@ -12,7 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioRecorder: AudioRecorder!
     private var transcriptionService: TranscriptionService!
 
-    private var recordingWindow: NSWindow?
+    private var recordingController: RecordingWindowController?
     private var resultController: ResultWindowController?
     private var settingsController: SettingsWindowController?
 
@@ -49,6 +49,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager.stop()
     }
 
+    private var toggleMenuItem: NSMenuItem?
+
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
@@ -57,14 +59,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Start Recording", action: #selector(startRecording), keyEquivalent: "r"))
-        menu.addItem(NSMenuItem(title: "Stop Recording", action: #selector(stopRecording), keyEquivalent: "s"))
+
+        let hotkey = HotkeySettings.loadToggleHotkey()
+        let hotkeyString = hotkey.displayParts.joined()
+        toggleMenuItem = NSMenuItem(title: "Toggle Recording  \(hotkeyString)", action: #selector(toggleRecording), keyEquivalent: "")
+        menu.addItem(toggleMenuItem!)
+
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
 
         statusItem.menu = menu
+    }
+
+    func updateMenuHotkey() {
+        let hotkey = HotkeySettings.loadToggleHotkey()
+        let hotkeyString = hotkey.displayParts.joined()
+        toggleMenuItem?.title = "Toggle Recording  \(hotkeyString)"
     }
 
     private func setupServices() {
@@ -74,33 +86,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupHotkeys() {
         hotkeyManager = GlobalHotkeyManager()
-        hotkeyManager.onStartRecording = { [weak self] in
+        hotkeyManager.onToggleRecording = { [weak self] in
             DispatchQueue.main.async {
-                self?.startRecording()
+                self?.toggleRecording()
             }
         }
-        hotkeyManager.onStopRecording = { [weak self] in
+        hotkeyManager.onCancelRecording = { [weak self] in
             DispatchQueue.main.async {
-                self?.stopRecording()
+                self?.cancelRecording()
             }
         }
         hotkeyManager.start()
     }
 
-    @objc func startRecording() {
-        guard state == .idle else { return }
+    @objc func toggleRecording() {
+        switch state {
+        case .idle:
+            startRecording()
+        case .recording:
+            stopRecording()
+        case .transcribing:
+            break // Do nothing while transcribing
+        }
+    }
+
+    private func startRecording() {
         state = .recording
 
-        showRecordingWindow()
+        recordingController = RecordingWindowController(
+            audioRecorder: audioRecorder,
+            onStop: { [weak self] in
+                self?.stopRecording()
+            }
+        )
+        recordingController?.showWindow(nil)
         audioRecorder.startRecording()
     }
 
-    @objc func stopRecording() {
+    private func stopRecording() {
         guard state == .recording else { return }
         state = .transcribing
 
         let audioURL = audioRecorder.stopRecording()
-        updateRecordingWindowForTranscribing()
+        recordingController?.showTranscribing()
 
         let service = self.transcriptionService!
         let useDaemon = keepDaemonRunning
@@ -108,13 +136,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 let text = try await service.transcribe(audioURL: audioURL, useDaemon: useDaemon)
                 await MainActor.run {
-                    self.hideRecordingWindow()
+                    self.recordingController?.close()
+                    self.recordingController = nil
                     self.showResult(text: text)
                     self.state = .idle
                 }
             } catch {
                 await MainActor.run {
-                    self.hideRecordingWindow()
+                    self.recordingController?.close()
+                    self.recordingController = nil
                     self.showResult(text: "Error: \(error.localizedDescription)")
                     self.state = .idle
                 }
@@ -122,50 +152,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func cancelRecording() {
+        guard state == .recording else { return }
+
+        _ = audioRecorder.stopRecording()
+        recordingController?.close()
+        recordingController = nil
+        state = .idle
+    }
+
     @objc func openSettings() {
         if settingsController == nil {
-            settingsController = SettingsWindowController(onDaemonToggle: { [weak self] enabled in
-                guard let self = self else { return }
-                if enabled {
-                    self.transcriptionService.startDaemon()
-                } else {
-                    self.transcriptionService.stopDaemon()
+            settingsController = SettingsWindowController(
+                onDaemonToggle: { [weak self] enabled in
+                    guard let self = self else { return }
+                    if enabled {
+                        self.transcriptionService.startDaemon()
+                    } else {
+                        self.transcriptionService.stopDaemon()
+                    }
+                },
+                onHotkeysChanged: { [weak self] toggle, cancel in
+                    self?.hotkeyManager.updateHotkeys(toggle: toggle, cancel: cancel)
+                    self?.updateMenuHotkey()
                 }
-            })
+            )
         }
         settingsController?.showWindow(nil)
-    }
-
-    private func showRecordingWindow() {
-        let contentView = RecordingView(isTranscribing: false, onStop: { [weak self] in
-            self?.stopRecording()
-        })
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 140),
-            styleMask: [.titled, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.contentView = NSHostingView(rootView: contentView)
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.isMovableByWindowBackground = true
-        window.level = .floating
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-
-        recordingWindow = window
-    }
-
-    private func updateRecordingWindowForTranscribing() {
-        let contentView = RecordingView(isTranscribing: true, onStop: {})
-        recordingWindow?.contentView = NSHostingView(rootView: contentView)
-    }
-
-    private func hideRecordingWindow() {
-        recordingWindow?.orderOut(nil)
-        recordingWindow = nil
     }
 
     private func showResult(text: String) {

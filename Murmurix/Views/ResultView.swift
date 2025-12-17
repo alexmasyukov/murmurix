@@ -16,11 +16,12 @@ struct ResultView: View {
             ScrollView {
                 Text(text)
                     .font(.system(size: 14))
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
                     .padding()
             }
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Color.white.opacity(0.05))
             .cornerRadius(8)
 
             HStack(spacing: 12) {
@@ -43,6 +44,8 @@ struct ResultView: View {
         }
         .padding(20)
         .frame(minWidth: 400, minHeight: 300)
+        .background(Color(NSColor.windowBackgroundColor))
+        .preferredColorScheme(.dark)
     }
 
     private func copyToClipboard() {

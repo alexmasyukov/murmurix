@@ -4,59 +4,188 @@
 //
 
 import SwiftUI
+import Combine
 
-struct RecordingView: View {
-    let isTranscribing: Bool
-    let onStop: () -> Void
+class RecordingTimer: ObservableObject {
+    @Published var elapsedSeconds: Int = 0
+    private var timer: Timer?
 
-    @State private var isPulsing = false
+    func start() {
+        elapsedSeconds = 0
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.elapsedSeconds += 1
+        }
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+}
+
+struct EqualizerView: View {
+    let isActive: Bool
+    private let barCount = 8
 
     var body: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(isTranscribing ? Color.blue : Color.red)
-                    .frame(width: 40, height: 40)
-                    .scaleEffect(isPulsing ? 1.2 : 1.0)
-                    .opacity(isPulsing ? 0.6 : 1.0)
-                    .animation(
-                        Animation.easeInOut(duration: 0.8)
-                            .repeatForever(autoreverses: true),
-                        value: isPulsing
-                    )
-
-                if isTranscribing {
-                    Image(systemName: "waveform")
-                        .foregroundColor(.white)
-                        .font(.system(size: 16))
-                } else {
-                    Image(systemName: "mic.fill")
-                        .foregroundColor(.white)
-                        .font(.system(size: 16))
-                }
+        HStack(spacing: 3) {
+            ForEach(0..<barCount, id: \.self) { index in
+                EqualizerBar(barIndex: index, isActive: isActive)
             }
-
-            Text(isTranscribing ? "Transcribing..." : "Recording...")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.primary)
-
-            if !isTranscribing {
-                Button(action: onStop) {
-                    Text("Stop (Cmd+Shift+S)")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .padding(20)
-        .frame(width: 200, height: 140)
-        .background(Color(NSColor.windowBackgroundColor))
-        .onAppear {
-            isPulsing = true
         }
     }
 }
 
-#Preview {
-    RecordingView(isTranscribing: false, onStop: {})
+struct EqualizerBar: View {
+    let barIndex: Int
+    let isActive: Bool
+
+    @State private var height: CGFloat = 4
+    @State private var animationTimer: Timer?
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1.5)
+            .fill(Color.white)
+            .frame(width: 3, height: height)
+            .onChange(of: isActive) { _, active in
+                if active {
+                    startAnimation()
+                } else {
+                    stopAnimation()
+                }
+            }
+            .onAppear {
+                if isActive {
+                    startAnimation()
+                }
+            }
+            .onDisappear {
+                animationTimer?.invalidate()
+            }
+    }
+
+    private func startAnimation() {
+        // Quick start - 0.1 sec
+        let interval = 0.1
+
+        animationTimer?.invalidate()
+
+        // Immediate first jump
+        withAnimation(.easeOut(duration: 0.1)) {
+            height = CGFloat.random(in: 8...20)
+        }
+
+        // Continue animating with slight variation per bar
+        let timerInterval = interval + Double(barIndex) * 0.015
+        animationTimer = Timer.scheduledTimer(withTimeInterval: timerInterval, repeats: true) { _ in
+            withAnimation(.easeInOut(duration: timerInterval)) {
+                height = CGFloat.random(in: 8...20)
+            }
+        }
+    }
+
+    private func stopAnimation() {
+        animationTimer?.invalidate()
+        animationTimer = nil
+
+        // Slow fade out - 0.5 sec
+        withAnimation(.easeOut(duration: 0.5)) {
+            height = 4
+        }
+    }
+}
+
+// MARK: - Recording View (with equalizer)
+
+struct RecordingView: View {
+    @ObservedObject var timer: RecordingTimer
+    let audioLevel: Float
+    let onStop: () -> Void
+
+    // Sound detected if above threshold (0.45 filters out background noise)
+    private var isSoundActive: Bool {
+        audioLevel > 0.45
+    }
+
+    private var timeString: String {
+        let minutes = timer.elapsedSeconds / 60
+        let seconds = timer.elapsedSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Timer on the left - fixed width to prevent jumping
+            Text(timeString)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundColor(.white.opacity(0.7))
+                .frame(width: 32, alignment: .leading)
+
+            // Equalizer - triggered by sound detection
+            EqualizerView(isActive: isSoundActive)
+
+            // Stop button on the right
+            Button(action: onStop) {
+                Image(systemName: "stop.fill")
+                    .font(.system(size: 8))
+                    .foregroundColor(.white)
+                    .frame(width: 18, height: 18)
+                    .background(Circle().fill(Color.white.opacity(0.2)))
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(height: 28)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.9))
+        )
+    }
+}
+
+// MARK: - Transcribing View (pulsing dots)
+
+struct TranscribingView: View {
+    @State private var dotAnimation = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 5, height: 5)
+                    .scaleEffect(dotAnimation ? 1.0 : 0.5)
+                    .opacity(dotAnimation ? 1.0 : 0.5)
+                    .animation(
+                        Animation.easeInOut(duration: 0.6)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.2),
+                        value: dotAnimation
+                    )
+            }
+        }
+        .frame(height: 28)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.9))
+        )
+        .onAppear { dotAnimation = true }
+    }
+}
+
+#Preview("Recording") {
+    ZStack {
+        Color.gray
+        RecordingView(timer: RecordingTimer(), audioLevel: 0.5, onStop: {})
+    }
+}
+
+#Preview("Transcribing") {
+    ZStack {
+        Color.gray
+        TranscribingView()
+    }
 }
