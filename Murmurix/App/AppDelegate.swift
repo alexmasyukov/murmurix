@@ -167,6 +167,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         resultController?.showWindow(nil)
     }
 
+    private func dismissRecordingUI() {
+        recordingController?.close()
+        recordingController = nil
+        shouldPasteDirectly = false
+    }
+
     @objc func quit() {
         NSApplication.shared.terminate(nil)
     }
@@ -200,36 +206,27 @@ extension AppDelegate: RecordingCoordinatorDelegate {
     }
 
     func recordingDidStopWithoutVoice() {
-        recordingController?.close()
-        recordingController = nil
-        shouldPasteDirectly = false
+        dismissRecordingUI()
     }
 
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID) {
-        recordingController?.close()
-        recordingController = nil
+        let pasteDirectly = shouldPasteDirectly
+        dismissRecordingUI()
         lastRecordId = recordId
 
-        if shouldPasteDirectly {
-            // Paste directly into the text field
+        if pasteDirectly {
             TextPaster.paste(text)
-            shouldPasteDirectly = false
         } else {
-            // Show result window
             showResult(text: text, duration: duration)
         }
     }
 
     func transcriptionDidFail(error: Error) {
-        recordingController?.close()
-        recordingController = nil
-        shouldPasteDirectly = false
+        dismissRecordingUI()
         showResult(text: "Error: \(error.localizedDescription)", duration: 0)
     }
 
     func transcriptionDidCancel() {
-        recordingController?.close()
-        recordingController = nil
-        shouldPasteDirectly = false
+        dismissRecordingUI()
     }
 }

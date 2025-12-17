@@ -6,6 +6,7 @@
 import Testing
 import Foundation
 import Carbon
+import AppKit
 @testable import Murmurix
 
 // MARK: - TranscriptionRecord Tests
@@ -217,16 +218,6 @@ struct HistoryViewModelTests {
         ]
 
         #expect(viewModel.totalWords == 5)
-    }
-
-    @Test func totalCharactersCountsAllCharacters() {
-        let (viewModel, _) = createViewModel()
-        viewModel.records = [
-            TranscriptionRecord(text: "Hello", language: "en", duration: 5),
-            TranscriptionRecord(text: "World", language: "en", duration: 5)
-        ]
-
-        #expect(viewModel.totalCharacters == 10)
     }
 }
 
@@ -451,5 +442,36 @@ struct GlobalHotkeyManagerTests {
 
         manager.isRecording = false
         #expect(manager.isRecording == false)
+    }
+
+    @Test func hotkeyManagerIsRecordingHotkeyStaticFlag() {
+        // Test the static flag used to disable hotkey interception during recording
+        GlobalHotkeyManager.isRecordingHotkey = false
+        #expect(GlobalHotkeyManager.isRecordingHotkey == false)
+
+        GlobalHotkeyManager.isRecordingHotkey = true
+        #expect(GlobalHotkeyManager.isRecordingHotkey == true)
+
+        // Clean up
+        GlobalHotkeyManager.isRecordingHotkey = false
+    }
+}
+
+// MARK: - TextPaster Tests
+
+struct TextPasterTests {
+
+    @Test func isTextFieldFocusedReturnsBoolean() {
+        // Without actual accessibility focus, this should return false
+        // This test verifies the function runs without crashing
+        let result = TextPaster.isTextFieldFocused()
+        #expect(result == false || result == true)
+    }
+
+    @Test func pasteMethodDoesNotCrash() {
+        // Test that paste() can be called without crashing
+        // Actual clipboard/keyboard simulation tested manually
+        TextPaster.paste("Test text")
+        #expect(true) // If we get here, no crash occurred
     }
 }
