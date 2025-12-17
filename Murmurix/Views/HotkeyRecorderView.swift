@@ -10,7 +10,7 @@ struct Hotkey: Equatable, Codable {
     var keyCode: UInt32
     var modifiers: UInt32
 
-    static let toggleDefault = Hotkey(keyCode: 8, modifiers: UInt32(controlKey | cmdKey))  // Cmd+Control+C
+    static let toggleDefault = Hotkey(keyCode: 2, modifiers: UInt32(controlKey))  // Control+D
     static let cancelDefault = Hotkey(keyCode: 53, modifiers: 0)  // Escape
 
     var displayParts: [String] {
@@ -139,6 +139,9 @@ struct HotkeyRecorderView: View {
     private func startRecording() {
         isRecording = true
 
+        // Disable global hotkey interception while recording new hotkey
+        GlobalHotkeyManager.isRecordingHotkey = true
+
         // Local monitor - when app is in focus
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             self.handleKeyEvent(event)
@@ -153,6 +156,10 @@ struct HotkeyRecorderView: View {
 
     private func stopRecording() {
         isRecording = false
+
+        // Re-enable global hotkey interception
+        GlobalHotkeyManager.isRecordingHotkey = false
+
         if let monitor = localMonitor {
             NSEvent.removeMonitor(monitor)
             localMonitor = nil
