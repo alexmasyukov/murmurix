@@ -60,33 +60,6 @@ class HistoryViewModel: ObservableObject {
     var totalWords: Int {
         records.reduce(0) { $0 + $1.text.split(separator: " ").count }
     }
-
-    // Activity by day (last 30 days)
-    var activityByDay: [(date: Date, count: Int)] {
-        let calendar = Calendar.current
-        let now = Date()
-        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -29, to: now)!
-
-        var activity: [Date: Int] = [:]
-
-        // Initialize all 30 days with 0
-        for i in 0..<30 {
-            if let date = calendar.date(byAdding: .day, value: -i, to: now) {
-                let dayStart = calendar.startOfDay(for: date)
-                activity[dayStart] = 0
-            }
-        }
-
-        // Count records per day
-        for record in records {
-            let dayStart = calendar.startOfDay(for: record.createdAt)
-            if dayStart >= thirtyDaysAgo {
-                activity[dayStart, default: 0] += 1
-            }
-        }
-
-        return activity.sorted { $0.key < $1.key }.map { (date: $0.key, count: $0.value) }
-    }
 }
 
 struct HistoryView: View {

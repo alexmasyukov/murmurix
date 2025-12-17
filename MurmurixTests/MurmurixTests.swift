@@ -147,6 +147,89 @@ struct HistoryServiceTests {
     }
 }
 
+// MARK: - HistoryViewModel Tests
+
+struct HistoryViewModelTests {
+
+    private func createViewModel() -> (HistoryViewModel, MockHistoryService) {
+        let mockService = MockHistoryService()
+        let viewModel = HistoryViewModel(historyService: mockService)
+        return (viewModel, mockService)
+    }
+
+    @Test func loadRecordsPopulatesRecords() {
+        let (viewModel, mockService) = createViewModel()
+        mockService.records = [
+            TranscriptionRecord(text: "Test 1", language: "en", duration: 10),
+            TranscriptionRecord(text: "Test 2", language: "ru", duration: 20)
+        ]
+
+        viewModel.loadRecords()
+
+        #expect(viewModel.records.count == 2)
+        #expect(viewModel.selectedRecord != nil)
+    }
+
+    @Test func deleteRecordRemovesFromList() {
+        let (viewModel, mockService) = createViewModel()
+        let record = TranscriptionRecord(text: "To delete", language: "en", duration: 5)
+        mockService.records = [record]
+        viewModel.loadRecords()
+
+        viewModel.deleteRecord(record)
+
+        #expect(viewModel.records.isEmpty)
+        #expect(mockService.deleteCallCount == 1)
+    }
+
+    @Test func clearHistoryRemovesAllRecords() {
+        let (viewModel, mockService) = createViewModel()
+        mockService.records = [
+            TranscriptionRecord(text: "Test 1", language: "en", duration: 10),
+            TranscriptionRecord(text: "Test 2", language: "ru", duration: 20)
+        ]
+        viewModel.loadRecords()
+
+        viewModel.clearHistory()
+
+        #expect(viewModel.records.isEmpty)
+        #expect(viewModel.selectedRecord == nil)
+        #expect(mockService.deleteAllCallCount == 1)
+    }
+
+    @Test func totalDurationSumsAllRecords() {
+        let (viewModel, _) = createViewModel()
+        viewModel.records = [
+            TranscriptionRecord(text: "A", language: "en", duration: 30),
+            TranscriptionRecord(text: "B", language: "en", duration: 90),
+            TranscriptionRecord(text: "C", language: "en", duration: 45)
+        ]
+
+        #expect(viewModel.totalDuration == 165)
+        #expect(viewModel.formattedTotalDuration == "2:45")
+    }
+
+    @Test func totalWordsCountsAllWords() {
+        let (viewModel, _) = createViewModel()
+        viewModel.records = [
+            TranscriptionRecord(text: "Hello world", language: "en", duration: 5),
+            TranscriptionRecord(text: "One two three", language: "en", duration: 5)
+        ]
+
+        #expect(viewModel.totalWords == 5)
+    }
+
+    @Test func totalCharactersCountsAllCharacters() {
+        let (viewModel, _) = createViewModel()
+        viewModel.records = [
+            TranscriptionRecord(text: "Hello", language: "en", duration: 5),
+            TranscriptionRecord(text: "World", language: "en", duration: 5)
+        ]
+
+        #expect(viewModel.totalCharacters == 10)
+    }
+}
+
 // MARK: - Hotkey Tests
 
 struct HotkeyTests {
