@@ -146,10 +146,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 onHotkeysChanged: { [weak self] toggle, cancel in
                     self?.hotkeyManager.updateHotkeys(toggle: toggle, cancel: cancel)
                     self?.updateMenuHotkey()
+                },
+                onWindowOpen: { [weak self] in
+                    self?.hotkeyManager.pause()
+                },
+                onWindowClose: { [weak self] in
+                    self?.hotkeyManager.resume()
                 }
             )
         } else {
             settingsController?.updateDaemonStatus(transcriptionService.isDaemonRunning)
+            hotkeyManager.pause()
         }
         settingsController?.showWindow(nil)
     }
@@ -203,6 +210,10 @@ extension AppDelegate: RecordingCoordinatorDelegate {
 
     func transcriptionDidStart() {
         recordingController?.showTranscribing()
+    }
+
+    func processingDidStart() {
+        recordingController?.showProcessing()
     }
 
     func recordingDidStopWithoutVoice() {

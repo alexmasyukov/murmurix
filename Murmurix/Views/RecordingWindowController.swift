@@ -77,8 +77,20 @@ class RecordingWindowController: NSWindowController {
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.layer?.backgroundColor = .clear
         window?.contentView = hostingView
+        recenterWindow()
+    }
 
-        // Re-center window for slightly wider TranscribingView
+    func showProcessing() {
+        let contentView = ProcessingView(onCancel: { [weak self] in
+            self?.onCancelTranscription?()
+        })
+        let hostingView = NSHostingView(rootView: contentView)
+        hostingView.layer?.backgroundColor = .clear
+        window?.contentView = hostingView
+        recenterWindow()
+    }
+
+    private func recenterWindow() {
         if let screen = NSScreen.main, let window = window {
             window.layoutIfNeeded()
             let screenFrame = screen.visibleFrame

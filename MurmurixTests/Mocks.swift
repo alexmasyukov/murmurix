@@ -126,6 +126,23 @@ final class MockSettings: SettingsStorageProtocol {
     }
 }
 
+// MARK: - Mock AI Post-Processing Service
+
+final class MockAIPostProcessingService: AIPostProcessingServiceProtocol, @unchecked Sendable {
+    var processCallCount = 0
+    var processResult: Result<String, Error> = .success("Processed text")
+
+    func process(text: String) async throws -> String {
+        processCallCount += 1
+        switch processResult {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            throw error
+        }
+    }
+}
+
 // MARK: - Mock Recording Coordinator Delegate
 
 final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
@@ -133,6 +150,7 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
     var recordingDidStopCallCount = 0
     var recordingDidStopWithoutVoiceCallCount = 0
     var transcriptionDidStartCallCount = 0
+    var processingDidStartCallCount = 0
     var transcriptionDidCompleteCallCount = 0
     var transcriptionDidFailCallCount = 0
     var transcriptionDidCancelCallCount = 0
@@ -156,6 +174,10 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
 
     func transcriptionDidStart() {
         transcriptionDidStartCallCount += 1
+    }
+
+    func processingDidStart() {
+        processingDidStartCallCount += 1
     }
 
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID) {
