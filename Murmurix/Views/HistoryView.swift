@@ -5,9 +5,9 @@
 
 import SwiftUI
 
-struct HistoryView: View {
-    @State private var records: [TranscriptionRecord] = []
-    @State private var selectedRecord: TranscriptionRecord?
+class HistoryViewModel: ObservableObject {
+    @Published var records: [TranscriptionRecord] = []
+    @Published var selectedRecord: TranscriptionRecord?
 
     private let historyService: HistoryServiceProtocol
 
@@ -15,11 +15,32 @@ struct HistoryView: View {
         self.historyService = historyService
     }
 
+    func loadRecords() {
+        records = historyService.fetchAll()
+        if selectedRecord == nil, let first = records.first {
+            selectedRecord = first
+        }
+    }
+
+    func clearHistory() {
+        historyService.deleteAll()
+        records = []
+        selectedRecord = nil
+    }
+}
+
+struct HistoryView: View {
+    @ObservedObject var viewModel: HistoryViewModel
+
+    init(viewModel: HistoryViewModel = HistoryViewModel()) {
+        self.viewModel = viewModel
+    }
+
     var body: some View {
         HSplitView {
             // Left panel - list of records
             VStack(spacing: 0) {
-                List(records, selection: $selectedRecord) { record in
+                List(viewModel.records, selection: $viewModel.selectedRecord) { record in
                     HistoryRowView(record: record)
                         .tag(record)
                 }
@@ -27,15 +48,15 @@ struct HistoryView: View {
 
                 // Bottom toolbar
                 HStack {
-                    Button(action: clearHistory) {
+                    Button(action: { viewModel.clearHistory() }) {
                         Image(systemName: "trash")
                     }
                     .buttonStyle(.borderless)
-                    .disabled(records.isEmpty)
+                    .disabled(viewModel.records.isEmpty)
 
                     Spacer()
 
-                    Text("\(records.count) items")
+                    Text("\(viewModel.records.count) items")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -45,7 +66,7 @@ struct HistoryView: View {
             .frame(minWidth: 250, maxWidth: 300)
 
             // Right panel - detail view
-            if let record = selectedRecord {
+            if let record = viewModel.selectedRecord {
                 HistoryDetailView(record: record, onCopy: copyToClipboard)
             } else {
                 VStack {
@@ -61,21 +82,8 @@ struct HistoryView: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .onAppear {
-            loadRecords()
+            viewModel.loadRecords()
         }
-    }
-
-    private func loadRecords() {
-        records = historyService.fetchAll()
-        if selectedRecord == nil, let first = records.first {
-            selectedRecord = first
-        }
-    }
-
-    private func clearHistory() {
-        historyService.deleteAll()
-        records = []
-        selectedRecord = nil
     }
 
     private func copyToClipboard(_ text: String) {

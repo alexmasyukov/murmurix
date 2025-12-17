@@ -129,6 +129,34 @@ The project includes unit tests with mocks for all services:
 | Audio files | `/tmp/` | Deleted after transcription |
 | Model | `~/Library/Application Support/Murmurix/models/` | Persistent |
 
+### External Database Access
+
+You can connect to the SQLite database externally while the app is running:
+
+```bash
+# CLI
+sqlite3 ~/Library/Application\ Support/Murmurix/history.sqlite
+
+# Query history
+sqlite3 ~/Library/Application\ Support/Murmurix/history.sqlite "SELECT * FROM transcriptions ORDER BY created_at DESC"
+```
+
+**JDBC URL** (for IDE database tools):
+```
+jdbc:sqlite:/Users/<username>/Library/Application Support/Murmurix/history.sqlite
+```
+
+**Schema:**
+```sql
+CREATE TABLE transcriptions (
+    id TEXT PRIMARY KEY,
+    text TEXT NOT NULL,
+    language TEXT NOT NULL,
+    duration REAL NOT NULL,
+    created_at REAL NOT NULL  -- Unix timestamp
+);
+```
+
 ## Supported Languages
 
 faster-whisper supports 99 languages. Currently exposed in UI:

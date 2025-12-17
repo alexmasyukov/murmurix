@@ -68,9 +68,10 @@ final class HistoryService: HistoryServiceProtocol {
 
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, record.id.uuidString, -1, nil)
-            sqlite3_bind_text(statement, 2, record.text, -1, nil)
-            sqlite3_bind_text(statement, 3, record.language, -1, nil)
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(statement, 1, record.id.uuidString, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 2, record.text, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 3, record.language, -1, SQLITE_TRANSIENT)
             sqlite3_bind_double(statement, 4, record.duration)
             sqlite3_bind_double(statement, 5, record.createdAt.timeIntervalSince1970)
 
@@ -121,7 +122,8 @@ final class HistoryService: HistoryServiceProtocol {
 
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, id.uuidString, -1, nil)
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(statement, 1, id.uuidString, -1, SQLITE_TRANSIENT)
             sqlite3_step(statement)
         }
         sqlite3_finalize(statement)
