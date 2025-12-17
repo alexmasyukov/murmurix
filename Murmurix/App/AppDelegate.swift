@@ -20,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var historyController: HistoryWindowController?
 
     private var lastRecordId: UUID?
+    private var shouldPasteDirectly = false  // True if hotkey was triggered from a text field
     private let historyService = HistoryService.shared
     private let settings = Settings.shared
 
@@ -113,6 +114,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleRecording() {
+        // Check if we're starting a new recording (not stopping)
+        if coordinator.state == .idle {
+            // Check if hotkey was triggered from a text field BEFORE recording starts
+            shouldPasteDirectly = TextPaster.isTextFieldFocused()
+        }
         coordinator.toggleRecording()
     }
 
@@ -196,23 +202,34 @@ extension AppDelegate: RecordingCoordinatorDelegate {
     func recordingDidStopWithoutVoice() {
         recordingController?.close()
         recordingController = nil
+        shouldPasteDirectly = false
     }
 
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID) {
         recordingController?.close()
         recordingController = nil
         lastRecordId = recordId
-        showResult(text: text, duration: duration)
+
+        if shouldPasteDirectly {
+            // Paste directly into the text field
+            TextPaster.paste(text)
+            shouldPasteDirectly = false
+        } else {
+            // Show result window
+            showResult(text: text, duration: duration)
+        }
     }
 
     func transcriptionDidFail(error: Error) {
         recordingController?.close()
         recordingController = nil
+        shouldPasteDirectly = false
         showResult(text: "Error: \(error.localizedDescription)", duration: 0)
     }
 
     func transcriptionDidCancel() {
         recordingController?.close()
         recordingController = nil
+        shouldPasteDirectly = false
     }
 }
