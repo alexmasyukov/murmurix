@@ -19,6 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var historyController: HistoryWindowController?
 
     private var recordingStartTime: Date?
+    private var lastRecordId: UUID?
     private let historyService = HistoryService.shared
 
     enum AppState {
@@ -164,8 +165,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 await MainActor.run {
                     self.recordingController?.close()
                     self.recordingController = nil
-                    self.showResult(text: text)
-                    self.state = .idle
 
                     // Save to history
                     let record = TranscriptionRecord(
@@ -174,6 +173,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         duration: duration
                     )
                     self.historyService.save(record: record)
+                    self.lastRecordId = record.id
+
+                    self.showResult(text: text, duration: duration)
+                    self.state = .idle
 
                     // Delete audio file
                     try? FileManager.default.removeItem(at: audioURL)
@@ -182,7 +185,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 await MainActor.run {
                     self.recordingController?.close()
                     self.recordingController = nil
-                    self.showResult(text: "Error: \(error.localizedDescription)")
+                    self.showResult(text: "Error: \(error.localizedDescription)", duration: 0)
                     self.state = .idle
 
                     // Delete audio file even on error
@@ -228,8 +231,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsController?.showWindow(nil)
     }
 
-    private func showResult(text: String) {
-        resultController = ResultWindowController(text: text)
+    private func showResult(text: String, duration: TimeInterval) {
+        resultController = ResultWindowController(
+            text: text,
+            duration: duration,
+            onDelete: { [weak self] in
+                guard let self = self, let recordId = self.lastRecordId else { return }
+                self.historyService.delete(id: recordId)
+                self.lastRecordId = nil
+            }
+        )
         resultController?.showWindow(nil)
     }
 

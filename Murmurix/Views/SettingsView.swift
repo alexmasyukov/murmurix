@@ -66,21 +66,22 @@ struct SettingsView: View {
             // Performance Section
             SectionHeader(title: "Performance")
 
-            VStack(alignment: .leading, spacing: 8) {
-                Toggle(isOn: $keepDaemonRunning) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Keep model in memory")
-                            .font(.system(size: 13))
-                            .foregroundColor(.white)
-                        Text("Faster transcription, uses ~500MB RAM")
-                            .font(.system(size: 11))
-                            .foregroundColor(.gray)
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Keep model in memory")
+                        .font(.system(size: 13))
+                        .foregroundColor(.white)
+                    Text("Faster transcription, uses ~500MB RAM")
+                        .font(.system(size: 11))
+                        .foregroundColor(.gray)
+                }
+                Spacer()
+                Toggle("", isOn: $keepDaemonRunning)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .onChange(of: keepDaemonRunning) { _, newValue in
+                        onDaemonToggle?(newValue)
                     }
-                }
-                .toggleStyle(.switch)
-                .onChange(of: keepDaemonRunning) { _, newValue in
-                    onDaemonToggle?(newValue)
-                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)

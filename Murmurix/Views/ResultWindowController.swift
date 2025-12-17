@@ -6,35 +6,68 @@
 import Cocoa
 import SwiftUI
 
-class ResultWindowController: NSWindowController, NSWindowDelegate {
+class ResultWindow: NSWindow {
+    var onEscape: (() -> Void)?
 
-    convenience init(text: String) {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { // ESC
+            onEscape?()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+}
+
+class ResultWindowController: NSWindowController {
+
+    var onDelete: (() -> Void)?
+
+    convenience init(text: String, duration: TimeInterval, onDelete: @escaping () -> Void) {
+        let window = ResultWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 300),
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-        window.title = "Transcription Result"
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.minSize = NSSize(width: 300, height: 200)
-        window.appearance = NSAppearance(named: .darkAqua)
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
+        window.level = .floating
+        // Don't use isMovableByWindowBackground - it blocks button clicks
+
+        let controller = ResultWindowController(window: window)
+        controller.onDelete = onDelete
+
+        window.onEscape = { [weak controller] in
+            controller?.close()
+        }
+
+        let contentView = ResultView(
+            text: text,
+            duration: duration,
+            onDelete: { [weak controller] in
+                onDelete()
+                controller?.close()
+            },
+            onClose: { [weak controller] in
+                controller?.close()
+            }
+        )
+        let hostingView = NSHostingView(rootView: contentView)
+        hostingView.layer?.backgroundColor = .clear
+        window.contentView = hostingView
 
         self.init(window: window)
-        window.delegate = self
-
-        let contentView = ResultView(text: text)
-        window.contentView = NSHostingView(rootView: contentView)
+        self.onDelete = onDelete
     }
 
     override func showWindow(_ sender: Any?) {
         window?.center()
         super.showWindow(sender)
         NSApp.activate(ignoringOtherApps: true)
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        // Window controller will be released after close
+        window?.makeKeyAndOrderFront(nil)
     }
 }
