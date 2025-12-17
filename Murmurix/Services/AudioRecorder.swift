@@ -14,7 +14,52 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     private var currentRecordingURL: URL?
     private var levelTimer: Timer?
 
+    // MARK: - Permission Handling
+
+    enum PermissionStatus {
+        case granted
+        case denied
+        case notDetermined
+    }
+
+    var permissionStatus: PermissionStatus {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            return .granted
+        case .denied, .restricted:
+            return .denied
+        case .notDetermined:
+            return .notDetermined
+        @unknown default:
+            return .denied
+        }
+    }
+
+    func requestPermission(completion: @escaping (Bool) -> Void) {
+        AVCaptureDevice.requestAccess(for: .audio) { granted in
+            DispatchQueue.main.async {
+                completion(granted)
+            }
+        }
+    }
+
     func startRecording() {
+        // Check permission first
+        guard permissionStatus == .granted else {
+            if permissionStatus == .notDetermined {
+                requestPermission { [weak self] granted in
+                    if granted {
+                        self?.startRecording()
+                    } else {
+                        print("Microphone permission denied")
+                    }
+                }
+            } else {
+                print("Microphone permission denied. Please enable in System Settings > Privacy > Microphone")
+            }
+            return
+        }
+
         let tempDir = FileManager.default.temporaryDirectory
         let fileName = "murmurix_recording_\(Date().timeIntervalSince1970).wav"
         let fileURL = tempDir.appendingPathComponent(fileName)

@@ -26,9 +26,9 @@ struct SettingsView: View {
         self.onDaemonToggle = onDaemonToggle
         self.onHotkeysChanged = onHotkeysChanged
 
-        // Load saved hotkeys
-        _toggleHotkey = State(initialValue: HotkeySettings.loadToggleHotkey())
-        _cancelHotkey = State(initialValue: HotkeySettings.loadCancelHotkey())
+        // Load saved hotkeys from Settings
+        _toggleHotkey = State(initialValue: Settings.shared.loadToggleHotkey())
+        _cancelHotkey = State(initialValue: Settings.shared.loadCancelHotkey())
     }
 
     var body: some View {
@@ -43,7 +43,7 @@ struct SettingsView: View {
                     hotkey: $toggleHotkey
                 )
                 .onChange(of: toggleHotkey) { _, newValue in
-                    HotkeySettings.saveToggleHotkey(newValue)
+                    Settings.shared.saveToggleHotkey(newValue)
                     onHotkeysChanged?(newValue, cancelHotkey)
                 }
                 .padding(.horizontal, 16)
@@ -59,7 +59,7 @@ struct SettingsView: View {
                     hotkey: $cancelHotkey
                 )
                 .onChange(of: cancelHotkey) { _, newValue in
-                    HotkeySettings.saveCancelHotkey(newValue)
+                    Settings.shared.saveCancelHotkey(newValue)
                     onHotkeysChanged?(toggleHotkey, newValue)
                 }
                 .padding(.horizontal, 16)
@@ -156,40 +156,6 @@ struct SectionHeader: View {
     }
 }
 
-// MARK: - Hotkey Settings Storage
-
-struct HotkeySettings {
-    private static let toggleKey = "toggleHotkey"
-    private static let cancelKey = "cancelHotkey"
-
-    static func loadToggleHotkey() -> Hotkey {
-        if let data = UserDefaults.standard.data(forKey: toggleKey),
-           let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) {
-            return hotkey
-        }
-        return Hotkey.toggleDefault
-    }
-
-    static func saveToggleHotkey(_ hotkey: Hotkey) {
-        if let data = try? JSONEncoder().encode(hotkey) {
-            UserDefaults.standard.set(data, forKey: toggleKey)
-        }
-    }
-
-    static func loadCancelHotkey() -> Hotkey {
-        if let data = UserDefaults.standard.data(forKey: cancelKey),
-           let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) {
-            return hotkey
-        }
-        return Hotkey.cancelDefault
-    }
-
-    static func saveCancelHotkey(_ hotkey: Hotkey) {
-        if let data = try? JSONEncoder().encode(hotkey) {
-            UserDefaults.standard.set(data, forKey: cancelKey)
-        }
-    }
-}
 
 #Preview {
     SettingsView(isDaemonRunning: .constant(true))

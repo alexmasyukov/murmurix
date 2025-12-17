@@ -21,8 +21,8 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private var cancelHotkey: Hotkey
 
     init() {
-        toggleHotkey = HotkeySettings.loadToggleHotkey()
-        cancelHotkey = HotkeySettings.loadCancelHotkey()
+        toggleHotkey = Settings.shared.loadToggleHotkey()
+        cancelHotkey = Settings.shared.loadCancelHotkey()
     }
 
     func updateHotkeys(toggle: Hotkey, cancel: Hotkey) {

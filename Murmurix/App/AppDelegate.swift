@@ -12,46 +12,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyManager: GlobalHotkeyManager!
     private var audioRecorder: AudioRecorder!
     private var transcriptionService: TranscriptionService!
+    private var coordinator: RecordingCoordinator!
 
     private var recordingController: RecordingWindowController?
     private var resultController: ResultWindowController?
     private var settingsController: SettingsWindowController?
     private var historyController: HistoryWindowController?
 
-    private var recordingStartTime: Date?
     private var lastRecordId: UUID?
     private let historyService = HistoryService.shared
-
-    enum AppState {
-        case idle
-        case recording
-        case transcribing
-    }
-
-    private var state: AppState = .idle
-
-    private var keepDaemonRunning: Bool {
-        UserDefaults.standard.bool(forKey: "keepDaemonRunning")
-    }
+    private let settings = Settings.shared
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Set default value for daemon
-        if UserDefaults.standard.object(forKey: "keepDaemonRunning") == nil {
-            UserDefaults.standard.set(true, forKey: "keepDaemonRunning")
-        }
-
         setupMenuBar()
         setupServices()
+        setupCoordinator()
         setupHotkeys()
 
-        // Start daemon if enabled
-        if keepDaemonRunning {
-            transcriptionService.startDaemon()
-        }
+        coordinator.startDaemonIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        transcriptionService.stopDaemon()
+        coordinator.stopDaemon()
         hotkeyManager.stop()
     }
 
@@ -86,14 +68,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func applyHotkeyToMenuItem(_ menuItem: NSMenuItem) {
-        let hotkey = HotkeySettings.loadToggleHotkey()
+        let hotkey = settings.loadToggleHotkey()
 
-        // Convert keyCode to character
         if let keyString = Hotkey.keyCodeToName(hotkey.keyCode)?.lowercased() {
             menuItem.keyEquivalent = keyString
         }
 
-        // Convert Carbon modifiers to NSEvent modifiers
         var modifiers: NSEvent.ModifierFlags = []
         if hotkey.modifiers & UInt32(cmdKey) != 0 { modifiers.insert(.command) }
         if hotkey.modifiers & UInt32(optionKey) != 0 { modifiers.insert(.option) }
@@ -105,6 +85,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupServices() {
         audioRecorder = AudioRecorder()
         transcriptionService = TranscriptionService()
+    }
+
+    private func setupCoordinator() {
+        coordinator = RecordingCoordinator(
+            audioRecorder: audioRecorder,
+            transcriptionService: transcriptionService,
+            historyService: historyService,
+            settings: settings
+        )
+        coordinator.delegate = self
     }
 
     private func setupHotkeys() {
@@ -123,89 +113,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleRecording() {
-        switch state {
-        case .idle:
-            startRecording()
-        case .recording:
-            stopRecording()
-        case .transcribing:
-            break // Do nothing while transcribing
-        }
-    }
-
-    private func startRecording() {
-        state = .recording
-        hotkeyManager.isRecording = true
-        recordingStartTime = Date()
-
-        recordingController = RecordingWindowController(
-            audioRecorder: audioRecorder,
-            onStop: { [weak self] in
-                self?.stopRecording()
-            }
-        )
-        recordingController?.showWindow(nil)
-        audioRecorder.startRecording()
-    }
-
-    private func stopRecording() {
-        guard state == .recording else { return }
-        state = .transcribing
-        hotkeyManager.isRecording = false
-
-        let audioURL = audioRecorder.stopRecording()
-        let duration = Date().timeIntervalSince(recordingStartTime ?? Date())
-        recordingController?.showTranscribing()
-
-        let service = self.transcriptionService!
-        let useDaemon = keepDaemonRunning
-        let language = UserDefaults.standard.string(forKey: "language") ?? "ru"
-
-        Task.detached {
-            do {
-                let text = try await service.transcribe(audioURL: audioURL, useDaemon: useDaemon)
-                await MainActor.run {
-                    self.recordingController?.close()
-                    self.recordingController = nil
-
-                    // Save to history
-                    let record = TranscriptionRecord(
-                        text: text,
-                        language: language,
-                        duration: duration
-                    )
-                    self.historyService.save(record: record)
-                    self.lastRecordId = record.id
-
-                    self.showResult(text: text, duration: duration)
-                    self.state = .idle
-
-                    // Delete audio file
-                    try? FileManager.default.removeItem(at: audioURL)
-                }
-            } catch {
-                await MainActor.run {
-                    self.recordingController?.close()
-                    self.recordingController = nil
-                    self.showResult(text: "Error: \(error.localizedDescription)", duration: 0)
-                    self.state = .idle
-
-                    // Delete audio file even on error
-                    try? FileManager.default.removeItem(at: audioURL)
-                }
-            }
-        }
+        coordinator.toggleRecording()
     }
 
     private func cancelRecording() {
-        guard state == .recording else { return }
-
+        coordinator.cancelRecording()
         hotkeyManager.isRecording = false
-        let audioURL = audioRecorder.stopRecording()
-        try? FileManager.default.removeItem(at: audioURL) // Delete cancelled recording
         recordingController?.close()
         recordingController = nil
-        state = .idle
     }
 
     @objc func openHistory() {
@@ -220,12 +135,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             settingsController = SettingsWindowController(
                 isDaemonRunning: transcriptionService.isDaemonRunning,
                 onDaemonToggle: { [weak self] enabled in
-                    guard let self = self else { return }
-                    if enabled {
-                        self.transcriptionService.startDaemon()
-                    } else {
-                        self.transcriptionService.stopDaemon()
-                    }
+                    self?.coordinator.setDaemonEnabled(enabled)
                 },
                 onHotkeysChanged: { [weak self] toggle, cancel in
                     self?.hotkeyManager.updateHotkeys(toggle: toggle, cancel: cancel)
@@ -233,7 +143,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             )
         } else {
-            // Update daemon status when reopening settings
             settingsController?.updateDaemonStatus(transcriptionService.isDaemonRunning)
         }
         settingsController?.showWindow(nil)
@@ -254,5 +163,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func quit() {
         NSApplication.shared.terminate(nil)
+    }
+}
+
+// MARK: - RecordingCoordinatorDelegate
+
+extension AppDelegate: RecordingCoordinatorDelegate {
+    func recordingDidStart() {
+        hotkeyManager.isRecording = true
+        recordingController = RecordingWindowController(
+            audioRecorder: audioRecorder,
+            onStop: { [weak self] in
+                self?.coordinator.toggleRecording()
+            }
+        )
+        recordingController?.showWindow(nil)
+    }
+
+    func recordingDidStop() {
+        hotkeyManager.isRecording = false
+    }
+
+    func transcriptionDidStart() {
+        recordingController?.showTranscribing()
+    }
+
+    func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID) {
+        recordingController?.close()
+        recordingController = nil
+        lastRecordId = recordId
+        showResult(text: text, duration: duration)
+    }
+
+    func transcriptionDidFail(error: Error) {
+        recordingController?.close()
+        recordingController = nil
+        showResult(text: "Error: \(error.localizedDescription)", duration: 0)
     }
 }

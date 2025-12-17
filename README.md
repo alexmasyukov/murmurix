@@ -97,18 +97,23 @@ Murmurix/
 
 ## Testing
 
-The project includes unit tests with mocks for all services:
+The project includes 25 unit tests with mocks for all services:
 
 ```bash
 # Run tests in Xcode
 ⌘U
+
+# Run only unit tests (faster, skips UI tests)
+xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:MurmurixTests
 ```
 
 **Test coverage:**
 - `TranscriptionRecordTests` — Model serialization, formatting
 - `HistoryServiceTests` — SQLite CRUD operations
+- `HistoryViewModelTests` — ViewModel logic, statistics
 - `HotkeyTests` — Hotkey encoding, display
 - `RecordingCoordinatorTests` — Recording state machine
+- `ResultWindowControllerTests` — Window properties
 - `SettingsTests` — UserDefaults persistence
 
 ## Settings
