@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5627C1552EF3AFD000106B82 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 5627C1542EF3AFD000106B82 /* Lottie */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		564D38612EF3119500598DBA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -65,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5627C1552EF3AFD000106B82 /* Lottie in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +130,7 @@
 			);
 			name = Murmurix;
 			packageProductDependencies = (
+				5627C1542EF3AFD000106B82 /* Lottie */,
 			);
 			productName = Murmurix;
 			productReference = 564D384F2EF3119300598DBA /* Murmurix.app */;
@@ -208,6 +214,9 @@
 			);
 			mainGroup = 564D38462EF3119300598DBA;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5627C1532EF3AED100106B82 /* XCRemoteSwiftPackageReference "lottie-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 564D38502EF3119300598DBA /* Products */;
 			projectDirPath = "";
@@ -564,6 +573,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5627C1532EF3AED100106B82 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5627C1542EF3AFD000106B82 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5627C1532EF3AED100106B82 /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 564D38472EF3119300598DBA /* Project object */;
 }

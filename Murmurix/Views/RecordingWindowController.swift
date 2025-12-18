@@ -21,12 +21,22 @@ class AudioLevelObserver: ObservableObject {
     }
 }
 
+// Observable state for cat loading animation
+class CatLoadingState: ObservableObject {
+    @Published var state: LoadingState = .transcribing {
+        didSet {
+            print("🐱 CatLoadingState didSet: \(state)")
+        }
+    }
+}
+
 class RecordingWindowController: NSWindowController {
     private var audioRecorder: AudioRecorder
     private var onStop: () -> Void
     private var onCancelTranscription: (() -> Void)?
     private let recordingTimer = RecordingTimer()
     private var audioLevelObserver: AudioLevelObserver!
+    private var catLoadingState: CatLoadingState?
 
     init(audioRecorder: AudioRecorder, onStop: @escaping () -> Void, onCancelTranscription: (() -> Void)? = nil) {
         self.audioRecorder = audioRecorder
@@ -71,9 +81,17 @@ class RecordingWindowController: NSWindowController {
 
     func showTranscribing() {
         recordingTimer.stop()
-        let contentView = TranscribingView(onCancel: { [weak self] in
-            self?.onCancelTranscription?()
-        })
+
+        let loadingState = CatLoadingState()
+        loadingState.state = .transcribing
+        self.catLoadingState = loadingState
+
+        let contentView = CatLoadingContentView(
+            loadingState: loadingState,
+            onCancel: { [weak self] in
+                self?.onCancelTranscription?()
+            }
+        )
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.layer?.backgroundColor = .clear
         window?.contentView = hostingView
@@ -81,12 +99,27 @@ class RecordingWindowController: NSWindowController {
     }
 
     func showProcessing() {
-        let contentView = ProcessingView(onCancel: { [weak self] in
-            self?.onCancelTranscription?()
-        })
-        let hostingView = NSHostingView(rootView: contentView)
-        hostingView.layer?.backgroundColor = .clear
-        window?.contentView = hostingView
+        print("🐱 showProcessing called, catLoadingState exists: \(catLoadingState != nil)")
+        // If we already have the cat view, just update the state
+        if let loadingState = catLoadingState {
+            print("🐱 Updating state to .processing")
+            loadingState.state = .processing
+        } else {
+            // Fallback: create new view
+            let loadingState = CatLoadingState()
+            loadingState.state = .processing
+            self.catLoadingState = loadingState
+
+            let contentView = CatLoadingContentView(
+                loadingState: loadingState,
+                onCancel: { [weak self] in
+                    self?.onCancelTranscription?()
+                }
+            )
+            let hostingView = NSHostingView(rootView: contentView)
+            hostingView.layer?.backgroundColor = .clear
+            window?.contentView = hostingView
+        }
         recenterWindow()
     }
 
@@ -104,6 +137,7 @@ class RecordingWindowController: NSWindowController {
 
     override func close() {
         recordingTimer.stop()
+        catLoadingState = nil
         super.close()
     }
 }
@@ -120,5 +154,16 @@ struct RecordingContentView: View {
             audioLevel: audioLevelObserver.level,
             onStop: onStop
         )
+    }
+}
+
+// SwiftUI wrapper for cat loading animation
+struct CatLoadingContentView: View {
+    @ObservedObject var loadingState: CatLoadingState
+    let onCancel: () -> Void
+
+    var body: some View {
+        let _ = print("🐱 CatLoadingContentView body, state: \(loadingState.state)")
+        CatLoadingView(state: loadingState.state, onCancel: onCancel)
     }
 }
