@@ -72,9 +72,9 @@ class ResultWindowController: NSWindowController {
     }
 
     override func showWindow(_ sender: Any?) {
-        window?.center()
         super.showWindow(sender)
-        NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
+        if let window = window {
+            WindowPositioner.centerAndActivate(window)
+        }
     }
 }

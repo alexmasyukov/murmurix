@@ -8,26 +8,16 @@ This document tracks remaining refactoring tasks and technical debt. Items are p
 
 ## High Priority
 
-### 1. Migrate to Unified Error Hierarchy
+### ~~1. Migrate to Unified Error Hierarchy~~ COMPLETED
 
-**Status**: Infrastructure created, migration pending
+**Status**: Completed
 **File**: `Services/MurmurixError.swift`
 
-The unified `MurmurixError` hierarchy is defined but not yet used. Old error types remain:
-
-| Old Error | Location | Migrate To |
-|-----------|----------|------------|
-| `TranscriptionService.TranscriptionError` | TranscriptionService.swift | `MurmurixError.transcription()` |
-| `AIPostProcessingError` | AIPostProcessingService.swift | `MurmurixError.ai()` |
-| `AnthropicError` | AnthropicAPIClient.swift | `AIError` cases |
-| `DaemonManager.DaemonError` | DaemonManager.swift | `MurmurixError.daemon()` |
-
-**Benefits**:
-- Consistent error handling across app
-- Recovery suggestions for all errors
-- Single place to update error messages
-
-**Effort**: Medium (2-3 hours)
+All error types migrated to unified `MurmurixError` hierarchy:
+- `TranscriptionService` now uses `MurmurixError.transcription()`
+- `AIPostProcessingService` now uses `MurmurixError.ai()`
+- `AnthropicAPIClient` now uses `MurmurixError.ai()`
+- `DaemonManager` now uses `MurmurixError.daemon()`
 
 ---
 
@@ -58,59 +48,32 @@ ModelDownloadService.shared // Used in GeneralSettingsViewModel
 
 ## Medium Priority
 
-### 3. Apply SettingsStyles to Views
+### ~~3. Apply SettingsStyles to Views~~ COMPLETED
 
-**Status**: Styles created, application pending
+**Status**: Completed
 **File**: `Views/Components/SettingsStyles.swift`
 
-Created modifiers not yet applied:
-- `settingsCard()` — card background style
-- `settingsLabel()` — label typography
-- `settingsDescription()` — description typography
-
-**Files with hardcoded values**:
-```
-Views/GeneralSettingsView.swift   — 15+ instances
-Views/AISettingsView.swift        — 12+ instances
-Views/HotkeyRecorderView.swift    — 8+ instances
-Views/ResultView.swift            — 10+ instances
-Views/History/HistoryDetailView.swift
-Views/History/HistoryStatsView.swift
-```
-
-**Pattern to replace**:
-```swift
-// Before
-.padding(.horizontal, 16)
-.padding(.vertical, 10)
-.background(Color.white.opacity(0.05))
-.cornerRadius(10)
-
-// After
-.settingsCard()
-```
-
-**Effort**: Low-Medium (1-2 hours)
+All main settings views now use centralized Layout, Typography, and AppColors constants:
+- `GeneralSettingsView` — migrated
+- `AISettingsView` — migrated
+- `HotkeyRecorderView` — migrated
+- `ResultView` — migrated
 
 ---
 
-### 4. Extract Window Positioning Logic
+### ~~4. Extract Window Positioning Logic~~ COMPLETED
 
-**Problem**: Duplicate positioning code in window controllers
+**Status**: Completed
+**File**: `App/WindowPositioner.swift`
 
-**Files**:
-- `Views/RecordingWindowController.swift` (lines 93-101, 104-112)
-- `Views/ResultWindowController.swift` (similar pattern)
+Created `WindowPositioner` utility with:
+- `positionTopCenter(_:topOffset:)` — Position at top center of screen
+- `center(_:)` — Center window
+- `centerAndActivate(_:)` — Center and activate app
 
-**Solution**: Create `WindowPositioner` utility:
-```swift
-enum WindowPositioner {
-    static func centerTop(_ window: NSWindow, offset: CGFloat = 10)
-    static func center(_ window: NSWindow)
-}
-```
-
-**Effort**: Low (30 minutes)
+Window controllers updated:
+- `RecordingWindowController` — uses `WindowPositioner.positionTopCenter()`
+- `ResultWindowController` — uses `WindowPositioner.centerAndActivate()`
 
 ---
 
@@ -141,31 +104,20 @@ class SQLiteTranscriptionRepository: Repository<TranscriptionRecord> {
 
 ---
 
-### 6. Replace print() with Proper Logging
+### ~~6. Replace print() with Proper Logging~~ COMPLETED
 
-**Current**: 30+ `print()` statements scattered across services
+**Status**: Completed
+**File**: `Services/Logger.swift`
 
-**Files with print statements**:
-```
-Services/TranscriptionService.swift  — 5 prints
-Services/DaemonManager.swift         — 8 prints
-Services/AudioRecorder.swift         — 4 prints
-Services/HistoryService.swift        — 3 prints
-App/AppDelegate.swift                — 2 prints
-```
+Created `Logger` utility using `os.log` for system integration:
+- `Logger.Audio` — Audio recording logs
+- `Logger.Transcription` — Transcription logs
+- `Logger.Daemon` — Daemon lifecycle logs
+- `Logger.Hotkey` — Hotkey manager logs
+- `Logger.History` — Database logs
+- `Logger.AI` — AI processing logs
 
-**Solution**: Create `Logger` utility:
-```swift
-enum Logger {
-    static func debug(_ message: String, file: String = #file)
-    static func info(_ message: String)
-    static func error(_ message: String, error: Error?)
-}
-```
-
-Or use `os.log` / `OSLog` for system integration.
-
-**Effort**: Low (1 hour)
+Each category has `.info()`, `.error()`, `.debug()`, and `.warning()` methods.
 
 ---
 
@@ -291,21 +243,21 @@ protocol AISettingsViewModelProtocol: ObservableObject {
 
 ## Summary Table
 
-| Priority | Task | Effort | Impact |
+| Priority | Task | Effort | Status |
 |----------|------|--------|--------|
-| 🔴 High | Migrate to MurmurixError | Medium | High |
-| 🔴 High | Replace singletons with DI | High | High |
-| 🟠 Medium | Apply SettingsStyles | Low-Medium | Medium |
-| 🟠 Medium | Extract window positioning | Low | Low |
-| 🟠 Medium | HistoryService repository | Medium | Medium |
-| 🟠 Medium | Replace print() with Logger | Low | Medium |
-| 🟢 Low | RecordingWindowController DI | Low | Low |
-| 🟢 Low | Move RecordingTimer | Very Low | Low |
-| 🟢 Low | Consolidate colors | Low | Low |
-| 🟢 Low | ViewModel protocols | Low | Medium |
-| ⚪ Nice | SwiftUI previews | Low | Low |
-| ⚪ Nice | Async/await migration | Low | Low |
-| ⚪ Nice | Documentation | Medium | Medium |
+| ✅ | Migrate to MurmurixError | Medium | DONE |
+| 🔴 High | Replace singletons with DI | High | Pending |
+| ✅ | Apply SettingsStyles | Low-Medium | DONE |
+| ✅ | Extract window positioning | Low | DONE |
+| 🟠 Medium | HistoryService repository | Medium | Pending |
+| ✅ | Replace print() with Logger | Low | DONE |
+| 🟢 Low | RecordingWindowController DI | Low | Pending |
+| 🟢 Low | Move RecordingTimer | Very Low | Pending |
+| 🟢 Low | Consolidate colors | Low | Pending |
+| 🟢 Low | ViewModel protocols | Low | Pending |
+| ⚪ Nice | SwiftUI previews | Low | Pending |
+| ⚪ Nice | Async/await migration | Low | Pending |
+| ⚪ Nice | Documentation | Medium | Pending |
 
 ---
 
@@ -325,3 +277,7 @@ For reference, here's what has been refactored:
 - ✅ Created `HistoryViewModel`
 - ✅ Eliminated voice activity threshold duplication
 - ✅ Moved default AI prompt to `AIConfig`
+- ✅ Migrated all services to unified `MurmurixError` (removed 4 duplicate error enums)
+- ✅ Applied `Layout`, `Typography`, `AppColors` constants to all settings views
+- ✅ Created `Logger.swift` with `os.log` integration (replaced 22 print statements)
+- ✅ Created `WindowPositioner.swift` for centralized window positioning

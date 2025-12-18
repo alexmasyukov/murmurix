@@ -39,7 +39,7 @@ final class HistoryService: HistoryServiceProtocol {
 
     private func openDatabase() {
         if sqlite3_open(dbPath, &db) != SQLITE_OK {
-            print("HistoryService: Failed to open database at \(dbPath)")
+            Logger.History.error("Failed to open database at \(dbPath)")
         }
     }
 
@@ -57,7 +57,7 @@ final class HistoryService: HistoryServiceProtocol {
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
             if sqlite3_step(statement) != SQLITE_DONE {
-                print("HistoryService: Failed to create table")
+                Logger.History.error("Failed to create table")
             }
         }
         sqlite3_finalize(statement)
@@ -76,7 +76,7 @@ final class HistoryService: HistoryServiceProtocol {
             sqlite3_bind_double(statement, 5, record.createdAt.timeIntervalSince1970)
 
             if sqlite3_step(statement) != SQLITE_DONE {
-                print("HistoryService: Failed to save record")
+                Logger.History.error("Failed to save record")
             }
         }
         sqlite3_finalize(statement)

@@ -5,26 +5,6 @@
 
 import Foundation
 
-enum AnthropicError: LocalizedError {
-    case invalidAPIKey
-    case invalidResponse
-    case apiError(String)
-    case networkError(Error)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidAPIKey:
-            return "Invalid API key"
-        case .invalidResponse:
-            return "Invalid response from Claude API"
-        case .apiError(let message):
-            return "Claude API error: \(message)"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
-        }
-    }
-}
-
 protocol AnthropicAPIClientProtocol: Sendable {
     func validateAPIKey(_ apiKey: String) async throws -> Bool
     func processText(_ text: String, systemPrompt: String, model: String, apiKey: String) async throws -> String
@@ -59,7 +39,7 @@ final class AnthropicAPIClient: AnthropicAPIClientProtocol, @unchecked Sendable 
         case 200:
             return true
         case 401:
-            throw AnthropicError.invalidAPIKey
+            throw MurmurixError.ai(.invalidApiKey)
         default:
             throw parseError(from: data, statusCode: statusCode)
         }
@@ -115,7 +95,7 @@ final class AnthropicAPIClient: AnthropicAPIClientProtocol, @unchecked Sendable 
         includeBetaHeader: Bool = false
     ) throws -> URLRequest {
         guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
-            throw AnthropicError.invalidResponse
+            throw MurmurixError.ai(.invalidResponse)
         }
 
         var request = URLRequest(url: URL(string: baseURL)!)
@@ -136,18 +116,18 @@ final class AnthropicAPIClient: AnthropicAPIClientProtocol, @unchecked Sendable 
 
     private func getStatusCode(from response: URLResponse) throws -> Int {
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw AnthropicError.invalidResponse
+            throw MurmurixError.ai(.invalidResponse)
         }
         return httpResponse.statusCode
     }
 
-    private func parseError(from data: Data, statusCode: Int) -> AnthropicError {
+    private func parseError(from data: Data, statusCode: Int) -> MurmurixError {
         if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let error = errorJson["error"] as? [String: Any],
            let message = error["message"] as? String {
-            return .apiError(message)
+            return .ai(.apiError(message))
         }
-        return .apiError("HTTP \(statusCode)")
+        return .ai(.apiError("HTTP \(statusCode)"))
     }
 
     private func parseStructuredTextResponse(from data: Data) throws -> String {
@@ -158,7 +138,7 @@ final class AnthropicAPIClient: AnthropicAPIClientProtocol, @unchecked Sendable 
               let outputData = jsonText.data(using: .utf8),
               let outputJson = try? JSONSerialization.jsonObject(with: outputData) as? [String: Any],
               let processedText = outputJson["text"] as? String else {
-            throw AnthropicError.invalidResponse
+            throw MurmurixError.ai(.invalidResponse)
         }
 
         return processedText.trimmingCharacters(in: .whitespacesAndNewlines)

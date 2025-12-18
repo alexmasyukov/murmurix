@@ -16,12 +16,12 @@ struct HotkeyRecorderView: View {
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
                 Text(title)
-                    .font(.system(size: 13))
+                    .font(Typography.label)
                     .foregroundColor(.white)
                 Text(description)
-                    .font(.system(size: 11))
+                    .font(Typography.description)
                     .foregroundColor(.gray)
             }
 
@@ -31,7 +31,7 @@ struct HotkeyRecorderView: View {
                 HStack(spacing: 4) {
                     if isRecording {
                         Text("Press keys...")
-                            .font(.system(size: 12))
+                            .font(Typography.monospaced)
                             .foregroundColor(.gray)
                     } else {
                         ForEach(hotkey.displayParts, id: \.self) { part in
@@ -39,14 +39,14 @@ struct HotkeyRecorderView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, Layout.Spacing.item)
                 .padding(.vertical, 4)
                 .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isRecording ? Color.accentColor.opacity(0.3) : Color.white.opacity(0.1))
+                    RoundedRectangle(cornerRadius: Layout.CornerRadius.button)
+                        .fill(isRecording ? Color.accentColor.opacity(0.3) : AppColors.divider)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: Layout.CornerRadius.button)
                         .stroke(isRecording ? Color.accentColor : Color.white.opacity(0.2), lineWidth: 1)
                 )
             }
@@ -121,7 +121,7 @@ struct KeyCapView: View {
         Text(text)
             .font(.system(size: 12, weight: .medium))
             .foregroundColor(.white)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, Layout.Spacing.indicator)
             .padding(.vertical, 3)
             .background(
                 RoundedRectangle(cornerRadius: 4)

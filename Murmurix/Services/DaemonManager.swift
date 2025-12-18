@@ -29,13 +29,13 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
 
     func start() {
         guard !isRunning else {
-            print("Daemon already running")
+            Logger.Daemon.info("Daemon already running")
             return
         }
 
         guard let python = PythonResolver.findPython(),
               let script = PythonResolver.findDaemonScript() else {
-            print("Cannot start daemon: python or script not found")
+            Logger.Daemon.error("Cannot start daemon: python or script not found")
             return
         }
 
@@ -50,11 +50,11 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
         do {
             try process.run()
             daemonProcess = process
-            print("Daemon started with PID: \(process.processIdentifier)")
+            Logger.Daemon.info("Daemon started with PID: \(process.processIdentifier)")
 
             waitForSocket()
         } catch {
-            print("Failed to start daemon: \(error)")
+            Logger.Daemon.error("Failed to start daemon: \(error)")
         }
     }
 
@@ -63,7 +63,7 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
         terminateProcess()
         killByPidFile()
         cleanupFiles()
-        print("Daemon stopped")
+        Logger.Daemon.info("Daemon stopped")
     }
 
     // MARK: - Private
@@ -71,12 +71,12 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
     private func waitForSocket() {
         for _ in 0..<NetworkConfig.daemonStartupTimeout {
             if FileManager.default.fileExists(atPath: socketPath) {
-                print("Daemon socket ready")
+                Logger.Daemon.info("Daemon socket ready")
                 return
             }
             Thread.sleep(forTimeInterval: 0.1)
         }
-        print("Warning: Daemon socket not found after timeout")
+        Logger.Daemon.warning("Daemon socket not found after timeout")
     }
 
     private func sendShutdownCommand() {
@@ -85,7 +85,7 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
         do {
             _ = try sendCommand("shutdown")
         } catch {
-            print("Graceful shutdown failed: \(error)")
+            Logger.Daemon.error("Graceful shutdown failed: \(error)")
         }
     }
 
@@ -114,7 +114,7 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
     private func sendCommand(_ command: String) throws -> String {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else {
-            throw DaemonError.notRunning
+            throw MurmurixError.daemon(.notRunning)
         }
         defer { close(fd) }
 
@@ -140,7 +140,7 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
         }
 
         guard connectResult == 0 else {
-            throw DaemonError.notRunning
+            throw MurmurixError.daemon(.notRunning)
         }
 
         let request: [String: Any] = ["command": command]
@@ -155,14 +155,10 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
         let bytesRead = recv(fd, &buffer, buffer.count - 1, 0)
 
         guard bytesRead > 0 else {
-            throw DaemonError.noResponse
+            throw MurmurixError.daemon(.communicationFailed)
         }
 
         return String(cString: buffer)
     }
 
-    enum DaemonError: Error {
-        case notRunning
-        case noResponse
-    }
 }

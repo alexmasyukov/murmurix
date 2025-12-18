@@ -6,29 +6,6 @@
 import Foundation
 
 final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProtocol {
-    enum TranscriptionError: Error, LocalizedError {
-        case pythonNotFound
-        case scriptNotFound
-        case daemonNotRunning
-        case transcriptionFailed(String)
-        case timeout
-
-        var errorDescription: String? {
-            switch self {
-            case .pythonNotFound:
-                return "Python not found. Please install Python 3.11+"
-            case .scriptNotFound:
-                return "Transcription script not found"
-            case .daemonNotRunning:
-                return "Daemon is not running"
-            case .transcriptionFailed(let message):
-                return "Transcription failed: \(message)"
-            case .timeout:
-                return "Daemon timeout (30s)"
-            }
-        }
-    }
-
     private let daemonManager: DaemonManagerProtocol
     private let language: String
 
@@ -78,7 +55,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     private func sendTranscriptionRequest(audioPath: String) throws -> String {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else {
-            throw TranscriptionError.daemonNotRunning
+            throw MurmurixError.transcription(.daemonNotRunning)
         }
         defer { close(fd) }
 
@@ -105,9 +82,9 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
 
         guard bytesRead > 0 else {
             if errno == EAGAIN || errno == EWOULDBLOCK {
-                throw TranscriptionError.timeout
+                throw MurmurixError.transcription(.timeout)
             }
-            throw TranscriptionError.transcriptionFailed("No response from daemon")
+            throw MurmurixError.transcription(.failed("No response from daemon"))
         }
 
         return String(cString: buffer)
@@ -135,22 +112,22 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         }
 
         guard connectResult == 0 else {
-            throw TranscriptionError.daemonNotRunning
+            throw MurmurixError.transcription(.daemonNotRunning)
         }
     }
 
     private func parseTranscriptionResponse(_ response: String) throws -> String {
         guard let data = response.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw TranscriptionError.transcriptionFailed("Failed to parse response")
+            throw MurmurixError.transcription(.failed("Failed to parse response"))
         }
 
         if let text = json["text"] as? String {
             return text
         } else if let error = json["error"] as? String {
-            throw TranscriptionError.transcriptionFailed(error)
+            throw MurmurixError.transcription(.failed(error))
         } else {
-            throw TranscriptionError.transcriptionFailed("Invalid response")
+            throw MurmurixError.transcription(.failed("Invalid response"))
         }
     }
 
@@ -158,16 +135,16 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
 
     private func transcribeDirectly(audioURL: URL) async throws -> String {
         guard let python = PythonResolver.findPython() else {
-            throw TranscriptionError.pythonNotFound
+            throw MurmurixError.transcription(.pythonNotFound)
         }
 
         guard let script = PythonResolver.findTranscribeScript() else {
-            throw TranscriptionError.scriptNotFound
+            throw MurmurixError.transcription(.scriptNotFound)
         }
 
         let modelName = Settings.shared.whisperModel
 
-        print("TranscriptionService: direct mode, audio=\(audioURL.path)")
+        Logger.Transcription.info("Direct mode, audio=\(audioURL.path)")
 
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -193,7 +170,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
                     } else {
                         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
                         let errorOutput = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-                        continuation.resume(throwing: TranscriptionError.transcriptionFailed(errorOutput))
+                        continuation.resume(throwing: MurmurixError.transcription(.failed(errorOutput)))
                     }
                 } catch {
                     continuation.resume(throwing: error)
