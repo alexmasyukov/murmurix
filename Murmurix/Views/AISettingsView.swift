@@ -9,15 +9,7 @@ struct AISettingsView: View {
     @AppStorage("aiPostProcessingEnabled") private var aiEnabled = false
     @AppStorage("aiModel") private var aiModel = AIModel.haiku.rawValue
 
-    @State private var apiKey: String = ""
-    @State private var prompt: String = ""
-    @State private var isTesting = false
-    @State private var testResult: TestResult?
-
-    enum TestResult {
-        case success
-        case failure(String)
-    }
+    @StateObject private var viewModel = AISettingsViewModel()
 
     var body: some View {
         ScrollView {
@@ -30,15 +22,7 @@ struct AISettingsView: View {
             .padding(.top, 16)
         }
         .onAppear {
-            apiKey = Settings.shared.claudeApiKey
-            prompt = Settings.shared.aiPrompt
-        }
-        .onChange(of: apiKey) { _, newValue in
-            Settings.shared.claudeApiKey = newValue
-            testResult = nil
-        }
-        .onChange(of: prompt) { _, newValue in
-            Settings.shared.aiPrompt = newValue
+            viewModel.loadSettings()
         }
     }
 
@@ -97,12 +81,15 @@ struct AISettingsView: View {
                 .foregroundColor(.secondary)
 
             HStack(spacing: 8) {
-                TextField("sk-ant-...", text: $apiKey)
+                TextField("sk-ant-...", text: $viewModel.apiKey)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13, design: .monospaced))
+                    .onChange(of: viewModel.apiKey) { _, newValue in
+                        viewModel.saveAPIKey(newValue)
+                    }
 
-                Button(action: testConnection) {
-                    if isTesting {
+                Button(action: { viewModel.testConnection() }) {
+                    if viewModel.isTesting {
                         ProgressView()
                             .scaleEffect(0.7)
                             .frame(width: 16, height: 16)
@@ -112,17 +99,17 @@ struct AISettingsView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(apiKey.isEmpty || isTesting)
+                .disabled(viewModel.apiKey.isEmpty || viewModel.isTesting)
             }
 
-            if let result = testResult {
+            if let result = viewModel.testResult {
                 testResultView(result)
             }
         }
     }
 
     @ViewBuilder
-    private func testResultView(_ result: TestResult) -> some View {
+    private func testResultView(_ result: APITestResult) -> some View {
         HStack(spacing: 4) {
             switch result {
             case .success:
@@ -164,18 +151,21 @@ struct AISettingsView: View {
             SectionHeader(title: "Prompt")
 
             VStack(alignment: .leading, spacing: 8) {
-                TextEditor(text: $prompt)
+                TextEditor(text: $viewModel.prompt)
                     .font(.system(size: 12, design: .monospaced))
                     .scrollContentBackground(.hidden)
                     .padding(8)
                     .background(Color.black.opacity(0.3))
                     .cornerRadius(6)
                     .frame(height: 150)
+                    .onChange(of: viewModel.prompt) { _, newValue in
+                        viewModel.savePrompt(newValue)
+                    }
 
                 HStack {
                     Spacer()
                     Button("Reset to Default") {
-                        prompt = Settings.defaultAIPrompt
+                        viewModel.resetPromptToDefault()
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -188,28 +178,6 @@ struct AISettingsView: View {
             .padding(.horizontal, 16)
             .opacity(aiEnabled ? 1 : 0.5)
             .disabled(!aiEnabled)
-        }
-    }
-
-    // MARK: - Actions
-
-    private func testConnection() {
-        isTesting = true
-        testResult = nil
-
-        Task {
-            do {
-                let result = try await AnthropicAPIClient.shared.validateAPIKey(apiKey)
-                await MainActor.run {
-                    isTesting = false
-                    testResult = result ? .success : .failure("Invalid response")
-                }
-            } catch {
-                await MainActor.run {
-                    isTesting = false
-                    testResult = .failure(error.localizedDescription)
-                }
-            }
         }
     }
 }

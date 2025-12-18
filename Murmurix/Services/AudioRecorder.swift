@@ -15,7 +15,7 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     private var currentRecordingURL: URL?
     private var levelTimer: Timer?
 
-    private let voiceActivityThreshold: Float = 0.33  // Same as RecordingView
+    private let voiceActivityThreshold: Float = AudioConfig.voiceActivityThreshold
 
     // MARK: - Permission Handling
 
@@ -106,7 +106,7 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     }
 
     private func startLevelMonitoring() {
-        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+        levelTimer = Timer.scheduledTimer(withTimeInterval: AudioConfig.meterUpdateInterval, repeats: true) { [weak self] _ in
             guard let self = self, let recorder = self.audioRecorder else { return }
 
             recorder.updateMeters()

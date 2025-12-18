@@ -11,6 +11,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         case scriptNotFound
         case daemonNotRunning
         case transcriptionFailed(String)
+        case timeout
 
         var errorDescription: String? {
             switch self {
@@ -22,99 +23,33 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
                 return "Daemon is not running"
             case .transcriptionFailed(let message):
                 return "Transcription failed: \(message)"
+            case .timeout:
+                return "Daemon timeout (30s)"
             }
         }
     }
 
+    private let daemonManager: DaemonManagerProtocol
     private let language: String
-    private let socketPath: String
-    private var daemonProcess: Process?
 
-    init(language: String = "ru") {
+    init(daemonManager: DaemonManagerProtocol? = nil, language: String = "ru") {
+        self.daemonManager = daemonManager ?? DaemonManager(language: language)
         self.language = language
-        self.socketPath = NSHomeDirectory() + "/Library/Application Support/Murmurix/daemon.sock"
     }
 
-    // MARK: - Daemon Management
+    // MARK: - TranscriptionServiceProtocol
 
     var isDaemonRunning: Bool {
-        FileManager.default.fileExists(atPath: socketPath)
+        daemonManager.isRunning
     }
 
     func startDaemon() {
-        guard !isDaemonRunning else {
-            print("Daemon already running")
-            return
-        }
-
-        guard let python = PythonResolver.findPython(), let script = PythonResolver.findDaemonScript() else {
-            print("Cannot start daemon: python or script not found")
-            return
-        }
-
-        let modelName = Settings.shared.whisperModel
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: python)
-
-        let arguments = [script, "--socket-path", socketPath, "--language", language, "--model", modelName]
-        process.arguments = arguments
-
-        // Redirect output to console
-        process.standardOutput = FileHandle.standardError
-        process.standardError = FileHandle.standardError
-
-        do {
-            try process.run()
-            daemonProcess = process
-            print("Daemon started with PID: \(process.processIdentifier)")
-
-            // Wait for socket to appear
-            for _ in 0..<50 { // 5 seconds timeout
-                if FileManager.default.fileExists(atPath: socketPath) {
-                    print("Daemon socket ready")
-                    return
-                }
-                Thread.sleep(forTimeInterval: 0.1)
-            }
-            print("Warning: Daemon socket not found after timeout")
-        } catch {
-            print("Failed to start daemon: \(error)")
-        }
+        daemonManager.start()
     }
 
     func stopDaemon() {
-        // Try graceful shutdown first
-        if isDaemonRunning {
-            do {
-                _ = try sendToDaemon(command: "shutdown", audioPath: nil)
-            } catch {
-                print("Graceful shutdown failed: \(error)")
-            }
-        }
-
-        // Force kill if process is tracked
-        if let process = daemonProcess, process.isRunning {
-            process.terminate()
-            process.waitUntilExit()
-        }
-        daemonProcess = nil
-
-        // Kill by PID file
-        let pidPath = socketPath + ".pid"
-        if let pidString = try? String(contentsOfFile: pidPath, encoding: .utf8),
-           let pid = Int32(pidString.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            kill(pid, SIGTERM)
-        }
-
-        // Cleanup files
-        try? FileManager.default.removeItem(atPath: socketPath)
-        try? FileManager.default.removeItem(atPath: pidPath)
-
-        print("Daemon stopped")
+        daemonManager.stop()
     }
-
-    // MARK: - Transcription
 
     func transcribe(audioURL: URL, useDaemon: Bool = true) async throws -> String {
         if useDaemon && isDaemonRunning {
@@ -124,24 +59,15 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         }
     }
 
+    // MARK: - Daemon Transcription
+
     private func transcribeViaDaemon(audioURL: URL) async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
+            DispatchQueue.global(qos: .userInitiated).async { [self] in
                 do {
-                    let response = try self.sendToDaemon(command: "transcribe", audioPath: audioURL.path)
-
-                    if let data = response.data(using: .utf8),
-                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        if let text = json["text"] as? String {
-                            continuation.resume(returning: text)
-                        } else if let error = json["error"] as? String {
-                            continuation.resume(throwing: TranscriptionError.transcriptionFailed(error))
-                        } else {
-                            continuation.resume(throwing: TranscriptionError.transcriptionFailed("Invalid response"))
-                        }
-                    } else {
-                        continuation.resume(throwing: TranscriptionError.transcriptionFailed("Failed to parse response"))
-                    }
+                    let response = try sendTranscriptionRequest(audioPath: audioURL.path)
+                    let text = try parseTranscriptionResponse(response)
+                    continuation.resume(returning: text)
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -149,44 +75,23 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         }
     }
 
-    private func sendToDaemon(command: String, audioPath: String?) throws -> String {
+    private func sendTranscriptionRequest(audioPath: String) throws -> String {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else {
             throw TranscriptionError.daemonNotRunning
         }
         defer { close(fd) }
 
-        // Set socket timeout (30 seconds for transcription)
-        var timeout = timeval(tv_sec: 30, tv_usec: 0)
+        var timeout = timeval(tv_sec: NetworkConfig.daemonSocketTimeout, tv_usec: 0)
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
 
-        var addr = sockaddr_un()
-        addr.sun_family = sa_family_t(AF_UNIX)
+        try connectToSocket(fd: fd)
 
-        // Safe copy with bounds checking (sun_path is 104 bytes on macOS)
-        let maxPathLen = MemoryLayout.size(ofValue: addr.sun_path) - 1
-        socketPath.withCString { ptr in
-            withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
-                let pathBuf = UnsafeMutableRawPointer(pathPtr).assumingMemoryBound(to: CChar.self)
-                strncpy(pathBuf, ptr, maxPathLen)
-                pathBuf[maxPathLen] = 0 // Ensure null termination
-            }
-        }
-
-        let connectResult = withUnsafePointer(to: &addr) { ptr in
-            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
-                connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
-            }
-        }
-
-        guard connectResult == 0 else {
-            throw TranscriptionError.daemonNotRunning
-        }
-
-        var request: [String: Any] = ["command": command, "language": language]
-        if let path = audioPath {
-            request["audio_path"] = path
-        }
+        let request: [String: Any] = [
+            "command": "transcribe",
+            "language": language,
+            "audio_path": audioPath
+        ]
 
         let jsonData = try JSONSerialization.data(withJSONObject: request)
         let jsonString = String(data: jsonData, encoding: .utf8)! + "\n"
@@ -200,12 +105,53 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
 
         guard bytesRead > 0 else {
             if errno == EAGAIN || errno == EWOULDBLOCK {
-                throw TranscriptionError.transcriptionFailed("Daemon timeout (30s)")
+                throw TranscriptionError.timeout
             }
             throw TranscriptionError.transcriptionFailed("No response from daemon")
         }
 
         return String(cString: buffer)
+    }
+
+    private func connectToSocket(fd: Int32) throws {
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+
+        let socketPath = daemonManager.socketPath
+        let maxPathLen = MemoryLayout.size(ofValue: addr.sun_path) - 1
+
+        socketPath.withCString { ptr in
+            withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
+                let pathBuf = UnsafeMutableRawPointer(pathPtr).assumingMemoryBound(to: CChar.self)
+                strncpy(pathBuf, ptr, maxPathLen)
+                pathBuf[maxPathLen] = 0
+            }
+        }
+
+        let connectResult = withUnsafePointer(to: &addr) { ptr in
+            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+
+        guard connectResult == 0 else {
+            throw TranscriptionError.daemonNotRunning
+        }
+    }
+
+    private func parseTranscriptionResponse(_ response: String) throws -> String {
+        guard let data = response.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw TranscriptionError.transcriptionFailed("Failed to parse response")
+        }
+
+        if let text = json["text"] as? String {
+            return text
+        } else if let error = json["error"] as? String {
+            throw TranscriptionError.transcriptionFailed(error)
+        } else {
+            throw TranscriptionError.transcriptionFailed("Invalid response")
+        }
     }
 
     // MARK: - Direct Transcription (fallback)
@@ -227,9 +173,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
             DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: python)
-
-                let arguments = [script, audioURL.path, "--language", self.language, "--model", modelName]
-                process.arguments = arguments
+                process.arguments = [script, audioURL.path, "--language", self.language, "--model", modelName]
 
                 let outputPipe = Pipe()
                 let errorPipe = Pipe()
@@ -241,7 +185,8 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
                     process.waitUntilExit()
 
                     let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                    let output = String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    let output = String(data: outputData, encoding: .utf8)?
+                        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
                     if process.terminationStatus == 0 {
                         continuation.resume(returning: output.isEmpty ? "(empty)" : output)
@@ -256,5 +201,4 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
             }
         }
     }
-
 }
