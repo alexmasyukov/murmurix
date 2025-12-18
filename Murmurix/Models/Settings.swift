@@ -5,62 +5,29 @@
 
 import Foundation
 
-enum WhisperModel: String, CaseIterable {
-    case tiny = "tiny"
-    case base = "base"
-    case small = "small"
-    case medium = "medium"
-    case largeV2 = "large-v2"
-    case largeV3 = "large-v3"
-
-    var displayName: String {
-        switch self {
-        case .tiny: return "Tiny (fastest, ~75MB)"
-        case .base: return "Base (~140MB)"
-        case .small: return "Small (~460MB)"
-        case .medium: return "Medium (~1.5GB)"
-        case .largeV2: return "Large v2 (~3GB)"
-        case .largeV3: return "Large v3 (best, ~3GB)"
-        }
-    }
-
-    var isInstalled: Bool {
-        // Check Hugging Face cache
-        let hfCache = NSHomeDirectory() + "/.cache/huggingface/hub/models--Systran--faster-whisper-\(rawValue)"
-        let snapshotsPath = hfCache + "/snapshots"
-
-        guard FileManager.default.fileExists(atPath: snapshotsPath) else { return false }
-
-        // Check if any snapshot has model files
-        guard let snapshots = try? FileManager.default.contentsOfDirectory(atPath: snapshotsPath) else { return false }
-
-        for snapshot in snapshots {
-            let modelBin = snapshotsPath + "/\(snapshot)/model.bin"
-            let configJson = snapshotsPath + "/\(snapshot)/config.json"
-            if FileManager.default.fileExists(atPath: modelBin) || FileManager.default.fileExists(atPath: configJson) {
-                return true
-            }
-        }
-        return false
-    }
-
-    static var installedModels: [WhisperModel] {
-        allCases.filter { $0.isInstalled }
-    }
-}
-
 final class Settings: SettingsStorageProtocol {
     static let shared = Settings()
 
     private let defaults: UserDefaults
-    private let toggleHotkeyKey = "toggleHotkey"
-    private let cancelHotkeyKey = "cancelHotkey"
-    private let keepDaemonRunningKey = "keepDaemonRunning"
-    private let languageKey = "language"
-    private let whisperModelKey = "whisperModel"
-    private let aiPostProcessingEnabledKey = "aiPostProcessingEnabled"
-    private let aiModelKey = "aiModel"
-    private let aiPromptKey = "aiPrompt"
+
+    // MARK: - Keys
+
+    private enum Keys {
+        static let toggleHotkey = "toggleHotkey"
+        static let cancelHotkey = "cancelHotkey"
+        static let keepDaemonRunning = "keepDaemonRunning"
+        static let language = "language"
+        static let whisperModel = "whisperModel"
+        static let aiPostProcessingEnabled = "aiPostProcessingEnabled"
+        static let aiModel = "aiModel"
+        static let aiPrompt = "aiPrompt"
+    }
+
+    // MARK: - Defaults
+
+    static let defaultAIPrompt = AIConfig.defaultPrompt
+
+    // MARK: - Init
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -68,83 +35,78 @@ final class Settings: SettingsStorageProtocol {
     }
 
     private func registerDefaults() {
-        if defaults.object(forKey: keepDaemonRunningKey) == nil {
-            defaults.set(true, forKey: keepDaemonRunningKey)
+        if defaults.object(forKey: Keys.keepDaemonRunning) == nil {
+            defaults.set(true, forKey: Keys.keepDaemonRunning)
         }
-        if defaults.string(forKey: languageKey) == nil {
-            defaults.set("ru", forKey: languageKey)
+        if defaults.string(forKey: Keys.language) == nil {
+            defaults.set("ru", forKey: Keys.language)
         }
     }
 
-    // MARK: - Daemon Setting
+    // MARK: - Core Settings
 
     var keepDaemonRunning: Bool {
-        get { defaults.bool(forKey: keepDaemonRunningKey) }
-        set { defaults.set(newValue, forKey: keepDaemonRunningKey) }
+        get { defaults.bool(forKey: Keys.keepDaemonRunning) }
+        set { defaults.set(newValue, forKey: Keys.keepDaemonRunning) }
     }
-
-    // MARK: - Language Setting
 
     var language: String {
-        get { defaults.string(forKey: languageKey) ?? "ru" }
-        set { defaults.set(newValue, forKey: languageKey) }
+        get { defaults.string(forKey: Keys.language) ?? "ru" }
+        set { defaults.set(newValue, forKey: Keys.language) }
     }
 
-    // MARK: - Whisper Model Setting
-
     var whisperModel: String {
-        get { defaults.string(forKey: whisperModelKey) ?? WhisperModel.small.rawValue }
-        set { defaults.set(newValue, forKey: whisperModelKey) }
+        get { defaults.string(forKey: Keys.whisperModel) ?? WhisperModel.small.rawValue }
+        set { defaults.set(newValue, forKey: Keys.whisperModel) }
     }
 
     // MARK: - Hotkey Settings
 
     func loadToggleHotkey() -> Hotkey {
-        if let data = defaults.data(forKey: toggleHotkeyKey),
-           let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) {
-            return hotkey
+        guard let data = defaults.data(forKey: Keys.toggleHotkey),
+              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
+            return .toggleDefault
         }
-        return Hotkey.toggleDefault
+        return hotkey
     }
 
     func saveToggleHotkey(_ hotkey: Hotkey) {
         if let data = try? JSONEncoder().encode(hotkey) {
-            defaults.set(data, forKey: toggleHotkeyKey)
+            defaults.set(data, forKey: Keys.toggleHotkey)
         }
     }
 
     func loadCancelHotkey() -> Hotkey {
-        if let data = defaults.data(forKey: cancelHotkeyKey),
-           let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) {
-            return hotkey
+        guard let data = defaults.data(forKey: Keys.cancelHotkey),
+              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
+            return .cancelDefault
         }
-        return Hotkey.cancelDefault
+        return hotkey
     }
 
     func saveCancelHotkey(_ hotkey: Hotkey) {
         if let data = try? JSONEncoder().encode(hotkey) {
-            defaults.set(data, forKey: cancelHotkeyKey)
+            defaults.set(data, forKey: Keys.cancelHotkey)
         }
     }
 
-    // MARK: - AI Post-Processing Settings
+    // MARK: - AI Settings
 
     var aiPostProcessingEnabled: Bool {
-        get { defaults.bool(forKey: aiPostProcessingEnabledKey) }
-        set { defaults.set(newValue, forKey: aiPostProcessingEnabledKey) }
+        get { defaults.bool(forKey: Keys.aiPostProcessingEnabled) }
+        set { defaults.set(newValue, forKey: Keys.aiPostProcessingEnabled) }
     }
 
     var aiModel: String {
-        get { defaults.string(forKey: aiModelKey) ?? AIModel.haiku.rawValue }
-        set { defaults.set(newValue, forKey: aiModelKey) }
+        get { defaults.string(forKey: Keys.aiModel) ?? AIModel.haiku.rawValue }
+        set { defaults.set(newValue, forKey: Keys.aiModel) }
     }
 
     var aiPrompt: String {
-        get { defaults.string(forKey: aiPromptKey) ?? Self.defaultAIPrompt }
-        set { defaults.set(newValue, forKey: aiPromptKey) }
+        get { defaults.string(forKey: Keys.aiPrompt) ?? Self.defaultAIPrompt }
+        set { defaults.set(newValue, forKey: Keys.aiPrompt) }
     }
 
-    // API key stored in Keychain for security
     var claudeApiKey: String {
         get { KeychainService.load(key: "claudeApiKey") ?? "" }
         set {
@@ -155,44 +117,4 @@ final class Settings: SettingsStorageProtocol {
             }
         }
     }
-
-    static let defaultAIPrompt = """
-        Ты пост-процессор для голосовых транскрипций.
-
-        Контекст: обсуждение программирования на Golang, Swift, Kotlin, построение архитектуры, системы очередей, фронтенд.
-
-        Задачи:
-        1. Замени распознанные названия сервисов, библиотек, фреймворков, инструментов на их оригинальные английские названия
-        2. Исправь орфографические ошибки в словах
-
-        Частые замены:
-        - "кафка" → "Kafka"
-        - "реакт" → "React"
-        - "гоуэнг", "голэнг", "го лэнг" → "Golang"
-        - "питон" → "Python"
-        - "джава скрипт" → "JavaScript"
-        - "тайп скрипт" → "TypeScript"
-        - "ноуд" → "Node.js"
-        - "докер" → "Docker"
-        - "кубернетис" → "Kubernetes"
-        - "редис" → "Redis"
-        - "постгрес" → "PostgreSQL"
-        - "монго" → "MongoDB"
-        - "гит" → "Git"
-        - "гитхаб" → "GitHub"
-        - "апи" → "API"
-        - "рест" → "REST"
-        - "джейсон" → "JSON"
-        - "эндпоинт" → "endpoint"
-        - "фреймворк" → "framework"
-        - "либа", "либы" → "library/libraries"
-        - "клауд", "клод" → "Claude"
-        - "юз стейт" → "useState"
-        - "юз эффект" → "useEffect"
-        - "консоль лог" → "console.log"
-
-        Правила:
-        1. Сохраняй структуру и смысл текста
-        2. Не добавляй ничего лишнего
-        """
 }
