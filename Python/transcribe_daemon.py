@@ -5,7 +5,9 @@ Murmurix Transcription Daemon
 Keeps the Whisper model loaded in memory for fast transcription.
 Communicates via Unix socket.
 
-Usage: python transcribe_daemon.py [--socket-path PATH] [--model-path PATH] [--language LANG]
+Usage: python transcribe_daemon.py [--socket-path PATH] [--model NAME] [--language LANG]
+       python transcribe_daemon.py --list-models
+       python transcribe_daemon.py --download MODEL_NAME
 """
 
 import sys
@@ -17,18 +19,75 @@ import signal
 import threading
 from pathlib import Path
 
+# Supported models
+MODELS = ["tiny", "base", "small", "medium", "large-v2", "large-v3"]
+
 # Global model instance
 model = None
 model_lock = threading.Lock()
 
 
-def load_model(model_path: str):
+def get_hf_cache_path():
+    """Get Hugging Face cache directory."""
+    return Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
+
+
+def is_model_installed(model_name: str) -> bool:
+    """Check if model is installed in HF cache."""
+    cache_path = get_hf_cache_path()
+    model_dir = cache_path / f"models--Systran--faster-whisper-{model_name}"
+    if not model_dir.exists():
+        return False
+    # Check if snapshots exist (model actually downloaded)
+    snapshots = model_dir / "snapshots"
+    if not snapshots.exists():
+        return False
+    # Check if any snapshot has model files
+    for snapshot in snapshots.iterdir():
+        if (snapshot / "model.bin").exists() or (snapshot / "config.json").exists():
+            return True
+    return False
+
+
+def get_installed_models() -> list:
+    """Get list of installed models."""
+    return [m for m in MODELS if is_model_installed(m)]
+
+
+def download_model(model_name: str, progress_callback=None):
+    """Download model from Hugging Face."""
+    from huggingface_hub import snapshot_download
+
+    repo_id = f"Systran/faster-whisper-{model_name}"
+    print(f"Downloading {repo_id}...", file=sys.stderr)
+
+    try:
+        snapshot_download(
+            repo_id=repo_id,
+            local_dir=None,  # Use default cache
+            local_dir_use_symlinks=True
+        )
+        print(f"Model {model_name} downloaded successfully!", file=sys.stderr)
+        return True
+    except Exception as e:
+        print(f"Error downloading model: {e}", file=sys.stderr)
+        return False
+
+
+def load_model(model_name: str):
     """Load Whisper model into memory."""
     global model
     from faster_whisper import WhisperModel
 
-    print(f"Loading model from {model_path}...", file=sys.stderr)
-    model = WhisperModel(model_path, device="cpu", compute_type="int8")
+    # Check if model is installed
+    if not is_model_installed(model_name):
+        print(f"Error: Model '{model_name}' not installed.", file=sys.stderr)
+        print(f"Run: python transcribe_daemon.py --download {model_name}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Loading model {model_name}...", file=sys.stderr)
+    # Use model name directly - faster_whisper will find it in HF cache
+    model = WhisperModel(f"Systran/faster-whisper-{model_name}", device="cpu", compute_type="int8")
     print("Model loaded!", file=sys.stderr)
 
 
@@ -74,6 +133,20 @@ def handle_client(conn, language: str):
             response = transcribe(audio_path, lang)
         elif command == "ping":
             response = json.dumps({"status": "ok"})
+        elif command == "list_models":
+            installed = get_installed_models()
+            response = json.dumps({
+                "models": [{"name": m, "installed": m in installed} for m in MODELS]
+            })
+        elif command == "download_model":
+            model_name = request.get("model")
+            if model_name not in MODELS:
+                response = json.dumps({"error": f"Unknown model: {model_name}"})
+            elif is_model_installed(model_name):
+                response = json.dumps({"status": "already_installed"})
+            else:
+                success = download_model(model_name)
+                response = json.dumps({"status": "ok" if success else "error"})
         elif command == "shutdown":
             response = json.dumps({"status": "shutting_down"})
             conn.sendall(response.encode('utf-8'))
@@ -93,14 +166,14 @@ def handle_client(conn, language: str):
         conn.close()
 
 
-def run_server(socket_path: str, model_path: str, language: str):
+def run_server(socket_path: str, model_name: str, language: str):
     """Run the daemon server."""
     # Remove existing socket
     if os.path.exists(socket_path):
         os.remove(socket_path)
 
     # Load model
-    load_model(model_path)
+    load_model(model_name)
 
     # Create Unix socket
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -146,15 +219,35 @@ def main():
     parser.add_argument("--socket-path",
                         default=os.path.expanduser("~/Library/Application Support/Murmurix/daemon.sock"),
                         help="Unix socket path")
-    parser.add_argument("--model-path", default="small", help="Path to Whisper model")
+    parser.add_argument("--model", default="small", help="Whisper model name (tiny, base, small, medium, large-v2, large-v3)")
     parser.add_argument("--language", default="ru", help="Default language")
+    parser.add_argument("--list-models", action="store_true", help="List available models and exit")
+    parser.add_argument("--download", metavar="MODEL", help="Download a model and exit")
     args = parser.parse_args()
+
+    # Handle --list-models
+    if args.list_models:
+        installed = get_installed_models()
+        print("Available models:")
+        for m in MODELS:
+            status = "✓ installed" if m in installed else "✗ not installed"
+            print(f"  {m}: {status}")
+        sys.exit(0)
+
+    # Handle --download
+    if args.download:
+        if args.download not in MODELS:
+            print(f"Error: Unknown model '{args.download}'", file=sys.stderr)
+            print(f"Available: {', '.join(MODELS)}", file=sys.stderr)
+            sys.exit(1)
+        success = download_model(args.download)
+        sys.exit(0 if success else 1)
 
     # Ensure directory exists
     socket_dir = os.path.dirname(args.socket_path)
     os.makedirs(socket_dir, exist_ok=True)
 
-    run_server(args.socket_path, args.model_path, args.language)
+    run_server(args.socket_path, args.model, args.language)
 
 
 if __name__ == "__main__":

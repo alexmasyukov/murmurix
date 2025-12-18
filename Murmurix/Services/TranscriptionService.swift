@@ -52,15 +52,12 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
             return
         }
 
-        let modelPath = findModelPath()
+        let modelName = Settings.shared.whisperModel
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: python)
 
-        var arguments = [script, "--socket-path", socketPath, "--language", language]
-        if let model = modelPath {
-            arguments.append(contentsOf: ["--model-path", model])
-        }
+        let arguments = [script, "--socket-path", socketPath, "--language", language, "--model", modelName]
         process.arguments = arguments
 
         // Redirect output to console
@@ -222,7 +219,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
             throw TranscriptionError.scriptNotFound
         }
 
-        let modelPath = findModelPath()
+        let modelName = Settings.shared.whisperModel
 
         print("TranscriptionService: direct mode, audio=\(audioURL.path)")
 
@@ -231,10 +228,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: python)
 
-                var arguments = [script, audioURL.path, "--language", self.language]
-                if let model = modelPath {
-                    arguments.append(contentsOf: ["--model-path", model])
-                }
+                let arguments = [script, audioURL.path, "--language", self.language, "--model", modelName]
                 process.arguments = arguments
 
                 let outputPipe = Pipe()
@@ -300,8 +294,4 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         return paths.first { FileManager.default.fileExists(atPath: $0) }
     }
 
-    private func findModelPath() -> String? {
-        let modelPath = NSHomeDirectory() + "/Library/Application Support/Murmurix/models/faster-whisper-small"
-        return FileManager.default.fileExists(atPath: modelPath) ? modelPath : nil
-    }
 }

@@ -472,4 +472,3 @@ struct TextPasterTests {
         #expect(true) // If we get here, no crash occurred
     }
 }
-

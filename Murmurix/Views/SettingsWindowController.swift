@@ -13,6 +13,7 @@ class DaemonStatusModel: ObservableObject {
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onDaemonToggle: ((Bool) -> Void)?
     var onHotkeysChanged: ((Hotkey, Hotkey) -> Void)?
+    var onModelChanged: (() -> Void)?
     var onWindowOpen: (() -> Void)?
     var onWindowClose: (() -> Void)?
 
@@ -22,6 +23,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         isDaemonRunning: Bool,
         onDaemonToggle: @escaping (Bool) -> Void,
         onHotkeysChanged: @escaping (Hotkey, Hotkey) -> Void,
+        onModelChanged: @escaping () -> Void = {},
         onWindowOpen: @escaping () -> Void = {},
         onWindowClose: @escaping () -> Void = {}
     ) {
@@ -37,6 +39,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.init(window: window)
         self.onDaemonToggle = onDaemonToggle
         self.onHotkeysChanged = onHotkeysChanged
+        self.onModelChanged = onModelChanged
         self.onWindowOpen = onWindowOpen
         self.onWindowClose = onWindowClose
         self.daemonStatus.isRunning = isDaemonRunning
@@ -53,7 +56,8 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
                     self?.daemonStatus.isRunning = enabled
                 }
             },
-            onHotkeysChanged: onHotkeysChanged
+            onHotkeysChanged: onHotkeysChanged,
+            onModelChanged: onModelChanged
         )
         window.contentView = NSHostingView(rootView: settingsView)
     }
