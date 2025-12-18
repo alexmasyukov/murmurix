@@ -105,6 +105,7 @@ final class MockHistoryService: HistoryServiceProtocol {
 final class MockSettings: SettingsStorageProtocol {
     var keepDaemonRunning: Bool = true
     var language: String = "ru"
+    var aiPostProcessingEnabled: Bool = false
 
     private var toggleHotkey: Hotkey = .toggleDefault
     private var cancelHotkey: Hotkey = .cancelDefault

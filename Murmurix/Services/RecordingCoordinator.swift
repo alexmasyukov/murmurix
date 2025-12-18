@@ -124,7 +124,7 @@ final class RecordingCoordinator {
         let service = transcriptionService
         let useDaemon = settings.keepDaemonRunning
         let language = settings.language
-        let aiEnabled = Settings.shared.aiPostProcessingEnabled
+        let aiEnabled = settings.aiPostProcessingEnabled
         let aiProcessor = aiService
 
         transcriptionTask = Task.detached { [weak self] in

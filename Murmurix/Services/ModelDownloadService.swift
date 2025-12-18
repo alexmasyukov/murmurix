@@ -20,7 +20,7 @@ final class ModelDownloadService {
     private init() {}
 
     func downloadModel(_ modelName: String, onProgress: @escaping (DownloadStatus) -> Void) {
-        guard let script = findDaemonScript(), let python = findPython() else {
+        guard let script = PythonResolver.findDaemonScript(), let python = PythonResolver.findPython() else {
             onProgress(.error("Python or script not found"))
             return
         }
@@ -70,25 +70,5 @@ final class ModelDownloadService {
     func cancelDownload() {
         downloadProcess?.terminate()
         downloadProcess = nil
-    }
-
-    private func findPython() -> String? {
-        let pythonPaths = [
-            "/usr/local/bin/python3",
-            "/opt/homebrew/bin/python3",
-            "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
-            "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
-            "/usr/bin/python3"
-        ]
-        return pythonPaths.first { FileManager.default.fileExists(atPath: $0) }
-    }
-
-    private func findDaemonScript() -> String? {
-        let paths = [
-            NSHomeDirectory() + "/Library/Application Support/Murmurix/transcribe_daemon.py",
-            Bundle.main.path(forResource: "transcribe_daemon", ofType: "py"),
-            NSHomeDirectory() + "/Swift/Murmurix/Python/transcribe_daemon.py"
-        ].compactMap { $0 }
-        return paths.first { FileManager.default.fileExists(atPath: $0) }
     }
 }
