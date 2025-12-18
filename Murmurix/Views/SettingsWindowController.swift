@@ -32,8 +32,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
             defer: false
         )
         window.minSize = NSSize(width: 480, height: 380)
-        window.title = "Murmurix Settings"
-        window.appearance = NSAppearance(named: .darkAqua)
+        window.title = "Settings"
 
         self.init(window: window)
         self.onDaemonToggle = onDaemonToggle
@@ -50,7 +49,6 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
             ),
             onDaemonToggle: { [weak self] enabled in
                 onDaemonToggle(enabled)
-                // Update status after a short delay to let daemon start/stop
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     self?.daemonStatus.isRunning = enabled
                 }
@@ -67,6 +65,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     override func showWindow(_ sender: Any?) {
         window?.center()
         super.showWindow(sender)
+        window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         onWindowOpen?()
     }
