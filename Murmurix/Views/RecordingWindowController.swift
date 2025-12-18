@@ -91,24 +91,13 @@ class RecordingWindowController: NSWindowController {
     }
 
     private func recenterWindow() {
-        if let screen = NSScreen.main, let window = window {
-            window.layoutIfNeeded()
-            let screenFrame = screen.visibleFrame
-            let windowFrame = window.frame
-            let x = screenFrame.midX - windowFrame.width / 2
-            let y = screenFrame.maxY - windowFrame.height - 10
-            window.setFrameOrigin(NSPoint(x: x, y: y))
-        }
+        guard let window = window else { return }
+        WindowPositioner.positionTopCenter(window)
     }
 
     override func showWindow(_ sender: Any?) {
-        // Position at top center of screen (like Dynamic Island)
-        if let screen = NSScreen.main {
-            let screenFrame = screen.visibleFrame
-            let windowFrame = window?.frame ?? .zero
-            let x = screenFrame.midX - windowFrame.width / 2
-            let y = screenFrame.maxY - windowFrame.height - 10
-            window?.setFrameOrigin(NSPoint(x: x, y: y))
+        if let window = window {
+            WindowPositioner.positionTopCenter(window)
         }
         super.showWindow(sender)
     }

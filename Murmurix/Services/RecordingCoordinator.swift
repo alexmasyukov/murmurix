@@ -108,7 +108,7 @@ final class RecordingCoordinator {
         guard hadVoice else {
             state = .idle
             try? FileManager.default.removeItem(at: audioURL)
-            print("No voice activity detected, skipping transcription")
+            Logger.Transcription.info("No voice activity detected, skipping transcription")
             delegate?.recordingDidStopWithoutVoice()
             return
         }
@@ -150,7 +150,7 @@ final class RecordingCoordinator {
                         finalText = try await aiProcessor.process(text: transcribedText)
                     } catch {
                         // Log error but continue with original text
-                        print("AI post-processing failed: \(error.localizedDescription)")
+                        Logger.AI.error("Post-processing failed: \(error.localizedDescription)")
                     }
 
                     if Task.isCancelled { return }

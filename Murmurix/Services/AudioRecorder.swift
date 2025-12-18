@@ -54,11 +54,11 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
                     if granted {
                         self?.startRecording()
                     } else {
-                        print("Microphone permission denied")
+                        Logger.Audio.error("Microphone permission denied")
                     }
                 }
             } else {
-                print("Microphone permission denied. Please enable in System Settings > Privacy > Microphone")
+                Logger.Audio.error("Microphone permission denied. Please enable in System Settings > Privacy > Microphone")
             }
             return
         }
@@ -90,9 +90,9 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
             // Start monitoring audio levels
             startLevelMonitoring()
 
-            print("Recording started: \(fileURL.path)")
+            Logger.Audio.info("Recording started: \(fileURL.path)")
         } catch {
-            print("Failed to start recording: \(error)")
+            Logger.Audio.error("Failed to start recording: \(error)")
         }
     }
 
@@ -101,7 +101,7 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
         audioRecorder?.stop()
         isRecording = false
         audioLevel = 0.0
-        print("Recording stopped: \(currentRecordingURL?.path ?? "unknown")")
+        Logger.Audio.info("Recording stopped: \(currentRecordingURL?.path ?? "unknown")")
         return currentRecordingURL ?? URL(fileURLWithPath: "")
     }
 
@@ -139,13 +139,13 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
 extension AudioRecorder: AVAudioRecorderDelegate {
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         if !flag {
-            print("Recording finished unsuccessfully")
+            Logger.Audio.error("Recording finished unsuccessfully")
         }
     }
 
     func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
         if let error = error {
-            print("Recording encode error: \(error)")
+            Logger.Audio.error("Recording encode error: \(error)")
         }
     }
 }

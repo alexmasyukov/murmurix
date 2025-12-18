@@ -51,7 +51,7 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
-            print("Failed to create event tap. Check Accessibility permissions.")
+            Logger.Hotkey.error("Failed to create event tap. Check Accessibility permissions.")
             requestAccessibilityPermissions()
             return
         }
@@ -61,7 +61,7 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
 
-        print("GlobalHotkeyManager started")
+        Logger.Hotkey.info("GlobalHotkeyManager started")
     }
 
     func stop() {

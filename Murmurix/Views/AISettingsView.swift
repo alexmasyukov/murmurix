@@ -33,12 +33,12 @@ struct AISettingsView: View {
             SectionHeader(title: "Post-Processing")
 
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
                     Text("Enable AI post-processing")
-                        .font(.system(size: 13))
+                        .font(Typography.label)
                         .foregroundColor(.white)
                     Text("Fix technical terms using Claude")
-                        .font(.system(size: 11))
+                        .font(Typography.description)
                         .foregroundColor(.gray)
                 }
                 Spacer()
@@ -46,12 +46,12 @@ struct AISettingsView: View {
                     .toggleStyle(.switch)
                     .labelsHidden()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(10)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
         }
     }
 
@@ -59,17 +59,17 @@ struct AISettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "Claude API")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Layout.Spacing.section) {
                 apiKeyField
                 modelPicker
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(10)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
-            .opacity(aiEnabled ? 1 : 0.5)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Spacing.section)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
+            .opacity(aiEnabled ? 1 : AppColors.disabledOpacity)
             .disabled(!aiEnabled)
         }
     }
@@ -77,13 +77,13 @@ struct AISettingsView: View {
     private var apiKeyField: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("API Key")
-                .font(.system(size: 12))
+                .font(Typography.monospaced)
                 .foregroundColor(.secondary)
 
-            HStack(spacing: 8) {
+            HStack(spacing: Layout.Spacing.item) {
                 TextField("sk-ant-...", text: $viewModel.apiKey)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13, design: .monospaced))
+                    .font(Typography.monospaced)
                     .onChange(of: viewModel.apiKey) { _, newValue in
                         viewModel.saveAPIKey(newValue)
                     }
@@ -124,13 +124,13 @@ struct AISettingsView: View {
                     .foregroundColor(.red)
             }
         }
-        .font(.system(size: 11))
+        .font(Typography.description)
     }
 
     private var modelPicker: some View {
         HStack {
             Text("Model")
-                .font(.system(size: 13))
+                .font(Typography.label)
                 .foregroundColor(.white)
 
             Spacer()
@@ -150,13 +150,13 @@ struct AISettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "Prompt")
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Layout.Spacing.item) {
                 TextEditor(text: $viewModel.prompt)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(Typography.monospaced)
                     .scrollContentBackground(.hidden)
-                    .padding(8)
+                    .padding(Layout.Spacing.item)
                     .background(Color.black.opacity(0.3))
-                    .cornerRadius(6)
+                    .cornerRadius(Layout.CornerRadius.button)
                     .frame(height: 150)
                     .onChange(of: viewModel.prompt) { _, newValue in
                         viewModel.savePrompt(newValue)
@@ -171,12 +171,12 @@ struct AISettingsView: View {
                     .controlSize(.small)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(10)
-            .padding(.horizontal, 16)
-            .opacity(aiEnabled ? 1 : 0.5)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Spacing.section)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .opacity(aiEnabled ? 1 : AppColors.disabledOpacity)
             .disabled(!aiEnabled)
         }
     }

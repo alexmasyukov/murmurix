@@ -67,12 +67,12 @@ struct GeneralSettingsView: View {
                     Settings.shared.saveToggleHotkey(newValue)
                     onHotkeysChanged?(newValue, cancelHotkey)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
 
                 Divider()
-                    .background(Color.white.opacity(0.1))
-                    .padding(.leading, 16)
+                    .background(AppColors.divider)
+                    .padding(.leading, Layout.Padding.standard)
 
                 HotkeyRecorderView(
                     title: "Cancel Recording",
@@ -83,13 +83,13 @@ struct GeneralSettingsView: View {
                     Settings.shared.saveCancelHotkey(newValue)
                     onHotkeysChanged?(toggleHotkey, newValue)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
             }
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(10)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
         }
     }
 
@@ -98,22 +98,22 @@ struct GeneralSettingsView: View {
             SectionHeader(title: "Performance")
 
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                    HStack(spacing: Layout.Spacing.indicator) {
                         Text("Keep model in memory")
-                            .font(.system(size: 13))
+                            .font(Typography.label)
                             .foregroundColor(.white)
 
                         Circle()
-                            .fill(isDaemonRunning ? Color.green : Color.gray.opacity(0.5))
+                            .fill(isDaemonRunning ? Color.green : Color.gray.opacity(AppColors.disabledOpacity))
                             .frame(width: 8, height: 8)
 
                         Text(isDaemonRunning ? "Running" : "Stopped")
-                            .font(.system(size: 10))
+                            .font(Typography.caption)
                             .foregroundColor(isDaemonRunning ? .green : .gray)
                     }
                     Text("Faster transcription, uses ~500MB RAM")
-                        .font(.system(size: 11))
+                        .font(Typography.description)
                         .foregroundColor(.gray)
                 }
                 Spacer()
@@ -125,12 +125,12 @@ struct GeneralSettingsView: View {
                         onDaemonToggle?(newValue)
                     }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(10)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
         }
     }
 
@@ -138,23 +138,23 @@ struct GeneralSettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "Recognition")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Layout.Spacing.section) {
                 languagePicker
                 modelPicker
                 modelDownloadStatus
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(10)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
         }
     }
 
     private var languagePicker: some View {
         HStack {
             Text("Language")
-                .font(.system(size: 13))
+                .font(Typography.label)
                 .foregroundColor(.white)
 
             Spacer()
@@ -173,12 +173,12 @@ struct GeneralSettingsView: View {
 
     private var modelPicker: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
                 Text("Model")
-                    .font(.system(size: 13))
+                    .font(Typography.label)
                     .foregroundColor(.white)
                 Text("Larger models are more accurate but slower")
-                    .font(.system(size: 11))
+                    .font(Typography.description)
                     .foregroundColor(.gray)
             }
 
@@ -209,10 +209,10 @@ struct GeneralSettingsView: View {
     @ViewBuilder
     private var modelDownloadStatus: some View {
         if !viewModel.isModelInstalled(whisperModel) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Layout.Spacing.item) {
                 switch viewModel.downloadStatus {
                 case .idle:
-                    HStack(spacing: 8) {
+                    HStack(spacing: Layout.Spacing.item) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
                         Text("Model not installed")
@@ -250,7 +250,7 @@ struct GeneralSettingsView: View {
                     }
 
                 case .error(let message):
-                    HStack(spacing: 8) {
+                    HStack(spacing: Layout.Spacing.item) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.red)
                         Text(message)
@@ -265,7 +265,7 @@ struct GeneralSettingsView: View {
                     }
                 }
             }
-            .font(.system(size: 11))
+            .font(Typography.description)
         }
     }
 }

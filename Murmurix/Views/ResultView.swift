@@ -20,33 +20,33 @@ struct ResultView: View {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(.white.opacity(AppColors.mutedOpacity))
                         .frame(width: 24, height: 24)
-                        .background(Color.white.opacity(0.1))
+                        .background(AppColors.divider)
                         .clipShape(Circle())
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.top, 12)
-            .padding(.trailing, 12)
+            .padding(.top, Layout.Spacing.section)
+            .padding(.trailing, Layout.Spacing.section)
             .padding(.bottom, 4)
 
             // Text content - selectable textarea
             SelectableTextView(text: text)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.bottom, Layout.Spacing.item)
 
             // Bottom toolbar
             HStack(spacing: 0) {
                 // Delete button
                 Button(action: onDelete) {
                     Image(systemName: "trash")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(Typography.monospaced)
+                        .foregroundColor(.white.opacity(AppColors.mutedOpacity))
                         .frame(width: 32, height: 32)
                         .background(Color.white.opacity(0.08))
-                        .cornerRadius(8)
+                        .cornerRadius(Layout.Spacing.item)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -56,11 +56,11 @@ struct ResultView: View {
                 // Duration
                 HStack(spacing: 4) {
                     Image(systemName: "waveform")
-                        .font(.system(size: 10))
+                        .font(Typography.caption)
                         .foregroundColor(.white.opacity(0.4))
                     Text(formattedDuration)
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.white.opacity(AppColors.disabledOpacity))
                 }
 
                 Spacer()
@@ -69,30 +69,30 @@ struct ResultView: View {
                 Button(action: copyAndClose) {
                     HStack(spacing: 5) {
                         Image(systemName: "doc.on.doc")
-                            .font(.system(size: 11))
+                            .font(Typography.description)
                         Text("Copy")
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, Layout.Spacing.item)
                     .background(Color.white.opacity(0.15))
-                    .cornerRadius(8)
+                    .cornerRadius(Layout.Spacing.item)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Layout.Padding.standard)
             .padding(.vertical, 14)
         }
-        .frame(width: 420, height: 300)
+        .frame(width: WindowSize.result.width, height: WindowSize.result.height)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Layout.CornerRadius.window)
                 .fill(Color(red: 0.1, green: 0.1, blue: 0.1))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Layout.CornerRadius.window)
+                .strokeBorder(AppColors.divider, lineWidth: 1)
         )
     }
 

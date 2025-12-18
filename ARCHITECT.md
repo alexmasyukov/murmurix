@@ -42,7 +42,8 @@ Murmurix/
 │   ├── AppDelegate.swift        # App lifecycle, coordination
 │   ├── AppConstants.swift       # Centralized constants
 │   ├── MenuBarManager.swift     # Status bar and menu
-│   └── WindowManager.swift      # Window lifecycle
+│   ├── WindowManager.swift      # Window lifecycle
+│   └── WindowPositioner.swift   # Window positioning utility
 │
 ├── Models/                       # Data models
 │   ├── Settings.swift           # App settings (UserDefaults)
@@ -86,6 +87,7 @@ Murmurix/
 ├── Services/                     # Business logic
 │   ├── Protocols.swift          # Service protocols
 │   ├── MurmurixError.swift      # Unified error hierarchy
+│   ├── Logger.swift             # Centralized logging (os.log)
 │   │
 │   ├── AudioRecorder.swift      # AVAudioRecorder wrapper
 │   ├── TranscriptionService.swift # Transcription orchestration
@@ -156,6 +158,14 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 - `AIConfig` — API tokens, default prompt
 - `WindowSize` — window dimensions
 - `AppPaths` — file paths
+
+#### WindowPositioner (35 lines)
+**Role**: Window positioning utility
+
+**Methods**:
+- `positionTopCenter(_:topOffset:)` — Position at top center of screen
+- `center(_:)` — Center window on screen
+- `centerAndActivate(_:)` — Center and activate app
 
 ---
 
@@ -344,6 +354,19 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 
 **Checks**: Homebrew, system Python, pyenv
 
+#### Logger (100 lines)
+**Role**: Centralized logging using os.log
+
+**Categories**:
+- `Logger.Audio` — Audio recording events
+- `Logger.Transcription` — Transcription events
+- `Logger.Daemon` — Daemon lifecycle
+- `Logger.Hotkey` — Hotkey manager
+- `Logger.History` — Database operations
+- `Logger.AI` — AI post-processing
+
+**Methods**: `.info()`, `.error()`, `.debug()`, `.warning()`
+
 ---
 
 ### Error Hierarchy
@@ -476,12 +499,12 @@ init(
 
 | Category | Files | Total Lines |
 |----------|-------|-------------|
-| App | 5 | 594 |
-| Models | 5 | 296 |
-| ViewModels | 3 | 195 |
-| Views | 18 | 2,118 |
-| Services | 14 | 1,482 |
-| **Total** | **45** | **4,697** |
+| App | 6 | ~630 |
+| Models | 5 | ~296 |
+| ViewModels | 3 | ~195 |
+| Views | 18 | ~2,100 |
+| Services | 15 | ~1,580 |
+| **Total** | **47** | **~4,800** |
 
 ---
 

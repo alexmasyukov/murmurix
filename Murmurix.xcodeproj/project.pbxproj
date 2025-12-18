@@ -27,7 +27,6 @@
 		564D384F2EF3119300598DBA /* Murmurix.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Murmurix.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		564D38602EF3119500598DBA /* MurmurixTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MurmurixTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		564D386A2EF3119500598DBA /* MurmurixUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MurmurixUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		564D387D2EF311DA00598DBA /* voicetyper-spec.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "voicetyper-spec.md"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -93,7 +92,6 @@
 				564D38632EF3119500598DBA /* MurmurixTests */,
 				564D386D2EF3119500598DBA /* MurmurixUITests */,
 				564D38502EF3119300598DBA /* Products */,
-				564D387D2EF311DA00598DBA /* voicetyper-spec.md */,
 			);
 			sourceTree = "<group>";
 		};
