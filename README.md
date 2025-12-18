@@ -113,15 +113,6 @@ cd ~/Library/Application\ Support/Murmurix
 # List all models with installation status
 python transcribe_daemon.py --list-models
 
-# Output:
-# Available models:
-#   tiny: ✓ installed
-#   base: ✗ not installed
-#   small: ✓ installed
-#   medium: ✗ not installed
-#   large-v2: ✗ not installed
-#   large-v3: ✗ not installed
-
 # Download a specific model
 python transcribe_daemon.py --download medium
 
@@ -139,74 +130,6 @@ echo '{"command": "list_models"}' | nc -U ~/Library/Application\ Support/Murmuri
 # Download model (blocking, may take a while)
 echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Application\ Support/Murmurix/daemon.sock
 ```
-
-## Architecture
-
-```
-Murmurix/
-├── App/
-│   └── AppDelegate.swift              # App lifecycle, menu bar
-├── Models/
-│   ├── Hotkey.swift                   # Hotkey model with key codes
-│   ├── TranscriptionRecord.swift      # History record model
-│   └── Settings.swift                 # Settings storage wrapper
-├── ViewModels/
-│   └── HistoryViewModel.swift         # History view logic
-├── Services/
-│   ├── Protocols.swift                # Service protocols for DI
-│   ├── AudioRecorder.swift            # AVAudioRecorder with metering
-│   ├── GlobalHotkeyManager.swift      # CGEvent tap for shortcuts
-│   ├── TranscriptionService.swift     # Python subprocess & daemon
-│   ├── HistoryService.swift           # SQLite history storage
-│   ├── RecordingCoordinator.swift     # Recording business logic
-│   ├── TextPaster.swift               # Clipboard & keyboard paste
-│   ├── KeychainService.swift          # Secure API key storage
-│   ├── AnthropicAPIClient.swift       # Claude API client (shared)
-│   ├── AIPostProcessingService.swift  # Claude 4.5 post-processing
-│   ├── ModelDownloadService.swift     # Whisper model downloader
-│   └── PythonResolver.swift           # Python/script path finder
-├── Views/
-│   ├── SettingsView.swift             # Settings container (TabView)
-│   ├── GeneralSettingsView.swift      # Hotkeys, daemon, model settings
-│   ├── AISettingsView.swift           # Claude API settings
-│   ├── HistoryView.swift              # History browser
-│   ├── RecordingView.swift            # Dynamic Island-style UI
-│   ├── ResultView.swift               # Transcription result
-│   ├── HotkeyRecorderView.swift       # Custom hotkey picker
-│   ├── Components/
-│   │   └── SectionHeader.swift        # Reusable section header
-│   └── History/
-│       ├── HistoryStatsView.swift     # Stats panel
-│       ├── HistoryRowView.swift       # List row
-│       └── HistoryDetailView.swift    # Detail panel
-└── Python/
-    ├── transcribe.py                  # Direct transcription (one-shot)
-    └── transcribe_daemon.py           # Socket server with model management
-```
-
-## Testing
-
-The project includes 56 unit tests with mocks for all services:
-
-```bash
-# Run tests in Xcode
-⌘U
-
-# Run from command line (disable parallel testing for stability)
-xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:MurmurixTests -parallel-testing-enabled NO
-```
-
-**Test coverage:**
-- `TranscriptionRecordTests` — Model serialization, formatting
-- `HistoryServiceTests` — SQLite CRUD operations
-- `HistoryViewModelTests` — ViewModel logic, statistics
-- `HotkeyTests` — Hotkey encoding, display
-- `AudioRecorderTests` — Recording state, audio levels
-- `GlobalHotkeyManagerTests` — Hotkey callbacks, state
-- `RecordingCoordinatorTests` — Recording state machine
-- `ResultWindowControllerTests` — Window properties
-- `SettingsTests` — UserDefaults persistence
-- `TextPasterTests` — Text focus detection, paste
 
 ## Settings
 
@@ -307,6 +230,28 @@ faster-whisper supports 99 languages. Currently exposed in UI:
 - Russian (ru)
 - English (en)
 - Auto-detect
+
+## Testing
+
+The project includes 56 unit tests with mocks for all services:
+
+```bash
+# Run tests in Xcode
+⌘U
+
+# Run from command line
+xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:MurmurixTests -parallel-testing-enabled NO
+```
+
+## Architecture
+
+See [ARCHITECT.md](ARCHITECT.md) for detailed architecture documentation including:
+- Layer diagram and component hierarchy
+- Service responsibilities and protocols
+- Data flow diagrams
+- Dependency injection patterns
+- Error hierarchy
+- Thread model
 
 ## Troubleshooting
 
