@@ -54,7 +54,7 @@ def get_installed_models() -> list:
     return [m for m in MODELS if is_model_installed(m)]
 
 
-def download_model(model_name: str, progress_callback=None):
+def download_model(model_name: str):
     """Download model from Hugging Face."""
     from huggingface_hub import snapshot_download
 
@@ -64,7 +64,7 @@ def download_model(model_name: str, progress_callback=None):
     try:
         snapshot_download(
             repo_id=repo_id,
-            local_dir=None,  # Use default cache
+            local_dir=None,
             local_dir_use_symlinks=True
         )
         print(f"Model {model_name} downloaded successfully!", file=sys.stderr)
@@ -222,6 +222,7 @@ def main():
     parser.add_argument("--model", default="small", help="Whisper model name (tiny, base, small, medium, large-v2, large-v3)")
     parser.add_argument("--language", default="ru", help="Default language")
     parser.add_argument("--list-models", action="store_true", help="List available models and exit")
+    parser.add_argument("--list-models-json", action="store_true", help="List available models as JSON and exit")
     parser.add_argument("--download", metavar="MODEL", help="Download a model and exit")
     args = parser.parse_args()
 
@@ -232,6 +233,13 @@ def main():
         for m in MODELS:
             status = "✓ installed" if m in installed else "✗ not installed"
             print(f"  {m}: {status}")
+        sys.exit(0)
+
+    # Handle --list-models-json
+    if args.list_models_json:
+        installed = get_installed_models()
+        result = {"models": [{"name": m, "installed": m in installed} for m in MODELS]}
+        print(json.dumps(result))
         sys.exit(0)
 
     # Handle --download
