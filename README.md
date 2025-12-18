@@ -145,31 +145,43 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 ```
 Murmurix/
 ├── App/
-│   └── AppDelegate.swift          # App lifecycle, menu bar
+│   └── AppDelegate.swift              # App lifecycle, menu bar
 ├── Models/
-│   ├── Hotkey.swift               # Hotkey model with key codes
-│   ├── TranscriptionRecord.swift  # History record model
-│   └── Settings.swift             # Settings storage wrapper
+│   ├── Hotkey.swift                   # Hotkey model with key codes
+│   ├── TranscriptionRecord.swift      # History record model
+│   └── Settings.swift                 # Settings storage wrapper
+├── ViewModels/
+│   └── HistoryViewModel.swift         # History view logic
 ├── Services/
-│   ├── Protocols.swift            # Service protocols for DI
-│   ├── AudioRecorder.swift        # AVAudioRecorder with metering
-│   ├── GlobalHotkeyManager.swift  # CGEvent tap for shortcuts
-│   ├── TranscriptionService.swift # Python subprocess & daemon
-│   ├── HistoryService.swift       # SQLite history storage
-│   ├── RecordingCoordinator.swift # Recording business logic
-│   ├── TextPaster.swift           # Clipboard & keyboard paste
-│   ├── KeychainService.swift      # Secure API key storage
-│   ├── AIPostProcessingService.swift # Claude 4.5 API with structured outputs
-│   └── ModelDownloadService.swift # Whisper model downloader
+│   ├── Protocols.swift                # Service protocols for DI
+│   ├── AudioRecorder.swift            # AVAudioRecorder with metering
+│   ├── GlobalHotkeyManager.swift      # CGEvent tap for shortcuts
+│   ├── TranscriptionService.swift     # Python subprocess & daemon
+│   ├── HistoryService.swift           # SQLite history storage
+│   ├── RecordingCoordinator.swift     # Recording business logic
+│   ├── TextPaster.swift               # Clipboard & keyboard paste
+│   ├── KeychainService.swift          # Secure API key storage
+│   ├── AnthropicAPIClient.swift       # Claude API client (shared)
+│   ├── AIPostProcessingService.swift  # Claude 4.5 post-processing
+│   ├── ModelDownloadService.swift     # Whisper model downloader
+│   └── PythonResolver.swift           # Python/script path finder
 ├── Views/
-│   ├── RecordingView.swift        # Dynamic Island-style UI
-│   ├── ResultView.swift           # Transcription result
-│   ├── HistoryView.swift          # History browser
-│   ├── SettingsView.swift         # Settings panel
-│   └── HotkeyRecorderView.swift   # Custom hotkey picker
+│   ├── SettingsView.swift             # Settings container (TabView)
+│   ├── GeneralSettingsView.swift      # Hotkeys, daemon, model settings
+│   ├── AISettingsView.swift           # Claude API settings
+│   ├── HistoryView.swift              # History browser
+│   ├── RecordingView.swift            # Dynamic Island-style UI
+│   ├── ResultView.swift               # Transcription result
+│   ├── HotkeyRecorderView.swift       # Custom hotkey picker
+│   ├── Components/
+│   │   └── SectionHeader.swift        # Reusable section header
+│   └── History/
+│       ├── HistoryStatsView.swift     # Stats panel
+│       ├── HistoryRowView.swift       # List row
+│       └── HistoryDetailView.swift    # Detail panel
 └── Python/
-    ├── transcribe.py              # Direct transcription (one-shot)
-    └── transcribe_daemon.py       # Socket server with model management
+    ├── transcribe.py                  # Direct transcription (one-shot)
+    └── transcribe_daemon.py           # Socket server with model management
 ```
 
 ## Testing

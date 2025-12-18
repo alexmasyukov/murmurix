@@ -47,7 +47,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
             return
         }
 
-        guard let python = findPython(), let script = findDaemonScript() else {
+        guard let python = PythonResolver.findPython(), let script = PythonResolver.findDaemonScript() else {
             print("Cannot start daemon: python or script not found")
             return
         }
@@ -211,11 +211,11 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     // MARK: - Direct Transcription (fallback)
 
     private func transcribeDirectly(audioURL: URL) async throws -> String {
-        guard let python = findPython() else {
+        guard let python = PythonResolver.findPython() else {
             throw TranscriptionError.pythonNotFound
         }
 
-        guard let script = findTranscribeScript() else {
+        guard let script = PythonResolver.findTranscribeScript() else {
             throw TranscriptionError.scriptNotFound
         }
 
@@ -255,43 +255,6 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
                 }
             }
         }
-    }
-
-    // MARK: - Path Helpers
-
-    private func findPython() -> String? {
-        let pythonPaths = [
-            "/usr/local/bin/python3",
-            "/opt/homebrew/bin/python3",
-            "/usr/bin/python3"
-        ]
-
-        for path in pythonPaths {
-            if FileManager.default.fileExists(atPath: path) {
-                return path
-            }
-        }
-        return nil
-    }
-
-    private func findTranscribeScript() -> String? {
-        let paths = [
-            NSHomeDirectory() + "/Library/Application Support/Murmurix/transcribe.py",
-            Bundle.main.path(forResource: "transcribe", ofType: "py"),
-            NSHomeDirectory() + "/Swift/Murmurix/Python/transcribe.py"
-        ].compactMap { $0 }
-
-        return paths.first { FileManager.default.fileExists(atPath: $0) }
-    }
-
-    private func findDaemonScript() -> String? {
-        let paths = [
-            NSHomeDirectory() + "/Library/Application Support/Murmurix/transcribe_daemon.py",
-            Bundle.main.path(forResource: "transcribe_daemon", ofType: "py"),
-            NSHomeDirectory() + "/Swift/Murmurix/Python/transcribe_daemon.py"
-        ].compactMap { $0 }
-
-        return paths.first { FileManager.default.fileExists(atPath: $0) }
     }
 
 }
