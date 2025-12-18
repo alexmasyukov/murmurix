@@ -157,14 +157,18 @@ final class Settings: SettingsStorageProtocol {
     }
 
     static let defaultAIPrompt = """
-        You are a post-processor for speech-to-text transcription in a software development context.
+        Ты пост-процессор для голосовых транскрипций.
 
-        Your task: Fix technical terms that were transcribed as Russian phonetic equivalents.
+        Контекст: обсуждение программирования на Golang, Swift, Kotlin, построение архитектуры, системы очередей, фронтенд.
 
-        Common replacements:
+        Задачи:
+        1. Замени распознанные названия сервисов, библиотек, фреймворков, инструментов на их оригинальные английские названия
+        2. Исправь орфографические ошибки в словах
+
+        Частые замены:
         - "кафка" → "Kafka"
         - "реакт" → "React"
-        - "гоуэнг", "голэнг", "го лэнг" → "Go/Golang"
+        - "гоуэнг", "голэнг", "го лэнг" → "Golang"
         - "питон" → "Python"
         - "джава скрипт" → "JavaScript"
         - "тайп скрипт" → "TypeScript"
@@ -187,9 +191,8 @@ final class Settings: SettingsStorageProtocol {
         - "юз эффект" → "useEffect"
         - "консоль лог" → "console.log"
 
-        Rules:
-        1. Only fix obvious technical terms, preserve the rest of the text exactly
-        2. Keep punctuation and structure
-        3. Return ONLY the corrected text, no explanations
+        Правила:
+        1. Сохраняй структуру и смысл текста
+        2. Не добавляй ничего лишнего
         """
 }

@@ -6,7 +6,8 @@ A native macOS menubar app for local voice-to-text transcription using [faster-w
 
 - **Global Hotkeys** — Trigger recording from anywhere with customizable shortcuts
 - **Local Processing** — All transcription happens on-device, no cloud services
-- **AI Post-Processing** — Optional Claude API integration to fix technical terms
+- **AI Post-Processing** — Optional Claude 4.5 API integration to fix technical terms (with structured outputs)
+- **In-App Model Download** — Download Whisper models directly from Settings with progress indicator
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
 - **Multiple Models** — Choose from 6 Whisper models (tiny to large-v3)
 - **Dynamic Island UI** — Minimal floating window with voice-reactive equalizer
@@ -98,8 +99,11 @@ Customize hotkeys in **Settings** (⌘,)
 
 1. Open **Settings** → **General**
 2. Select a model from the **Model** dropdown
-3. If model is not installed, you'll see "(not installed)" warning
-4. The daemon automatically restarts with the new model
+3. If model is not installed:
+   - You'll see "(not installed)" warning and **Download** button
+   - Click Download to install the model (progress indicator shown)
+   - After download completes, the daemon automatically starts with the new model
+4. For installed models, the daemon automatically restarts on selection
 
 ### Managing Models via CLI
 
@@ -155,7 +159,8 @@ Murmurix/
 │   ├── RecordingCoordinator.swift # Recording business logic
 │   ├── TextPaster.swift           # Clipboard & keyboard paste
 │   ├── KeychainService.swift      # Secure API key storage
-│   └── AIPostProcessingService.swift # Claude API integration
+│   ├── AIPostProcessingService.swift # Claude 4.5 API with structured outputs
+│   └── ModelDownloadService.swift # Whisper model downloader
 ├── Views/
 │   ├── RecordingView.swift        # Dynamic Island-style UI
 │   ├── ResultView.swift           # Transcription result
@@ -208,13 +213,27 @@ xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:Mur
 | Enable AI post-processing | Send transcription to Claude for term correction |
 | API Key | Your Claude API key (stored in Keychain) |
 | Test | Verify API key connection before saving |
-| Model | Haiku (fast), Sonnet, or Opus (best) |
+| Model | Haiku 4.5 (fast), Sonnet 4.5, or Opus 4.5 (best) |
 | Prompt | Customizable instructions for term replacement |
 
-The AI post-processing is designed to fix technical terms that Whisper transcribes as Russian phonetic equivalents. For example:
+**Claude 4.5 Models:**
+- `claude-haiku-4-5` — Fastest, best for simple corrections
+- `claude-sonnet-4-5` — Balanced speed and quality
+- `claude-opus-4-5` — Highest quality
+
+The AI post-processing uses [structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) to guarantee clean JSON responses without extra commentary.
+
+**What it does:**
+- Fixes technical terms transcribed as Russian phonetic equivalents (e.g., "кафка" → "Kafka")
+- Corrects spelling errors
+- Preserves original text structure and meaning
+
+**Example replacements:**
 - "кафка" → "Kafka"
 - "реакт" → "React"
-- "гоуэнг" → "Go/Golang"
+- "гоуэнг" → "Golang"
+- "докер" → "Docker"
+- "кубернетис" → "Kubernetes"
 
 ## Data Storage
 
