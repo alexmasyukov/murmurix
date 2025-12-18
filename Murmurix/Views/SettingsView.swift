@@ -56,6 +56,7 @@ struct GeneralSettingsView: View {
     @State private var toggleHotkey: Hotkey
     @State private var cancelHotkey: Hotkey
     @State private var installedModels: Set<String> = []
+    @State private var downloadStatus: DownloadStatus = .idle
 
     @Binding var isDaemonRunning: Bool
 
@@ -205,17 +206,71 @@ struct GeneralSettingsView: View {
                         .labelsHidden()
                         .frame(width: 220)
                         .transaction { $0.animation = nil }
-                        .onChange(of: whisperModel) { _, _ in
-                            onModelChanged?()
+                        .onChange(of: whisperModel) { _, newValue in
+                            downloadStatus = .idle
+                            // Only restart daemon if model is installed
+                            if let model = WhisperModel(rawValue: newValue), model.isInstalled {
+                                onModelChanged?()
+                            }
                         }
                     }
 
                     if !installedModels.contains(whisperModel) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                            Text("Model not installed. Download it first.")
-                                .foregroundColor(.orange)
+                        VStack(alignment: .leading, spacing: 8) {
+                            switch downloadStatus {
+                            case .idle:
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("Model not installed")
+                                        .foregroundColor(.orange)
+                                    Spacer()
+                                    Button("Download") {
+                                        startDownload()
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
+                                }
+
+                            case .downloading:
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text("Downloading model...")
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Button("Cancel") {
+                                            cancelDownload()
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                    }
+                                    ProgressView()
+                                        .progressViewStyle(.linear)
+                                }
+
+                            case .completed:
+                                HStack(spacing: 4) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                    Text("Download completed!")
+                                        .foregroundColor(.green)
+                                }
+
+                            case .error(let message):
+                                HStack(spacing: 8) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.red)
+                                    Text(message)
+                                        .foregroundColor(.red)
+                                        .lineLimit(2)
+                                    Spacer()
+                                    Button("Retry") {
+                                        startDownload()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                }
+                            }
                         }
                         .font(.system(size: 11))
                     }
@@ -238,6 +293,32 @@ struct GeneralSettingsView: View {
 
     private func loadInstalledModels() {
         installedModels = Set(WhisperModel.allCases.filter { $0.isInstalled }.map { $0.rawValue })
+    }
+
+    private func startDownload() {
+        downloadStatus = .downloading
+
+        ModelDownloadService.shared.downloadModel(whisperModel) { status in
+            downloadStatus = status
+
+            if case .completed = status {
+                // Refresh installed models list
+                loadInstalledModels()
+                // Restart daemon with new model
+                onModelChanged?()
+                // Reset status after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    if case .completed = downloadStatus {
+                        downloadStatus = .idle
+                    }
+                }
+            }
+        }
+    }
+
+    private func cancelDownload() {
+        ModelDownloadService.shared.cancelDownload()
+        downloadStatus = .idle
     }
 }
 
