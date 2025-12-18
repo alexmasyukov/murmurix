@@ -30,6 +30,7 @@ final class RecordingCoordinator {
     private var recordingStartTime: Date?
     private var transcriptionTask: Task<Void, Never>?
     private var currentAudioURL: URL?
+    private var skipAIForCurrentRecording: Bool = false
 
     private let audioRecorder: AudioRecorderProtocol
     private let transcriptionService: TranscriptionServiceProtocol
@@ -53,9 +54,10 @@ final class RecordingCoordinator {
 
     // MARK: - Recording Control
 
-    func toggleRecording() {
+    func toggleRecording(skipAI: Bool = false) {
         switch state {
         case .idle:
+            skipAIForCurrentRecording = skipAI
             startRecording()
         case .recording:
             stopRecording()
@@ -124,7 +126,7 @@ final class RecordingCoordinator {
         let service = transcriptionService
         let useDaemon = settings.keepDaemonRunning
         let language = settings.language
-        let aiEnabled = settings.aiPostProcessingEnabled
+        let aiEnabled = settings.aiPostProcessingEnabled && !skipAIForCurrentRecording
         let aiProcessor = aiService
 
         transcriptionTask = Task.detached { [weak self] in

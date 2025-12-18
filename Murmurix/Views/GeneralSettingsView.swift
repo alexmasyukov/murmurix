@@ -11,19 +11,20 @@ struct GeneralSettingsView: View {
     @AppStorage("whisperModel") private var whisperModel = WhisperModel.small.rawValue
 
     @State private var toggleHotkey: Hotkey
+    @State private var toggleNoAIHotkey: Hotkey
     @State private var cancelHotkey: Hotkey
 
     @StateObject private var viewModel = GeneralSettingsViewModel()
     @Binding var isDaemonRunning: Bool
 
     var onDaemonToggle: ((Bool) -> Void)?
-    var onHotkeysChanged: ((Hotkey, Hotkey) -> Void)?
+    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
 
     init(
         isDaemonRunning: Binding<Bool>,
         onDaemonToggle: ((Bool) -> Void)? = nil,
-        onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil,
+        onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)? = nil,
         onModelChanged: (() -> Void)? = nil
     ) {
         self._isDaemonRunning = isDaemonRunning
@@ -31,6 +32,7 @@ struct GeneralSettingsView: View {
         self.onHotkeysChanged = onHotkeysChanged
         self.onModelChanged = onModelChanged
         _toggleHotkey = State(initialValue: Settings.shared.loadToggleHotkey())
+        _toggleNoAIHotkey = State(initialValue: Settings.shared.loadToggleNoAIHotkey())
         _cancelHotkey = State(initialValue: Settings.shared.loadCancelHotkey())
     }
 
@@ -65,7 +67,23 @@ struct GeneralSettingsView: View {
                 )
                 .onChange(of: toggleHotkey) { _, newValue in
                     Settings.shared.saveToggleHotkey(newValue)
-                    onHotkeysChanged?(newValue, cancelHotkey)
+                    onHotkeysChanged?(newValue, toggleNoAIHotkey, cancelHotkey)
+                }
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
+
+                Divider()
+                    .background(AppColors.divider)
+                    .padding(.leading, Layout.Padding.standard)
+
+                HotkeyRecorderView(
+                    title: "Record without AI",
+                    description: "Skips AI post-processing even if enabled",
+                    hotkey: $toggleNoAIHotkey
+                )
+                .onChange(of: toggleNoAIHotkey) { _, newValue in
+                    Settings.shared.saveToggleNoAIHotkey(newValue)
+                    onHotkeysChanged?(toggleHotkey, newValue, cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -81,7 +99,7 @@ struct GeneralSettingsView: View {
                 )
                 .onChange(of: cancelHotkey) { _, newValue in
                     Settings.shared.saveCancelHotkey(newValue)
-                    onHotkeysChanged?(toggleHotkey, newValue)
+                    onHotkeysChanged?(toggleHotkey, toggleNoAIHotkey, newValue)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)

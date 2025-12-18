@@ -510,11 +510,14 @@ init(
 
 ## Testing
 
-56 unit tests covering:
-- Model serialization (TranscriptionRecord, Hotkey)
+114 unit tests covering:
+- Model serialization (TranscriptionRecord, Hotkey, WhisperModel, AIModel)
 - Service logic (HistoryService, RecordingCoordinator)
 - ViewModel behavior (HistoryViewModel)
 - Settings persistence
-- Window controllers
+- Window controllers and positioning (WindowPositioner)
+- Error hierarchy (MurmurixError with all cases)
+- Constants validation (AppConstants)
+- Logger categories
 
 All services have mock implementations in `MurmurixTests/Mocks.swift`.

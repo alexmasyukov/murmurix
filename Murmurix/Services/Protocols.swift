@@ -30,11 +30,12 @@ protocol TranscriptionServiceProtocol: Sendable {
 
 protocol HotkeyManagerProtocol: AnyObject {
     var onToggleRecording: (() -> Void)? { get set }
+    var onToggleRecordingNoAI: (() -> Void)? { get set }
     var onCancelRecording: (() -> Void)? { get set }
 
     func start()
     func stop()
-    func updateHotkeys(toggle: Hotkey, cancel: Hotkey)
+    func updateHotkeys(toggle: Hotkey, toggleNoAI: Hotkey, cancel: Hotkey)
 }
 
 // MARK: - Settings Storage
@@ -46,6 +47,8 @@ protocol SettingsStorageProtocol {
 
     func loadToggleHotkey() -> Hotkey
     func saveToggleHotkey(_ hotkey: Hotkey)
+    func loadToggleNoAIHotkey() -> Hotkey
+    func saveToggleNoAIHotkey(_ hotkey: Hotkey)
     func loadCancelHotkey() -> Hotkey
     func saveCancelHotkey(_ hotkey: Hotkey)
 }

@@ -187,4 +187,215 @@ struct RecordingCoordinatorTests {
         coordinator.setDaemonEnabled(false)
         #expect(transcriptionService.stopDaemonCallCount == 1)
     }
+
+    // MARK: - Voice Activity Detection
+
+    @Test func noVoiceActivitySkipsTranscription() {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+        audioRecorder.hadVoiceActivity = false
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        #expect(coordinator.state == .idle)
+        #expect(transcriptionService.transcribeCallCount == 0)
+        #expect(delegate.recordingDidStopWithoutVoiceCallCount == 1)
+    }
+
+    // MARK: - Cancel Transcription
+
+    @Test func cancelTranscriptionDuringTranscribing() async throws {
+        let (coordinator, _, transcriptionService, _, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 1.0 // Long delay
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        #expect(coordinator.state == .transcribing)
+
+        coordinator.cancelTranscription()
+
+        #expect(coordinator.state == .idle)
+        #expect(delegate.transcriptionDidCancelCallCount == 1)
+    }
+
+    @Test func cancelTranscriptionWhenIdleDoesNothing() {
+        let (coordinator, _, _, _, _, delegate) = createCoordinator()
+
+        coordinator.cancelTranscription()
+
+        #expect(coordinator.state == .idle)
+        #expect(delegate.transcriptionDidCancelCallCount == 0)
+    }
+
+    // MARK: - AI Post-Processing
+
+    @Test func aiPostProcessingIsCalledWhenEnabled() async throws {
+        let audioRecorder = MockAudioRecorder()
+        let transcriptionService = MockTranscriptionService()
+        let historyService = MockHistoryService()
+        let settings = MockSettings()
+        let aiService = MockAIPostProcessingService()
+
+        settings.aiPostProcessingEnabled = true
+        transcriptionService.transcriptionResult = .success("Original text")
+        aiService.processResult = .success("Processed text")
+
+        let coordinator = RecordingCoordinator(
+            audioRecorder: audioRecorder,
+            transcriptionService: transcriptionService,
+            historyService: historyService,
+            settings: settings,
+            aiService: aiService
+        )
+
+        let delegate = MockRecordingCoordinatorDelegate()
+        coordinator.delegate = delegate
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        // Wait for async transcription + AI processing
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        #expect(aiService.processCallCount == 1)
+        #expect(delegate.processingDidStartCallCount == 1)
+        #expect(delegate.lastCompletedText == "Processed text")
+    }
+
+    @Test func aiPostProcessingSkippedWhenDisabled() async throws {
+        let audioRecorder = MockAudioRecorder()
+        let transcriptionService = MockTranscriptionService()
+        let historyService = MockHistoryService()
+        let settings = MockSettings()
+        let aiService = MockAIPostProcessingService()
+
+        settings.aiPostProcessingEnabled = false
+        transcriptionService.transcriptionResult = .success("Original text")
+
+        let coordinator = RecordingCoordinator(
+            audioRecorder: audioRecorder,
+            transcriptionService: transcriptionService,
+            historyService: historyService,
+            settings: settings,
+            aiService: aiService
+        )
+
+        let delegate = MockRecordingCoordinatorDelegate()
+        coordinator.delegate = delegate
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(aiService.processCallCount == 0)
+        #expect(delegate.processingDidStartCallCount == 0)
+        #expect(delegate.lastCompletedText == "Original text")
+    }
+
+    @Test func aiPostProcessingFailureFallsBackToOriginal() async throws {
+        let audioRecorder = MockAudioRecorder()
+        let transcriptionService = MockTranscriptionService()
+        let historyService = MockHistoryService()
+        let settings = MockSettings()
+        let aiService = MockAIPostProcessingService()
+
+        settings.aiPostProcessingEnabled = true
+        transcriptionService.transcriptionResult = .success("Original text")
+
+        struct AIFailure: Error {}
+        aiService.processResult = .failure(AIFailure())
+
+        let coordinator = RecordingCoordinator(
+            audioRecorder: audioRecorder,
+            transcriptionService: transcriptionService,
+            historyService: historyService,
+            settings: settings,
+            aiService: aiService
+        )
+
+        let delegate = MockRecordingCoordinatorDelegate()
+        coordinator.delegate = delegate
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        #expect(aiService.processCallCount == 1)
+        // Should fall back to original text on AI failure
+        #expect(delegate.lastCompletedText == "Original text")
+        #expect(delegate.transcriptionDidCompleteCallCount == 1)
+    }
+
+    // MARK: - Skip AI Feature
+
+    @Test func toggleRecordingWithSkipAISkipsPostProcessing() async throws {
+        let audioRecorder = MockAudioRecorder()
+        let transcriptionService = MockTranscriptionService()
+        let historyService = MockHistoryService()
+        let settings = MockSettings()
+        let aiService = MockAIPostProcessingService()
+
+        settings.aiPostProcessingEnabled = true  // AI is enabled globally
+        transcriptionService.transcriptionResult = .success("Original text")
+        aiService.processResult = .success("Processed text")
+
+        let coordinator = RecordingCoordinator(
+            audioRecorder: audioRecorder,
+            transcriptionService: transcriptionService,
+            historyService: historyService,
+            settings: settings,
+            aiService: aiService
+        )
+
+        let delegate = MockRecordingCoordinatorDelegate()
+        coordinator.delegate = delegate
+
+        // Start recording with skipAI = true
+        coordinator.toggleRecording(skipAI: true)
+        coordinator.toggleRecording()
+
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        // AI should NOT be called even though it's enabled
+        #expect(aiService.processCallCount == 0)
+        #expect(delegate.processingDidStartCallCount == 0)
+        #expect(delegate.lastCompletedText == "Original text")
+    }
+
+    @Test func toggleRecordingWithoutSkipAIUsesPostProcessing() async throws {
+        let audioRecorder = MockAudioRecorder()
+        let transcriptionService = MockTranscriptionService()
+        let historyService = MockHistoryService()
+        let settings = MockSettings()
+        let aiService = MockAIPostProcessingService()
+
+        settings.aiPostProcessingEnabled = true
+        transcriptionService.transcriptionResult = .success("Original text")
+        aiService.processResult = .success("Processed text")
+
+        let coordinator = RecordingCoordinator(
+            audioRecorder: audioRecorder,
+            transcriptionService: transcriptionService,
+            historyService: historyService,
+            settings: settings,
+            aiService: aiService
+        )
+
+        let delegate = MockRecordingCoordinatorDelegate()
+        coordinator.delegate = delegate
+
+        // Start recording with skipAI = false (default)
+        coordinator.toggleRecording(skipAI: false)
+        coordinator.toggleRecording()
+
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        // AI should be called
+        #expect(aiService.processCallCount == 1)
+        #expect(delegate.processingDidStartCallCount == 1)
+        #expect(delegate.lastCompletedText == "Processed text")
+    }
 }
