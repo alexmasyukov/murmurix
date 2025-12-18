@@ -6,31 +6,71 @@
 import SwiftUI
 import Lottie
 
-struct AnimatedLottieView: View {
+struct AnimatedLottieView: NSViewRepresentable {
     let animationName: String
     var animationSpeed: Double = 1.0
     var colorHex: String? = nil
-    var colorKeypaths: [String] = []  // Custom keypaths for color replacement
+    var colorKeypaths: [String] = []
 
-    var body: some View {
-        LottieView {
-            try await DotLottieFile.named(animationName)
-        }
-        .looping()
-        .animationSpeed(animationSpeed)
-        .configure { animationView in
-            if let hex = colorHex, !colorKeypaths.isEmpty {
-                applyColor(to: animationView, hex: hex, keypaths: colorKeypaths)
-            }
-        }
-        .id(colorHex)  // Force recreation when color changes
+    class Coordinator {
+        var animationView: Lottie.LottieAnimationView?
+        var currentColorHex: String?
+        var currentKeypathsCount: Int = 0
     }
 
-    private func applyColor(to animationView: Lottie.LottieAnimationView, hex: String, keypaths: [String]) {
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let animationView = Lottie.LottieAnimationView()
+        animationView.contentMode = .scaleAspectFit
+        animationView.loopMode = .loop
+        animationView.animationSpeed = animationSpeed
+        animationView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        animationView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+
+        context.coordinator.animationView = animationView
+
+        Task {
+            do {
+                let dotLottie = try await DotLottieFile.named(animationName)
+                await MainActor.run {
+                    animationView.loadAnimation(from: dotLottie)
+                    animationView.loopMode = .loop
+                    animationView.animationSpeed = animationSpeed
+                    applyColors(to: animationView)
+                    context.coordinator.currentColorHex = colorHex
+                    context.coordinator.currentKeypathsCount = colorKeypaths.count
+                    animationView.play()
+                }
+            } catch {
+                print("Failed to load animation: \(error)")
+            }
+        }
+
+        return animationView
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let animationView = context.coordinator.animationView else { return }
+
+        // Only update if color or keypaths changed
+        if context.coordinator.currentColorHex != colorHex ||
+           context.coordinator.currentKeypathsCount != colorKeypaths.count {
+            applyColors(to: animationView)
+            context.coordinator.currentColorHex = colorHex
+            context.coordinator.currentKeypathsCount = colorKeypaths.count
+        }
+    }
+
+    private func applyColors(to animationView: Lottie.LottieAnimationView) {
+        guard let hex = colorHex, !colorKeypaths.isEmpty else { return }
+
         let lottieColor = hexToLottieColor(hex)
         let colorProvider = ColorValueProvider(lottieColor)
 
-        for keypath in keypaths {
+        for keypath in colorKeypaths {
             animationView.setValueProvider(colorProvider, keypath: AnimationKeypath(keypath: keypath))
         }
     }
