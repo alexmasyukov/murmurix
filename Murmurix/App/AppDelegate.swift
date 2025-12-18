@@ -176,6 +176,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self?.hotkeyManager.updateHotkeys(toggle: toggle, cancel: cancel)
                     self?.updateMenuHotkey()
                 },
+                onModelChanged: { [weak self] in
+                    self?.coordinator.restartDaemon()
+                },
                 onWindowOpen: { [weak self] in
                     self?.hotkeyManager.pause()
                 },

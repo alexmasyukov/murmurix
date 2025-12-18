@@ -10,15 +10,18 @@ struct SettingsView: View {
 
     var onDaemonToggle: ((Bool) -> Void)?
     var onHotkeysChanged: ((Hotkey, Hotkey) -> Void)?
+    var onModelChanged: (() -> Void)?
 
     init(
         isDaemonRunning: Binding<Bool>,
         onDaemonToggle: ((Bool) -> Void)? = nil,
-        onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil
+        onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil,
+        onModelChanged: (() -> Void)? = nil
     ) {
         self._isDaemonRunning = isDaemonRunning
         self.onDaemonToggle = onDaemonToggle
         self.onHotkeysChanged = onHotkeysChanged
+        self.onModelChanged = onModelChanged
     }
 
     var body: some View {
@@ -26,7 +29,8 @@ struct SettingsView: View {
             GeneralSettingsView(
                 isDaemonRunning: $isDaemonRunning,
                 onDaemonToggle: onDaemonToggle,
-                onHotkeysChanged: onHotkeysChanged
+                onHotkeysChanged: onHotkeysChanged,
+                onModelChanged: onModelChanged
             )
             .tabItem {
                 Label("General", systemImage: "gearshape")
@@ -47,23 +51,28 @@ struct SettingsView: View {
 struct GeneralSettingsView: View {
     @AppStorage("keepDaemonRunning") private var keepDaemonRunning = true
     @AppStorage("language") private var language = "ru"
+    @AppStorage("whisperModel") private var whisperModel = WhisperModel.small.rawValue
 
     @State private var toggleHotkey: Hotkey
     @State private var cancelHotkey: Hotkey
+    @State private var installedModels: Set<String> = []
 
     @Binding var isDaemonRunning: Bool
 
     var onDaemonToggle: ((Bool) -> Void)?
     var onHotkeysChanged: ((Hotkey, Hotkey) -> Void)?
+    var onModelChanged: (() -> Void)?
 
     init(
         isDaemonRunning: Binding<Bool>,
         onDaemonToggle: ((Bool) -> Void)? = nil,
-        onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil
+        onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil,
+        onModelChanged: (() -> Void)? = nil
     ) {
         self._isDaemonRunning = isDaemonRunning
         self.onDaemonToggle = onDaemonToggle
         self.onHotkeysChanged = onHotkeysChanged
+        self.onModelChanged = onModelChanged
         _toggleHotkey = State(initialValue: Settings.shared.loadToggleHotkey())
         _cancelHotkey = State(initialValue: Settings.shared.loadCancelHotkey())
     }
@@ -134,6 +143,7 @@ struct GeneralSettingsView: View {
                     Toggle("", isOn: $keepDaemonRunning)
                         .toggleStyle(.switch)
                         .labelsHidden()
+                        .transaction { $0.animation = nil }
                         .onChange(of: keepDaemonRunning) { _, newValue in
                             onDaemonToggle?(newValue)
                         }
@@ -148,7 +158,7 @@ struct GeneralSettingsView: View {
                 // Recognition Section
                 SectionHeader(title: "Recognition")
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("Language")
                             .font(.system(size: 13))
@@ -164,6 +174,50 @@ struct GeneralSettingsView: View {
                         .pickerStyle(.menu)
                         .labelsHidden()
                         .frame(width: 120)
+                        .transaction { $0.animation = nil }
+                    }
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Model")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white)
+                            Text("Larger models are more accurate but slower")
+                                .font(.system(size: 11))
+                                .foregroundColor(.gray)
+                        }
+
+                        Spacer()
+
+                        Picker("", selection: $whisperModel) {
+                            ForEach(WhisperModel.allCases, id: \.rawValue) { model in
+                                HStack {
+                                    Text(model.displayName)
+                                    if !installedModels.contains(model.rawValue) {
+                                        Text("(not installed)")
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .tag(model.rawValue)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(width: 220)
+                        .transaction { $0.animation = nil }
+                        .onChange(of: whisperModel) { _, _ in
+                            onModelChanged?()
+                        }
+                    }
+
+                    if !installedModels.contains(whisperModel) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("Model not installed. Download it first.")
+                                .foregroundColor(.orange)
+                        }
+                        .font(.system(size: 11))
                     }
                 }
                 .padding(.horizontal, 16)
@@ -176,6 +230,14 @@ struct GeneralSettingsView: View {
             }
             .padding(.top, 16)
         }
+        .onAppear {
+            loadInstalledModels()
+        }
+        .transaction { $0.animation = nil }
+    }
+
+    private func loadInstalledModels() {
+        installedModels = Set(WhisperModel.allCases.filter { $0.isInstalled }.map { $0.rawValue })
     }
 }
 

@@ -5,6 +5,50 @@
 
 import Foundation
 
+enum WhisperModel: String, CaseIterable {
+    case tiny = "tiny"
+    case base = "base"
+    case small = "small"
+    case medium = "medium"
+    case largeV2 = "large-v2"
+    case largeV3 = "large-v3"
+
+    var displayName: String {
+        switch self {
+        case .tiny: return "Tiny (fastest, ~75MB)"
+        case .base: return "Base (~140MB)"
+        case .small: return "Small (~460MB)"
+        case .medium: return "Medium (~1.5GB)"
+        case .largeV2: return "Large v2 (~3GB)"
+        case .largeV3: return "Large v3 (best, ~3GB)"
+        }
+    }
+
+    var isInstalled: Bool {
+        // Check Hugging Face cache
+        let hfCache = NSHomeDirectory() + "/.cache/huggingface/hub/models--Systran--faster-whisper-\(rawValue)"
+        let snapshotsPath = hfCache + "/snapshots"
+
+        guard FileManager.default.fileExists(atPath: snapshotsPath) else { return false }
+
+        // Check if any snapshot has model files
+        guard let snapshots = try? FileManager.default.contentsOfDirectory(atPath: snapshotsPath) else { return false }
+
+        for snapshot in snapshots {
+            let modelBin = snapshotsPath + "/\(snapshot)/model.bin"
+            let configJson = snapshotsPath + "/\(snapshot)/config.json"
+            if FileManager.default.fileExists(atPath: modelBin) || FileManager.default.fileExists(atPath: configJson) {
+                return true
+            }
+        }
+        return false
+    }
+
+    static var installedModels: [WhisperModel] {
+        allCases.filter { $0.isInstalled }
+    }
+}
+
 final class Settings: SettingsStorageProtocol {
     static let shared = Settings()
 
@@ -13,6 +57,7 @@ final class Settings: SettingsStorageProtocol {
     private let cancelHotkeyKey = "cancelHotkey"
     private let keepDaemonRunningKey = "keepDaemonRunning"
     private let languageKey = "language"
+    private let whisperModelKey = "whisperModel"
     private let aiPostProcessingEnabledKey = "aiPostProcessingEnabled"
     private let aiModelKey = "aiModel"
     private let aiPromptKey = "aiPrompt"
@@ -43,6 +88,13 @@ final class Settings: SettingsStorageProtocol {
     var language: String {
         get { defaults.string(forKey: languageKey) ?? "ru" }
         set { defaults.set(newValue, forKey: languageKey) }
+    }
+
+    // MARK: - Whisper Model Setting
+
+    var whisperModel: String {
+        get { defaults.string(forKey: whisperModelKey) ?? WhisperModel.small.rawValue }
+        set { defaults.set(newValue, forKey: whisperModelKey) }
     }
 
     // MARK: - Hotkey Settings

@@ -212,4 +212,12 @@ final class RecordingCoordinator {
             transcriptionService.stopDaemon()
         }
     }
+
+    func restartDaemon() {
+        transcriptionService.stopDaemon()
+        // Wait a bit for cleanup
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.transcriptionService.startDaemon()
+        }
+    }
 }
