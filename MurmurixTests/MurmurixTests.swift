@@ -405,9 +405,10 @@ struct GlobalHotkeyManagerTests {
     @Test func hotkeyManagerUpdatesHotkeys() {
         let manager = GlobalHotkeyManager()
         let newToggle = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey))
+        let newToggleNoAI = Hotkey(keyCode: 3, modifiers: UInt32(cmdKey) | UInt32(shiftKey))
         let newCancel = Hotkey(keyCode: 2, modifiers: UInt32(optionKey))
 
-        manager.updateHotkeys(toggle: newToggle, cancel: newCancel)
+        manager.updateHotkeys(toggle: newToggle, toggleNoAI: newToggleNoAI, cancel: newCancel)
 
         // Manager should accept the update without crashing
         #expect(manager.isRecording == false)

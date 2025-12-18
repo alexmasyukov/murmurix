@@ -108,6 +108,7 @@ final class MockSettings: SettingsStorageProtocol {
     var aiPostProcessingEnabled: Bool = false
 
     private var toggleHotkey: Hotkey = .toggleDefault
+    private var toggleNoAIHotkey: Hotkey = .toggleNoAIDefault
     private var cancelHotkey: Hotkey = .cancelDefault
 
     func loadToggleHotkey() -> Hotkey {
@@ -116,6 +117,14 @@ final class MockSettings: SettingsStorageProtocol {
 
     func saveToggleHotkey(_ hotkey: Hotkey) {
         toggleHotkey = hotkey
+    }
+
+    func loadToggleNoAIHotkey() -> Hotkey {
+        return toggleNoAIHotkey
+    }
+
+    func saveToggleNoAIHotkey(_ hotkey: Hotkey) {
+        toggleNoAIHotkey = hotkey
     }
 
     func loadCancelHotkey() -> Hotkey {

@@ -12,7 +12,7 @@ class DaemonStatusModel: ObservableObject {
 
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onDaemonToggle: ((Bool) -> Void)?
-    var onHotkeysChanged: ((Hotkey, Hotkey) -> Void)?
+    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
     var onWindowOpen: (() -> Void)?
     var onWindowClose: (() -> Void)?
@@ -22,7 +22,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     convenience init(
         isDaemonRunning: Bool,
         onDaemonToggle: @escaping (Bool) -> Void,
-        onHotkeysChanged: @escaping (Hotkey, Hotkey) -> Void,
+        onHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey) -> Void,
         onModelChanged: @escaping () -> Void = {},
         onWindowOpen: @escaping () -> Void = {},
         onWindowClose: @escaping () -> Void = {}

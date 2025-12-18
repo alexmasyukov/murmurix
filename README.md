@@ -86,10 +86,13 @@ The app requires:
 | Action | Default | Menu |
 |--------|---------|------|
 | Toggle Recording | `⌃D` | Shown in menu |
+| Record without AI | `⌃⇧D` | Shown in menu |
 | Cancel Recording | `Esc` | — |
 | History | `⌘H` | History... |
 | Settings | `⌘,` | Settings... |
 | Quit | `⌘Q` | Quit |
+
+> **Tip:** Use "Record without AI" when you want fast transcription without AI post-processing, even when AI is enabled globally.
 
 Customize hotkeys in **Settings** (⌘,)
 
@@ -137,6 +140,7 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 | Setting | Description |
 |---------|-------------|
 | Toggle Recording | Customizable hotkey (default: `⌃D`) |
+| Record without AI | Customizable hotkey (default: `⌃⇧D`) — skips AI post-processing |
 | Cancel Recording | Customizable hotkey (default: `Esc`) |
 | Keep model in memory | Faster transcription, uses ~500MB RAM |
 | Language | Russian, English, or Auto-detect |
@@ -233,7 +237,7 @@ faster-whisper supports 99 languages. Currently exposed in UI:
 
 ## Testing
 
-The project includes 56 unit tests with mocks for all services:
+The project includes 114 unit tests with mocks for all services:
 
 ```bash
 # Run tests in Xcode

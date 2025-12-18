@@ -90,7 +90,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager = GlobalHotkeyManager()
         hotkeyManager.onToggleRecording = { [weak self] in
             DispatchQueue.main.async {
-                self?.toggleRecording()
+                self?.toggleRecording(skipAI: false)
+            }
+        }
+        hotkeyManager.onToggleRecordingNoAI = { [weak self] in
+            DispatchQueue.main.async {
+                self?.toggleRecording(skipAI: true)
             }
         }
         hotkeyManager.onCancelRecording = { [weak self] in
@@ -103,11 +108,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Recording Actions
 
-    private func toggleRecording() {
+    private func toggleRecording(skipAI: Bool = false) {
         if coordinator.state == .idle {
             shouldPasteDirectly = TextPaster.isTextFieldFocused()
         }
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(skipAI: skipAI)
     }
 
     private func cancelRecording() {
@@ -126,7 +131,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: MenuBarManagerDelegate {
     func menuBarDidRequestToggleRecording() {
-        toggleRecording()
+        toggleRecording(skipAI: false)
+    }
+
+    func menuBarDidRequestToggleRecordingNoAI() {
+        toggleRecording(skipAI: true)
     }
 
     func menuBarDidRequestOpenHistory() {
@@ -139,8 +148,8 @@ extension AppDelegate: MenuBarManagerDelegate {
             onDaemonToggle: { [weak self] enabled in
                 self?.coordinator.setDaemonEnabled(enabled)
             },
-            onHotkeysChanged: { [weak self] toggle, cancel in
-                self?.hotkeyManager.updateHotkeys(toggle: toggle, cancel: cancel)
+            onHotkeysChanged: { [weak self] toggle, toggleNoAI, cancel in
+                self?.hotkeyManager.updateHotkeys(toggle: toggle, toggleNoAI: toggleNoAI, cancel: cancel)
                 self?.menuBarManager.updateHotkeyDisplay()
             },
             onModelChanged: { [weak self] in

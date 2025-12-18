@@ -8,6 +8,7 @@ import Carbon
 
 protocol MenuBarManagerDelegate: AnyObject {
     func menuBarDidRequestToggleRecording()
+    func menuBarDidRequestToggleRecordingNoAI()
     func menuBarDidRequestOpenHistory()
     func menuBarDidRequestOpenSettings()
     func menuBarDidRequestQuit()
@@ -18,6 +19,7 @@ final class MenuBarManager {
 
     private var statusItem: NSStatusItem!
     private var toggleMenuItem: NSMenuItem?
+    private var toggleNoAIMenuItem: NSMenuItem?
     private let settings: SettingsStorageProtocol
 
     init(settings: SettingsStorageProtocol = Settings.shared) {
@@ -30,8 +32,12 @@ final class MenuBarManager {
     }
 
     func updateHotkeyDisplay() {
-        guard let menuItem = toggleMenuItem else { return }
-        applyHotkeyToMenuItem(menuItem)
+        if let menuItem = toggleMenuItem {
+            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleHotkey())
+        }
+        if let menuItem = toggleNoAIMenuItem {
+            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleNoAIHotkey())
+        }
     }
 
     // MARK: - Private Setup
@@ -53,8 +59,17 @@ final class MenuBarManager {
             keyEquivalent: ""
         )
         toggleMenuItem?.target = self
-        applyHotkeyToMenuItem(toggleMenuItem!)
+        applyHotkeyToMenuItem(toggleMenuItem!, hotkey: settings.loadToggleHotkey())
         menu.addItem(toggleMenuItem!)
+
+        toggleNoAIMenuItem = NSMenuItem(
+            title: "Record without AI",
+            action: #selector(handleToggleRecordingNoAI),
+            keyEquivalent: ""
+        )
+        toggleNoAIMenuItem?.target = self
+        applyHotkeyToMenuItem(toggleNoAIMenuItem!, hotkey: settings.loadToggleNoAIHotkey())
+        menu.addItem(toggleNoAIMenuItem!)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -87,9 +102,7 @@ final class MenuBarManager {
         statusItem.menu = menu
     }
 
-    private func applyHotkeyToMenuItem(_ menuItem: NSMenuItem) {
-        let hotkey = settings.loadToggleHotkey()
-
+    private func applyHotkeyToMenuItem(_ menuItem: NSMenuItem, hotkey: Hotkey) {
         if let keyString = Hotkey.keyCodeToName(hotkey.keyCode)?.lowercased() {
             menuItem.keyEquivalent = keyString
         }
@@ -106,6 +119,10 @@ final class MenuBarManager {
 
     @objc private func handleToggleRecording() {
         delegate?.menuBarDidRequestToggleRecording()
+    }
+
+    @objc private func handleToggleRecordingNoAI() {
+        delegate?.menuBarDidRequestToggleRecordingNoAI()
     }
 
     @objc private func handleOpenHistory() {

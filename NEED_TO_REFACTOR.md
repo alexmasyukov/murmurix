@@ -281,3 +281,4 @@ For reference, here's what has been refactored:
 - ✅ Applied `Layout`, `Typography`, `AppColors` constants to all settings views
 - ✅ Created `Logger.swift` with `os.log` integration (replaced 22 print statements)
 - ✅ Created `WindowPositioner.swift` for centralized window positioning
+- ✅ Added 58 new tests (114 total): MurmurixError, AppConstants, WindowPositioner, Logger, WhisperModel, AIModel, voice activity, AI post-processing, skip AI feature

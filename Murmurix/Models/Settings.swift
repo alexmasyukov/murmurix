@@ -14,6 +14,7 @@ final class Settings: SettingsStorageProtocol {
 
     private enum Keys {
         static let toggleHotkey = "toggleHotkey"
+        static let toggleNoAIHotkey = "toggleNoAIHotkey"
         static let cancelHotkey = "cancelHotkey"
         static let keepDaemonRunning = "keepDaemonRunning"
         static let language = "language"
@@ -73,6 +74,20 @@ final class Settings: SettingsStorageProtocol {
     func saveToggleHotkey(_ hotkey: Hotkey) {
         if let data = try? JSONEncoder().encode(hotkey) {
             defaults.set(data, forKey: Keys.toggleHotkey)
+        }
+    }
+
+    func loadToggleNoAIHotkey() -> Hotkey {
+        guard let data = defaults.data(forKey: Keys.toggleNoAIHotkey),
+              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
+            return .toggleNoAIDefault
+        }
+        return hotkey
+    }
+
+    func saveToggleNoAIHotkey(_ hotkey: Hotkey) {
+        if let data = try? JSONEncoder().encode(hotkey) {
+            defaults.set(data, forKey: Keys.toggleNoAIHotkey)
         }
     }
 
