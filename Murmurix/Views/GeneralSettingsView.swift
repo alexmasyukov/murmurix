@@ -12,9 +12,8 @@ struct GeneralSettingsView: View {
 
     @State private var toggleHotkey: Hotkey
     @State private var cancelHotkey: Hotkey
-    @State private var installedModels: Set<String> = []
-    @State private var downloadStatus: DownloadStatus = .idle
 
+    @StateObject private var viewModel = GeneralSettingsViewModel()
     @Binding var isDaemonRunning: Bool
 
     var onDaemonToggle: ((Bool) -> Void)?
@@ -46,7 +45,8 @@ struct GeneralSettingsView: View {
             .padding(.top, 16)
         }
         .onAppear {
-            loadInstalledModels()
+            viewModel.onModelChanged = onModelChanged
+            viewModel.loadInstalledModels()
         }
         .transaction { $0.animation = nil }
     }
@@ -188,7 +188,7 @@ struct GeneralSettingsView: View {
                 ForEach(WhisperModel.allCases, id: \.rawValue) { model in
                     HStack {
                         Text(model.displayName)
-                        if !installedModels.contains(model.rawValue) {
+                        if !viewModel.isModelInstalled(model.rawValue) {
                             Text("(not installed)")
                                 .foregroundColor(.secondary)
                         }
@@ -201,19 +201,16 @@ struct GeneralSettingsView: View {
             .frame(width: 220)
             .transaction { $0.animation = nil }
             .onChange(of: whisperModel) { _, newValue in
-                downloadStatus = .idle
-                if let model = WhisperModel(rawValue: newValue), model.isInstalled {
-                    onModelChanged?()
-                }
+                viewModel.handleModelChange(newValue)
             }
         }
     }
 
     @ViewBuilder
     private var modelDownloadStatus: some View {
-        if !installedModels.contains(whisperModel) {
+        if !viewModel.isModelInstalled(whisperModel) {
             VStack(alignment: .leading, spacing: 8) {
-                switch downloadStatus {
+                switch viewModel.downloadStatus {
                 case .idle:
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -222,7 +219,7 @@ struct GeneralSettingsView: View {
                             .foregroundColor(.orange)
                         Spacer()
                         Button("Download") {
-                            startDownload()
+                            viewModel.startDownload(for: whisperModel)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
@@ -235,7 +232,7 @@ struct GeneralSettingsView: View {
                                 .foregroundColor(.secondary)
                             Spacer()
                             Button("Cancel") {
-                                cancelDownload()
+                                viewModel.cancelDownload()
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -261,7 +258,7 @@ struct GeneralSettingsView: View {
                             .lineLimit(2)
                         Spacer()
                         Button("Retry") {
-                            startDownload()
+                            viewModel.startDownload(for: whisperModel)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -270,34 +267,5 @@ struct GeneralSettingsView: View {
             }
             .font(.system(size: 11))
         }
-    }
-
-    // MARK: - Actions
-
-    private func loadInstalledModels() {
-        installedModels = Set(WhisperModel.allCases.filter { $0.isInstalled }.map { $0.rawValue })
-    }
-
-    private func startDownload() {
-        downloadStatus = .downloading
-
-        ModelDownloadService.shared.downloadModel(whisperModel) { status in
-            downloadStatus = status
-
-            if case .completed = status {
-                loadInstalledModels()
-                onModelChanged?()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    if case .completed = downloadStatus {
-                        downloadStatus = .idle
-                    }
-                }
-            }
-        }
-    }
-
-    private func cancelDownload() {
-        ModelDownloadService.shared.cancelDownload()
-        downloadStatus = .idle
     }
 }
