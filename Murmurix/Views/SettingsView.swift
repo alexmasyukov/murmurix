@@ -187,6 +187,13 @@ struct AISettingsView: View {
 
     @State private var apiKey: String = ""
     @State private var prompt: String = ""
+    @State private var isTesting = false
+    @State private var testResult: TestResult?
+
+    enum TestResult {
+        case success
+        case failure(String)
+    }
 
     var body: some View {
         ScrollView {
@@ -224,9 +231,42 @@ struct AISettingsView: View {
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
 
-                        TextField("sk-ant-...", text: $apiKey)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13, design: .monospaced))
+                        HStack(spacing: 8) {
+                            TextField("sk-ant-...", text: $apiKey)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 13, design: .monospaced))
+
+                            Button(action: testConnection) {
+                                if isTesting {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .frame(width: 16, height: 16)
+                                } else {
+                                    Text("Test")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(apiKey.isEmpty || isTesting)
+                        }
+
+                        if let result = testResult {
+                            HStack(spacing: 4) {
+                                switch result {
+                                case .success:
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                    Text("Connection successful")
+                                        .foregroundColor(.green)
+                                case .failure(let error):
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.red)
+                                    Text(error)
+                                        .foregroundColor(.red)
+                                }
+                            }
+                            .font(.system(size: 11))
+                        }
                     }
 
                     HStack {
@@ -294,9 +334,71 @@ struct AISettingsView: View {
         }
         .onChange(of: apiKey) { _, newValue in
             Settings.shared.claudeApiKey = newValue
+            testResult = nil
         }
         .onChange(of: prompt) { _, newValue in
             Settings.shared.aiPrompt = newValue
+        }
+    }
+
+    private func testConnection() {
+        isTesting = true
+        testResult = nil
+
+        Task {
+            do {
+                let result = try await testApiKey(apiKey)
+                await MainActor.run {
+                    isTesting = false
+                    testResult = result ? .success : .failure("Invalid response")
+                }
+            } catch {
+                await MainActor.run {
+                    isTesting = false
+                    testResult = .failure(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func testApiKey(_ key: String) async throws -> Bool {
+        let requestBody: [String: Any] = [
+            "model": "claude-3-5-haiku-latest",
+            "max_tokens": 10,
+            "messages": [
+                ["role": "user", "content": "Hi"]
+            ]
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            throw AIPostProcessingError.invalidResponse
+        }
+
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(key, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.httpBody = jsonData
+        request.timeoutInterval = 30
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIPostProcessingError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 200 {
+            return true
+        } else if httpResponse.statusCode == 401 {
+            throw AIPostProcessingError.apiError("Invalid API key")
+        } else {
+            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = errorJson["error"] as? [String: Any],
+               let message = error["message"] as? String {
+                throw AIPostProcessingError.apiError(message)
+            }
+            throw AIPostProcessingError.apiError("HTTP \(httpResponse.statusCode)")
         }
     }
 }
