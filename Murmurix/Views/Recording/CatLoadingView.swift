@@ -61,21 +61,18 @@ struct CatLoadingView: View {
         "eyes.Shape 2.Fill 1.Color"
     ]
 
-    private var colorHex: String {
+    private var colorReplacements: [ColorReplacement] {
         switch state {
         case .transcribing:
-            return "#777777"
+            return [
+                ColorReplacement(colorHex: "#777777", keypaths: bodyKeypaths),
+                ColorReplacement(colorHex: "#777777", keypaths: outlineKeypaths)
+            ]
         case .processing:
-            return "#CB7C5E"
-        }
-    }
-
-    private var colorKeypaths: [String] {
-        switch state {
-        case .transcribing:
-            return bodyKeypaths + outlineKeypaths  // All grey
-        case .processing:
-            return bodyKeypaths  // Only body orange, outline stays default
+            return [
+                ColorReplacement(colorHex: "#CB7C5E", keypaths: bodyKeypaths),
+                ColorReplacement(colorHex: "#1B1616", keypaths: outlineKeypaths)  // Original black
+            ]
         }
     }
 
@@ -84,16 +81,17 @@ struct CatLoadingView: View {
     }
 
     var body: some View {
+        let _ = print("🐱 CatLoadingView body, state: \(state), showLabel: \(showLabel)")
         HStack(spacing: 6) {
             AnimatedLottieView(
                 animationName: animationName,
                 animationSpeed: animationSpeed,
-                colorHex: colorHex,
-                colorKeypaths: colorKeypaths
+                colorReplacements: colorReplacements
             )
             .frame(width: 42, height: 42)
-           
+
             if showLabel {
+                let _ = print("🐱 Showing Claude label")
                 Text("Claude")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.white.opacity(0.7))

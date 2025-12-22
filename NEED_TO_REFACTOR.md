@@ -282,3 +282,8 @@ For reference, here's what has been refactored:
 - ✅ Created `Logger.swift` with `os.log` integration (replaced 22 print statements)
 - ✅ Created `WindowPositioner.swift` for centralized window positioning
 - ✅ Added 58 new tests (114 total): MurmurixError, AppConstants, WindowPositioner, Logger, WhisperModel, AIModel, voice activity, AI post-processing, skip AI feature
+- ✅ Integrated Lottie library for animated cat loading states
+- ✅ Created `LottieView.swift` (NSViewRepresentable wrapper with color replacement)
+- ✅ Created `CatLoadingView.swift` (unified transcribing/processing states)
+- ✅ Created app icon (waveform, white on black with rounded corners)
+- ✅ Released Version 1.0

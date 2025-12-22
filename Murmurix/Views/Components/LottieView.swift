@@ -6,20 +6,28 @@
 import SwiftUI
 import Lottie
 
+struct ColorReplacement: Equatable {
+    let colorHex: String
+    let keypaths: [String]
+}
+
 struct AnimatedLottieView: NSViewRepresentable {
     let animationName: String
     var animationSpeed: Double = 1.0
-    var colorHex: String? = nil
-    var colorKeypaths: [String] = []
+    var colorReplacements: [ColorReplacement] = []
 
     class Coordinator {
         var animationView: Lottie.LottieAnimationView?
-        var currentColorHex: String?
-        var currentKeypathsCount: Int = 0
+        var isLoaded = false
+        var lastColorSignature: String = ""
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
+    }
+
+    private var colorSignature: String {
+        colorReplacements.map { "\($0.colorHex):\($0.keypaths.count)" }.joined(separator: "|")
     }
 
     func makeNSView(context: Context) -> NSView {
@@ -40,8 +48,8 @@ struct AnimatedLottieView: NSViewRepresentable {
                     animationView.loopMode = .loop
                     animationView.animationSpeed = animationSpeed
                     applyColors(to: animationView)
-                    context.coordinator.currentColorHex = colorHex
-                    context.coordinator.currentKeypathsCount = colorKeypaths.count
+                    context.coordinator.isLoaded = true
+                    context.coordinator.lastColorSignature = colorSignature
                     animationView.play()
                 }
             } catch {
@@ -53,25 +61,24 @@ struct AnimatedLottieView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        guard let animationView = context.coordinator.animationView else { return }
+        guard let animationView = context.coordinator.animationView,
+              context.coordinator.isLoaded else { return }
 
-        // Only update if color or keypaths changed
-        if context.coordinator.currentColorHex != colorHex ||
-           context.coordinator.currentKeypathsCount != colorKeypaths.count {
+        let newSignature = colorSignature
+        if context.coordinator.lastColorSignature != newSignature {
             applyColors(to: animationView)
-            context.coordinator.currentColorHex = colorHex
-            context.coordinator.currentKeypathsCount = colorKeypaths.count
+            context.coordinator.lastColorSignature = newSignature
         }
     }
 
     private func applyColors(to animationView: Lottie.LottieAnimationView) {
-        guard let hex = colorHex, !colorKeypaths.isEmpty else { return }
+        for replacement in colorReplacements {
+            let lottieColor = hexToLottieColor(replacement.colorHex)
+            let colorProvider = ColorValueProvider(lottieColor)
 
-        let lottieColor = hexToLottieColor(hex)
-        let colorProvider = ColorValueProvider(lottieColor)
-
-        for keypath in colorKeypaths {
-            animationView.setValueProvider(colorProvider, keypath: AnimationKeypath(keypath: keypath))
+            for keypath in replacement.keypaths {
+                animationView.setValueProvider(colorProvider, keypath: AnimationKeypath(keypath: keypath))
+            }
         }
     }
 
@@ -93,8 +100,9 @@ struct AnimatedLottieView: NSViewRepresentable {
 #Preview {
     AnimatedLottieView(
         animationName: "LoadingCat",
-        colorHex: "#777777",
-        colorKeypaths: ["**.Fill 1.Color", "**.Stroke 1.Color"]
+        colorReplacements: [
+            ColorReplacement(colorHex: "#777777", keypaths: ["**.Fill 1.Color", "**.Stroke 1.Color"])
+        ]
     )
     .frame(width: 100, height: 100)
 }

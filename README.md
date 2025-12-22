@@ -2,14 +2,17 @@
 
 A native macOS menubar app for local voice-to-text transcription using [faster-whisper](https://github.com/guillaumekln/faster-whisper).
 
+**Version 1.0** | 6800+ lines of Swift | 57 files | 114 tests
+
 ## Features
 
 - **Global Hotkeys** — Trigger recording from anywhere with customizable shortcuts
 - **Local Processing** — All transcription happens on-device, no cloud services
-- **AI Post-Processing** — Optional Claude 4.5 API integration to fix technical terms (with structured outputs)
+- **AI Post-Processing** — Optional Claude API integration to fix technical terms (with structured outputs)
 - **In-App Model Download** — Download Whisper models directly from Settings with progress indicator
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
 - **Multiple Models** — Choose from 6 Whisper models (tiny to large-v3)
+- **Animated UI** — Lottie cat animation during transcription/processing states
 - **Dynamic Island UI** — Minimal floating window with voice-reactive equalizer
 - **Voice Activity Detection** — Automatically skips transcription if no voice detected
 - **Smart Text Insertion** — Pastes directly into text fields, shows result window otherwise
@@ -155,7 +158,7 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 | Model | Haiku 4.5 (fast), Sonnet 4.5, or Opus 4.5 (best) |
 | Prompt | Customizable instructions for term replacement |
 
-**Claude 4.5 Models:**
+**Claude Models:**
 - `claude-haiku-4-5` — Fastest, best for simple corrections
 - `claude-sonnet-4-5` — Balanced speed and quality
 - `claude-opus-4-5` — Highest quality
