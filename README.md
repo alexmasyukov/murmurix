@@ -7,7 +7,7 @@ A native macOS menubar app for local voice-to-text transcription using [faster-w
 ## Features
 
 - **Global Hotkeys** — Trigger recording from anywhere with customizable shortcuts
-- **Local Processing** — All transcription happens on-device, no cloud services
+- **Local or Cloud Processing** — Choose between local Whisper or OpenAI cloud transcription
 - **AI Post-Processing** — Optional Claude API integration to fix technical terms (with structured outputs)
 - **In-App Model Download** — Download Whisper models directly from Settings with progress indicator
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
@@ -88,14 +88,14 @@ The app requires:
 
 | Action | Default | Menu |
 |--------|---------|------|
-| Toggle Recording | `⌃D` | Shown in menu |
-| Record without AI | `⌃⇧D` | Shown in menu |
+| Record without AI | `⌃D` | Shown in menu |
+| Toggle Recording (with AI) | `⌃⇧D` | Shown in menu |
 | Cancel Recording | `Esc` | — |
 | History | `⌘H` | History... |
 | Settings | `⌘,` | Settings... |
 | Quit | `⌘Q` | Quit |
 
-> **Tip:** Use "Record without AI" when you want fast transcription without AI post-processing, even when AI is enabled globally.
+> **Tip:** Use `⌃D` for quick transcription without AI post-processing. Use `⌃⇧D` when you need AI to fix technical terms.
 
 Customize hotkeys in **Settings** (⌘,)
 
@@ -142,12 +142,14 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 ### General
 | Setting | Description |
 |---------|-------------|
-| Toggle Recording | Customizable hotkey (default: `⌃D`) |
-| Record without AI | Customizable hotkey (default: `⌃⇧D`) — skips AI post-processing |
+| Record without AI | Customizable hotkey (default: `⌃D`) — skips AI post-processing |
+| Toggle Recording | Customizable hotkey (default: `⌃⇧D`) — with AI if enabled |
 | Cancel Recording | Customizable hotkey (default: `Esc`) |
-| Keep model in memory | Faster transcription, uses ~500MB RAM |
+| Recognition Mode | Local (Whisper) or Cloud (OpenAI) |
+| Keep model in memory | For local mode: faster transcription, uses ~500MB RAM |
 | Language | Russian, English, or Auto-detect |
-| Model | Whisper model (restarts daemon on change) |
+| Model | Whisper model for local, or GPT-4o model for cloud |
+| OpenAI API Key | Required for cloud mode (stored in Keychain) |
 
 ### AI Processing
 | Setting | Description |

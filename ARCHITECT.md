@@ -2,7 +2,7 @@
 
 ## Overview
 
-Murmurix is a native macOS menubar application for local voice-to-text transcription. The app follows a layered architecture with clear separation of concerns.
+Murmurix is a native macOS menubar application for voice-to-text transcription with local (Whisper) or cloud (OpenAI) processing. The app follows a layered architecture with clear separation of concerns.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -30,9 +30,9 @@ Murmurix is a native macOS menubar application for local voice-to-text transcrip
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │   Python    │  │ Claude API  │  │     Hugging Face        │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-│  ┌─────────────┐                                                 │
-│  │   Lottie    │                                                 │
-│  └─────────────┘                                                 │
+│  ┌─────────────┐  ┌─────────────┐                               │
+│  │   Lottie    │  │ OpenAI API  │                               │
+│  └─────────────┘  └─────────────┘                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,7 +53,8 @@ Murmurix/
 │   ├── Hotkey.swift             # Hotkey model with key codes
 │   ├── TranscriptionRecord.swift # History record
 │   ├── WhisperModel.swift       # Whisper model enum
-│   └── AIModel.swift            # Claude model enum
+│   ├── AIModel.swift            # Claude model enum
+│   └── OpenAITranscriptionModel.swift # OpenAI transcription models
 │
 ├── ViewModels/                   # Presentation logic
 │   ├── HistoryViewModel.swift   # History list logic
@@ -99,6 +100,8 @@ Murmurix/
 │   │
 │   ├── AIPostProcessingService.swift # Claude post-processing
 │   ├── AnthropicAPIClient.swift # Claude API client
+│   ├── OpenAITranscriptionService.swift # OpenAI Audio API client
+│   ├── AudioCompressor.swift    # WAV to M4A compression
 │   │
 │   ├── GlobalHotkeyManager.swift # CGEvent tap for shortcuts
 │   ├── TextPaster.swift         # Clipboard & paste
@@ -174,14 +177,15 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 
 ### Models Layer
 
-#### Settings (120 lines)
+#### Settings (160 lines)
 **Role**: UserDefaults wrapper with type safety
 
 **Manages**:
 - Core: `keepDaemonRunning`, `language`, `whisperModel`
+- Transcription: `transcriptionMode` (local/cloud), `openaiTranscriptionModel`
 - Hotkeys: JSON encode/decode for toggle/cancel
 - AI: `aiPostProcessingEnabled`, `aiModel`, `aiPrompt`
-- API key via KeychainService
+- API keys via KeychainService (Claude, OpenAI)
 
 **Protocol**: `SettingsStorageProtocol`
 
@@ -207,6 +211,12 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 **Role**: Claude model definitions
 
 **Cases**: haiku, sonnet, opus
+**Features**: Model IDs, display names
+
+#### OpenAITranscriptionModel (20 lines)
+**Role**: OpenAI transcription model definitions
+
+**Cases**: gpt4oTranscribe, gpt4oMiniTranscribe
 **Features**: Model IDs, display names
 
 ---
@@ -278,16 +288,38 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 
 **Protocol**: `AudioRecorderProtocol`
 
-#### TranscriptionService (204 lines)
+#### TranscriptionService (220 lines)
 **Role**: Transcription orchestration
 
 **Modes**:
-1. **Daemon mode** — via Unix socket to Python daemon
-2. **Direct mode** — spawn Python process
+1. **Cloud mode** — via OpenAI Audio API (gpt-4o-transcribe)
+2. **Daemon mode** — via Unix socket to Python daemon
+3. **Direct mode** — spawn Python process (fallback)
 
-**Dependencies**: DaemonManager, PythonResolver
+**Dependencies**: DaemonManager, PythonResolver, OpenAITranscriptionService
 
 **Protocol**: `TranscriptionServiceProtocol`
+
+#### OpenAITranscriptionService (200 lines)
+**Role**: OpenAI Audio API client
+
+**Responsibilities**:
+- Transcribe audio via OpenAI gpt-4o-transcribe
+- Validate API keys with test transcription
+- Handle multipart/form-data uploads
+
+**Features**:
+- Uses M4A format for efficient upload (~10x smaller than WAV)
+- Includes technical terms prompt for better recognition
+- Supports gpt-4o-transcribe and gpt-4o-mini-transcribe models
+
+#### AudioCompressor (88 lines)
+**Role**: Audio compression for cloud upload
+
+**Responsibilities**:
+- Compress WAV to M4A (AAC) format
+- ~10x size reduction
+- Uses AVAssetExportSession
 
 #### DaemonManager (168 lines)
 **Role**: Python daemon process lifecycle

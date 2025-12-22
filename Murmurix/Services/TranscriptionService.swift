@@ -29,11 +29,38 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     }
 
     func transcribe(audioURL: URL, useDaemon: Bool = true) async throws -> String {
+        let mode = Settings.shared.transcriptionMode
+
+        // Cloud mode - use OpenAI API
+        if mode == "cloud" {
+            return try await transcribeViaOpenAI(audioURL: audioURL)
+        }
+
+        // Local mode - use daemon or direct
         if useDaemon && isDaemonRunning {
             return try await transcribeViaDaemon(audioURL: audioURL)
         } else {
             return try await transcribeDirectly(audioURL: audioURL)
         }
+    }
+
+    // MARK: - OpenAI Transcription
+
+    private func transcribeViaOpenAI(audioURL: URL) async throws -> String {
+        let apiKey = Settings.shared.openaiApiKey
+        guard !apiKey.isEmpty else {
+            throw MurmurixError.transcription(.failed("OpenAI API key not set"))
+        }
+
+        let model = Settings.shared.openaiTranscriptionModel
+        Logger.Transcription.info("OpenAI mode, model=\(model), audio=\(audioURL.path)")
+
+        return try await OpenAITranscriptionService.shared.transcribe(
+            audioURL: audioURL,
+            language: language,
+            model: model,
+            apiKey: apiKey
+        )
     }
 
     // MARK: - Daemon Transcription

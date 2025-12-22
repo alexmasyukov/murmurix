@@ -134,13 +134,21 @@ final class RecordingCoordinator {
 
             do {
                 // Compress WAV to M4A for efficient storage/transfer
-                // (Whisper still uses WAV, but we keep compressed copy)
                 let compressedURL = try? await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
                 if let compressedURL = compressedURL {
                     Logger.Audio.info("Compressed audio saved: \(compressedURL.lastPathComponent)")
                 }
 
-                let transcribedText = try await service.transcribe(audioURL: audioURL, useDaemon: useDaemon)
+                // For cloud mode use compressed M4A (faster upload), for local use WAV
+                let transcriptionURL: URL
+                if self.settings.transcriptionMode == "cloud", let compressed = compressedURL {
+                    transcriptionURL = compressed
+                    Logger.Transcription.info("Using M4A for cloud transcription")
+                } else {
+                    transcriptionURL = audioURL
+                }
+
+                let transcribedText = try await service.transcribe(audioURL: transcriptionURL, useDaemon: useDaemon)
 
                 // Check if cancelled
                 if Task.isCancelled { return }
