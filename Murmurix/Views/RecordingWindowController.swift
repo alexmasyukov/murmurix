@@ -94,8 +94,22 @@ class RecordingWindowController: NSWindowController {
         )
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.layer?.backgroundColor = .clear
+        if #available(macOS 13.0, *) {
+            hostingView.sizingOptions = [.intrinsicContentSize]
+        }
         window?.contentView = hostingView
-        recenterWindow()
+        updateWindowSize()
+    }
+
+    private func updateWindowSize() {
+        guard let window = window, let hostingView = window.contentView as? NSHostingView<CatLoadingContentView> else { return }
+        let size = hostingView.fittingSize
+        let origin = CGPoint(
+            x: window.frame.midX - size.width / 2,
+            y: window.frame.midY - size.height / 2
+        )
+        window.setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
+        WindowPositioner.positionTopCenter(window)
     }
 
     func showProcessing() {
@@ -103,7 +117,12 @@ class RecordingWindowController: NSWindowController {
         // If we already have the cat view, just update the state
         if let loadingState = catLoadingState {
             print("🐱 Updating state to .processing")
+            loadingState.objectWillChange.send()
             loadingState.state = .processing
+            // Update window size after SwiftUI updates
+            DispatchQueue.main.async { [weak self] in
+                self?.updateWindowSize()
+            }
         } else {
             // Fallback: create new view
             let loadingState = CatLoadingState()
@@ -118,9 +137,12 @@ class RecordingWindowController: NSWindowController {
             )
             let hostingView = NSHostingView(rootView: contentView)
             hostingView.layer?.backgroundColor = .clear
+            if #available(macOS 13.0, *) {
+                hostingView.sizingOptions = [.intrinsicContentSize]
+            }
             window?.contentView = hostingView
+            updateWindowSize()
         }
-        recenterWindow()
     }
 
     private func recenterWindow() {

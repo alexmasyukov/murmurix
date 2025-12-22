@@ -30,6 +30,9 @@ Murmurix is a native macOS menubar application for local voice-to-text transcrip
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │   Python    │  │ Claude API  │  │     Hugging Face        │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+│  ┌─────────────┐                                                 │
+│  │   Lottie    │                                                 │
+│  └─────────────┘                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -69,8 +72,7 @@ Murmurix/
 │   │   ├── RecordingView.swift
 │   │   ├── RecordingTimer.swift
 │   │   ├── EqualizerView.swift
-│   │   ├── TranscribingView.swift
-│   │   ├── ProcessingView.swift
+│   │   ├── CatLoadingView.swift  # Lottie cat animation (transcribing/processing)
 │   │   └── RecordingComponents.swift
 │   │
 │   ├── History/                 # History UI components
@@ -79,6 +81,7 @@ Murmurix/
 │   │   └── HistoryDetailView.swift
 │   │
 │   ├── Components/              # Reusable components
+│   │   ├── LottieView.swift     # Animated Lottie wrapper (NSViewRepresentable)
 │   │   ├── SectionHeader.swift
 │   │   └── SettingsStyles.swift
 │   │
@@ -499,12 +502,13 @@ init(
 
 | Category | Files | Total Lines |
 |----------|-------|-------------|
-| App | 6 | ~630 |
-| Models | 5 | ~296 |
-| ViewModels | 3 | ~195 |
-| Views | 18 | ~2,100 |
-| Services | 15 | ~1,580 |
-| **Total** | **47** | **~4,800** |
+| App | 6 | ~700 |
+| Models | 5 | ~300 |
+| ViewModels | 3 | ~200 |
+| Views | 20 | ~2,400 |
+| Services | 16 | ~1,700 |
+| Tests | 5 | ~1,700 |
+| **Total** | **57** | **~6,800** |
 
 ---
 

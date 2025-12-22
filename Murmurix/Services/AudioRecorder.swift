@@ -68,15 +68,16 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
         let fileURL = tempDir.appendingPathComponent(fileName)
         currentRecordingURL = fileURL
 
-        // WAV format settings optimized for Whisper
+        // WAV format settings - high quality for better listening
+        // Whisper will downsample to 16kHz internally
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVSampleRateKey: 16000,
+            AVSampleRateKey: 44100,  // CD quality for better listening
             AVNumberOfChannelsKey: 1,
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
             AVLinearPCMIsBigEndianKey: false,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            AVEncoderAudioQualityKey: AVAudioQuality.max.rawValue
         ]
 
         do {

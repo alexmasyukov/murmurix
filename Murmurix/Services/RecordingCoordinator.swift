@@ -82,7 +82,7 @@ final class RecordingCoordinator {
 
         // Clean up audio file
         if let audioURL = currentAudioURL {
-            try? FileManager.default.removeItem(at: audioURL)
+            // try? FileManager.default.removeItem(at: audioURL)  // DEBUG: keep audio files
             currentAudioURL = nil
         }
 
@@ -109,7 +109,7 @@ final class RecordingCoordinator {
         // Skip transcription if no voice was detected (prevents Whisper hallucinations)
         guard hadVoice else {
             state = .idle
-            try? FileManager.default.removeItem(at: audioURL)
+            // try? FileManager.default.removeItem(at: audioURL)  // DEBUG: keep audio files
             Logger.Transcription.info("No voice activity detected, skipping transcription")
             delegate?.recordingDidStopWithoutVoice()
             return
@@ -133,6 +133,13 @@ final class RecordingCoordinator {
             guard let self = self else { return }
 
             do {
+                // Compress WAV to M4A for efficient storage/transfer
+                // (Whisper still uses WAV, but we keep compressed copy)
+                let compressedURL = try? await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
+                if let compressedURL = compressedURL {
+                    Logger.Audio.info("Compressed audio saved: \(compressedURL.lastPathComponent)")
+                }
+
                 let transcribedText = try await service.transcribe(audioURL: audioURL, useDaemon: useDaemon)
 
                 // Check if cancelled
@@ -173,7 +180,7 @@ final class RecordingCoordinator {
                     self.historyService.save(record: record)
 
                     // Delete audio file
-                    try? FileManager.default.removeItem(at: audioURL)
+                    // try? FileManager.default.removeItem(at: audioURL)  // DEBUG: keep audio files
 
                     self.delegate?.transcriptionDidComplete(text: resultText, duration: duration, recordId: record.id)
                 }
@@ -187,7 +194,7 @@ final class RecordingCoordinator {
                     self.transcriptionTask = nil
 
                     // Delete audio file even on error
-                    try? FileManager.default.removeItem(at: audioURL)
+                    // try? FileManager.default.removeItem(at: audioURL)  // DEBUG: keep audio files
 
                     self.delegate?.transcriptionDidFail(error: error)
                 }
