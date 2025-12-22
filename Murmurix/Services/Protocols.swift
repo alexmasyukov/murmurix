@@ -44,6 +44,7 @@ protocol SettingsStorageProtocol {
     var keepDaemonRunning: Bool { get set }
     var language: String { get set }
     var aiPostProcessingEnabled: Bool { get set }
+    var transcriptionMode: String { get set }
 
     func loadToggleHotkey() -> Hotkey
     func saveToggleHotkey(_ hotkey: Hotkey)

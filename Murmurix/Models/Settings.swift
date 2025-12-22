@@ -22,6 +22,8 @@ final class Settings: SettingsStorageProtocol {
         static let aiPostProcessingEnabled = "aiPostProcessingEnabled"
         static let aiModel = "aiModel"
         static let aiPrompt = "aiPrompt"
+        static let transcriptionMode = "transcriptionMode"
+        static let openaiTranscriptionModel = "openaiTranscriptionModel"
     }
 
     // MARK: - Defaults
@@ -129,6 +131,29 @@ final class Settings: SettingsStorageProtocol {
                 KeychainService.delete(key: "claudeApiKey")
             } else {
                 KeychainService.save(key: "claudeApiKey", value: newValue)
+            }
+        }
+    }
+
+    // MARK: - Transcription Mode Settings
+
+    var transcriptionMode: String {
+        get { defaults.string(forKey: Keys.transcriptionMode) ?? "local" }
+        set { defaults.set(newValue, forKey: Keys.transcriptionMode) }
+    }
+
+    var openaiTranscriptionModel: String {
+        get { defaults.string(forKey: Keys.openaiTranscriptionModel) ?? OpenAITranscriptionModel.gpt4oTranscribe.rawValue }
+        set { defaults.set(newValue, forKey: Keys.openaiTranscriptionModel) }
+    }
+
+    var openaiApiKey: String {
+        get { KeychainService.load(key: "openaiApiKey") ?? "" }
+        set {
+            if newValue.isEmpty {
+                KeychainService.delete(key: "openaiApiKey")
+            } else {
+                KeychainService.save(key: "openaiApiKey", value: newValue)
             }
         }
     }
