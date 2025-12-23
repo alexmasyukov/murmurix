@@ -23,11 +23,7 @@ class AudioLevelObserver: ObservableObject {
 
 // Observable state for cat loading animation
 class CatLoadingState: ObservableObject {
-    @Published var state: LoadingState = .transcribing {
-        didSet {
-            print("🐱 CatLoadingState didSet: \(state)")
-        }
-    }
+    @Published var state: LoadingState = .transcribing
 }
 
 class RecordingWindowController: NSWindowController {
@@ -113,10 +109,8 @@ class RecordingWindowController: NSWindowController {
     }
 
     func showProcessing() {
-        print("🐱 showProcessing called, catLoadingState exists: \(catLoadingState != nil)")
         // If we already have the cat view, just update the state
         if let loadingState = catLoadingState {
-            print("🐱 Updating state to .processing")
             loadingState.objectWillChange.send()
             loadingState.state = .processing
             // Update window size after SwiftUI updates
@@ -185,7 +179,6 @@ struct CatLoadingContentView: View {
     let onCancel: () -> Void
 
     var body: some View {
-        let _ = print("🐱 CatLoadingContentView body, state: \(loadingState.state)")
         CatLoadingView(state: loadingState.state, onCancel: onCancel)
     }
 }

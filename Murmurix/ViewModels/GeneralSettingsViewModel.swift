@@ -12,9 +12,9 @@ final class GeneralSettingsViewModel: ObservableObject {
 
     var onModelChanged: (() -> Void)?
 
-    private let downloadService: ModelDownloadService
+    private let downloadService: ModelDownloadServiceProtocol
 
-    init(downloadService: ModelDownloadService = .shared) {
+    init(downloadService: ModelDownloadServiceProtocol = ModelDownloadService.shared) {
         self.downloadService = downloadService
     }
 

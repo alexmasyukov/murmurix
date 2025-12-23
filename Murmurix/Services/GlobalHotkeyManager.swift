@@ -27,11 +27,13 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private var toggleHotkey: Hotkey
     private var toggleNoAIHotkey: Hotkey
     private var cancelHotkey: Hotkey
+    private let settings: SettingsStorageProtocol
 
-    init() {
-        toggleHotkey = Settings.shared.loadToggleHotkey()
-        toggleNoAIHotkey = Settings.shared.loadToggleNoAIHotkey()
-        cancelHotkey = Settings.shared.loadCancelHotkey()
+    init(settings: SettingsStorageProtocol = Settings.shared) {
+        self.settings = settings
+        toggleHotkey = settings.loadToggleHotkey()
+        toggleNoAIHotkey = settings.loadToggleNoAIHotkey()
+        cancelHotkey = settings.loadCancelHotkey()
     }
 
     func updateHotkeys(toggle: Hotkey, toggleNoAI: Hotkey, cancel: Hotkey) {

@@ -5,16 +5,20 @@
 
 import Foundation
 
-final class OpenAITranscriptionService: @unchecked Sendable {
+protocol OpenAITranscriptionServiceProtocol: Sendable {
+    func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String
+    func validateAPIKey(_ apiKey: String) async throws -> Bool
+}
+
+final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscriptionServiceProtocol {
     static let shared = OpenAITranscriptionService()
 
     private let baseURL = "https://api.openai.com/v1/audio/transcriptions"
-    private let modelsURL = "https://api.openai.com/v1/models"
 
     // Промпт для улучшения распознавания технических терминов
     private let defaultPrompt = "Диалог на темы программирования. Технические термины: Anthropic, Claude, Bun, React, Docker, Kubernetes, Golang, Python, Swift, Xcode, GitHub, API, JSON, REST, GraphQL, PostgreSQL, MongoDB, Redis, AWS, Azure, GCP."
 
-    private init() {}
+    init() {}
 
     // MARK: - Transcription
 

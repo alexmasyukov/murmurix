@@ -40,11 +40,17 @@ protocol HotkeyManagerProtocol: AnyObject {
 
 // MARK: - Settings Storage
 
-protocol SettingsStorageProtocol {
+protocol SettingsStorageProtocol: AnyObject {
     var keepDaemonRunning: Bool { get set }
     var language: String { get set }
     var aiPostProcessingEnabled: Bool { get set }
     var transcriptionMode: String { get set }
+    var whisperModel: String { get set }
+    var openaiApiKey: String { get set }
+    var openaiTranscriptionModel: String { get set }
+    var claudeApiKey: String { get set }
+    var aiPrompt: String { get set }
+    var aiModel: String { get set }
 
     func loadToggleHotkey() -> Hotkey
     func saveToggleHotkey(_ hotkey: Hotkey)
