@@ -155,7 +155,7 @@ struct AISettingsView: View {
                     .font(Typography.monospaced)
                     .scrollContentBackground(.hidden)
                     .padding(Layout.Spacing.item)
-                    .background(Color.black.opacity(0.3))
+                    .background(AppColors.overlayBackgroundLight)
                     .cornerRadius(Layout.CornerRadius.button)
                     .frame(height: 150)
                     .onChange(of: viewModel.prompt) { _, newValue in

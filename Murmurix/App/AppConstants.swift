@@ -49,6 +49,19 @@ enum AppColors {
 
     static let cardBackground = Color.white.opacity(backgroundOpacity)
     static let divider = Color.white.opacity(borderOpacity)
+
+    // Button and control backgrounds
+    static let buttonBackground = Color.white.opacity(0.15)
+    static let buttonBackgroundSubtle = Color.white.opacity(0.08)
+    static let subtleBorder = Color.white.opacity(0.2)
+    static let statsBackground = Color.white.opacity(0.1)
+
+    // Overlay backgrounds
+    static let overlayBackground = Color.black.opacity(0.9)
+    static let overlayBackgroundLight = Color.black.opacity(0.3)
+
+    // Interactive elements
+    static let circleButtonBackground = Color.white.opacity(0.2)
 }
 
 // MARK: - Audio

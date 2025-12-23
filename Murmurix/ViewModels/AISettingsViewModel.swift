@@ -11,7 +11,21 @@ enum APITestResult: Equatable {
 }
 
 @MainActor
-final class AISettingsViewModel: ObservableObject {
+protocol AISettingsViewModelProtocol: ObservableObject {
+    var apiKey: String { get set }
+    var prompt: String { get set }
+    var isTesting: Bool { get }
+    var testResult: APITestResult? { get }
+
+    func loadSettings()
+    func saveAPIKey(_ key: String)
+    func savePrompt(_ newPrompt: String)
+    func resetPromptToDefault()
+    func testConnection()
+}
+
+@MainActor
+final class AISettingsViewModel: ObservableObject, AISettingsViewModelProtocol {
     @Published var apiKey: String = ""
     @Published var prompt: String = ""
     @Published var isTesting = false

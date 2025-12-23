@@ -2,7 +2,7 @@
 
 A native macOS menubar app for local voice-to-text transcription using [faster-whisper](https://github.com/guillaumekln/faster-whisper).
 
-**Version 1.0** | 6800+ lines of Swift | 57 files | 114 tests
+**Version 1.0** | 7000+ lines of Swift | 58 files | 134 tests
 
 ## Features
 
@@ -242,7 +242,7 @@ faster-whisper supports 99 languages. Currently exposed in UI:
 
 ## Testing
 
-The project includes 114 unit tests with mocks for all services:
+The project includes 134 unit tests with mocks for all services:
 
 ```bash
 # Run tests in Xcode

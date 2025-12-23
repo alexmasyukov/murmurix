@@ -10,14 +10,23 @@ import Combine
 // Wrapper to observe audioLevel changes
 class AudioLevelObserver: ObservableObject {
     @Published var level: Float = 0
-    private var cancellable: AnyCancellable?
+    private var timer: Timer?
+    private weak var audioRecorder: (any AudioRecorderProtocol)?
 
-    init(audioRecorder: AudioRecorder) {
-        cancellable = audioRecorder.$audioLevel
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newLevel in
-                self?.level = newLevel
-            }
+    init(audioRecorder: any AudioRecorderProtocol) {
+        self.audioRecorder = audioRecorder
+        startObserving()
+    }
+
+    private func startObserving() {
+        timer = Timer.scheduledTimer(withTimeInterval: AudioConfig.meterUpdateInterval, repeats: true) { [weak self] _ in
+            guard let self = self, let recorder = self.audioRecorder else { return }
+            self.level = recorder.audioLevel
+        }
+    }
+
+    deinit {
+        timer?.invalidate()
     }
 }
 
@@ -27,14 +36,14 @@ class CatLoadingState: ObservableObject {
 }
 
 class RecordingWindowController: NSWindowController {
-    private var audioRecorder: AudioRecorder
+    private var audioRecorder: any AudioRecorderProtocol
     private var onStop: () -> Void
     private var onCancelTranscription: (() -> Void)?
     private let recordingTimer = RecordingTimer()
     private var audioLevelObserver: AudioLevelObserver!
     private var catLoadingState: CatLoadingState?
 
-    init(audioRecorder: AudioRecorder, onStop: @escaping () -> Void, onCancelTranscription: (() -> Void)? = nil) {
+    init(audioRecorder: any AudioRecorderProtocol, onStop: @escaping () -> Void, onCancelTranscription: (() -> Void)? = nil) {
         self.audioRecorder = audioRecorder
         self.onStop = onStop
         self.onCancelTranscription = onCancelTranscription

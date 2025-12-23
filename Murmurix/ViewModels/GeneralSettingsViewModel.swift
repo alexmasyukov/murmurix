@@ -6,7 +6,19 @@
 import Foundation
 import Combine
 
-final class GeneralSettingsViewModel: ObservableObject {
+protocol GeneralSettingsViewModelProtocol: ObservableObject {
+    var installedModels: Set<String> { get }
+    var downloadStatus: DownloadStatus { get }
+    var onModelChanged: (() -> Void)? { get set }
+
+    func loadInstalledModels()
+    func isModelInstalled(_ modelName: String) -> Bool
+    func handleModelChange(_ newModel: String)
+    func startDownload(for modelName: String)
+    func cancelDownload()
+}
+
+final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModelProtocol {
     @Published var installedModels: Set<String> = []
     @Published var downloadStatus: DownloadStatus = .idle
 

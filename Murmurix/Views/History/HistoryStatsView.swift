@@ -43,7 +43,7 @@ struct HistoryStatsView: View {
 struct StatDivider: View {
     var body: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.1))
+            .fill(AppColors.statsBackground)
             .frame(width: 1, height: 24)
     }
 }
@@ -69,4 +69,15 @@ struct StatItemView: View {
         }
         .frame(maxWidth: .infinity)
     }
+}
+
+#Preview("Stat Item") {
+    HStack {
+        StatItemView(icon: "waveform", value: "42", label: "recordings")
+        StatDivider()
+        StatItemView(icon: "clock", value: "15:30", label: "total time")
+    }
+    .padding()
+    .background(Color(NSColor.controlBackgroundColor))
+    .preferredColorScheme(.dark)
 }

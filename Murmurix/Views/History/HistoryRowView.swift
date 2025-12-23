@@ -30,3 +30,19 @@ struct HistoryRowView: View {
         .padding(.vertical, 4)
     }
 }
+
+#Preview {
+    List {
+        HistoryRowView(record: TranscriptionRecord(
+            text: "Это пример текста транскрипции, который был распознан из голосового сообщения",
+            language: "ru",
+            duration: 45
+        ))
+        HistoryRowView(record: TranscriptionRecord(
+            text: "Short text",
+            language: "en",
+            duration: 5
+        ))
+    }
+    .preferredColorScheme(.dark)
+}
