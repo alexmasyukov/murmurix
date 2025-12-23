@@ -5,7 +5,19 @@
 
 import Foundation
 
-class HistoryViewModel: ObservableObject {
+protocol HistoryViewModelProtocol: ObservableObject {
+    var records: [TranscriptionRecord] { get }
+    var selectedRecord: TranscriptionRecord? { get set }
+    var totalDuration: TimeInterval { get }
+    var formattedTotalDuration: String { get }
+    var totalWords: Int { get }
+
+    func loadRecords()
+    func clearHistory()
+    func deleteRecord(_ record: TranscriptionRecord)
+}
+
+final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
     @Published var records: [TranscriptionRecord] = []
     @Published var selectedRecord: TranscriptionRecord?
 

@@ -59,7 +59,8 @@ Murmurix/
 ├── ViewModels/                   # Presentation logic
 │   ├── HistoryViewModel.swift   # History list logic
 │   ├── GeneralSettingsViewModel.swift
-│   └── AISettingsViewModel.swift
+│   ├── AISettingsViewModel.swift
+│   └── RecordingTimer.swift     # Recording duration timer
 │
 ├── Views/                        # SwiftUI views
 │   ├── SettingsView.swift       # Settings container (TabView)
@@ -71,7 +72,6 @@ Murmurix/
 │   │
 │   ├── Recording/               # Recording UI components
 │   │   ├── RecordingView.swift
-│   │   ├── RecordingTimer.swift
 │   │   ├── EqualizerView.swift
 │   │   ├── CatLoadingView.swift  # Lottie cat animation (transcribing/processing)
 │   │   └── RecordingComponents.swift
@@ -105,7 +105,8 @@ Murmurix/
 │   │
 │   ├── GlobalHotkeyManager.swift # CGEvent tap for shortcuts
 │   ├── TextPaster.swift         # Clipboard & paste
-│   ├── HistoryService.swift     # SQLite storage
+│   ├── Repository.swift         # Repository pattern (SQLiteDatabase, SQLiteTranscriptionRepository)
+│   ├── HistoryService.swift     # SQLite storage (delegates to Repository)
 │   ├── KeychainService.swift    # Secure key storage
 │   ├── ModelDownloadService.swift # Whisper model download
 │   └── PythonResolver.swift     # Python/script paths
@@ -223,24 +224,36 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 
 ### ViewModels Layer
 
-#### HistoryViewModel (64 lines)
+All ViewModels have protocols for testability.
+
+#### HistoryViewModel (75 lines)
 **Role**: History list presentation logic
 
 **Published**: `records`, `selectedRecord`
 **Actions**: loadRecords, deleteRecord, clearHistory
 **Computed**: totalDuration, totalWords
+**Protocol**: `HistoryViewModelProtocol`
 
-#### GeneralSettingsViewModel (65 lines)
+#### GeneralSettingsViewModel (75 lines)
 **Role**: Model download and installation state
 
 **Published**: `installedModels`, `downloadStatus`
 **Actions**: loadInstalledModels, startDownload, cancelDownload
+**Protocol**: `GeneralSettingsViewModelProtocol`
 
-#### AISettingsViewModel (66 lines)
+#### AISettingsViewModel (80 lines)
 **Role**: API key validation and prompt management
 
 **Published**: `apiKey`, `prompt`, `isTesting`, `testResult`
 **Actions**: loadSettings, testConnection, resetPromptToDefault
+**Protocol**: `AISettingsViewModelProtocol`
+
+#### RecordingTimer (35 lines)
+**Role**: Recording duration timer
+
+**Published**: `elapsedTime`
+**Actions**: start, stop
+**Features**: Formats as MM:SS
 
 ---
 
@@ -368,11 +381,20 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 - Detect if text field is focused
 - Paste via clipboard + Cmd+V simulation
 
-#### HistoryService (141 lines)
+#### HistoryService (45 lines)
 **Role**: SQLite persistence for transcription history
 
 **Operations**: save, fetchAll, delete, deleteAll
 **Protocol**: `HistoryServiceProtocol`
+**Delegates to**: `SQLiteTranscriptionRepository`
+
+#### Repository.swift (175 lines)
+**Role**: Repository pattern for data persistence
+
+**Components**:
+- `Repository<T>` protocol — generic CRUD operations
+- `SQLiteDatabase` — helper class for common SQLite operations
+- `SQLiteTranscriptionRepository` — concrete implementation for TranscriptionRecord
 
 #### KeychainService (86 lines)
 **Role**: Secure storage for API keys
@@ -536,24 +558,29 @@ init(
 |----------|-------|-------------|
 | App | 6 | ~700 |
 | Models | 5 | ~300 |
-| ViewModels | 3 | ~200 |
-| Views | 20 | ~2,400 |
-| Services | 16 | ~1,700 |
-| Tests | 5 | ~1,700 |
-| **Total** | **57** | **~6,800** |
+| ViewModels | 4 | ~250 |
+| Views | 19 | ~2,400 |
+| Services | 17 | ~1,900 |
+| Tests | 5 | ~2,000 |
+| **Total** | **58** | **~7,000** |
 
 ---
 
 ## Testing
 
-114 unit tests covering:
-- Model serialization (TranscriptionRecord, Hotkey, WhisperModel, AIModel)
+134 unit tests covering:
+- Model serialization (TranscriptionRecord, Hotkey, WhisperModel, AIModel, OpenAITranscriptionModel)
 - Service logic (HistoryService, RecordingCoordinator)
-- ViewModel behavior (HistoryViewModel)
+- Repository pattern (SQLiteDatabase, SQLiteTranscriptionRepository)
+- Dependency injection (all services accept protocol-based dependencies)
+- ViewModel behavior (HistoryViewModel, AISettingsViewModel, GeneralSettingsViewModel)
 - Settings persistence
 - Window controllers and positioning (WindowPositioner)
 - Error hierarchy (MurmurixError with all cases)
 - Constants validation (AppConstants)
 - Logger categories
 
-All services have mock implementations in `MurmurixTests/Mocks.swift`.
+All services have mock implementations in `MurmurixTests/Mocks.swift`:
+- MockAudioRecorder, MockTranscriptionService, MockHistoryService
+- MockSettings, MockAnthropicAPIClient, MockModelDownloadService
+- MockOpenAITranscriptionService, MockRecordingCoordinatorDelegate

@@ -47,7 +47,7 @@ struct HotkeyRecorderView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: Layout.CornerRadius.button)
-                        .stroke(isRecording ? Color.accentColor : Color.white.opacity(0.2), lineWidth: 1)
+                        .stroke(isRecording ? Color.accentColor : AppColors.subtleBorder, lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
@@ -125,11 +125,30 @@ struct KeyCapView: View {
             .padding(.vertical, 3)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.15))
+                    .fill(AppColors.buttonBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                    .stroke(AppColors.subtleBorder, lineWidth: 0.5)
             )
     }
+}
+
+#Preview {
+    VStack(spacing: 20) {
+        HotkeyRecorderView(
+            title: "Toggle Recording",
+            description: "Starts and stops recordings",
+            hotkey: .constant(Hotkey.toggleDefault)
+        )
+
+        HotkeyRecorderView(
+            title: "Cancel Recording",
+            description: "Discards the active recording",
+            hotkey: .constant(Hotkey.cancelDefault)
+        )
+    }
+    .padding()
+    .background(Color.black)
+    .preferredColorScheme(.dark)
 }

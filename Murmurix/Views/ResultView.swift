@@ -45,7 +45,7 @@ struct ResultView: View {
                         .font(Typography.monospaced)
                         .foregroundColor(.white.opacity(AppColors.mutedOpacity))
                         .frame(width: 32, height: 32)
-                        .background(Color.white.opacity(0.08))
+                        .background(AppColors.buttonBackgroundSubtle)
                         .cornerRadius(Layout.Spacing.item)
                         .contentShape(Rectangle())
                 }
@@ -76,7 +76,7 @@ struct ResultView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, Layout.Spacing.item)
-                    .background(Color.white.opacity(0.15))
+                    .background(AppColors.buttonBackground)
                     .cornerRadius(Layout.Spacing.item)
                     .contentShape(Rectangle())
                 }

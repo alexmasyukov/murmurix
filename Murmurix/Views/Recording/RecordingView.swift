@@ -28,7 +28,7 @@ struct RecordingView: View {
                     .font(.system(size: 8))
                     .foregroundColor(.white)
                     .frame(width: 18, height: 18)
-                    .background(Circle().fill(Color.white.opacity(0.2)))
+                    .background(Circle().fill(AppColors.circleButtonBackground))
             }
             .buttonStyle(.plain)
         }
