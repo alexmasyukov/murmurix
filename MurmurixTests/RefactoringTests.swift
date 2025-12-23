@@ -487,3 +487,287 @@ struct AIModelTests {
         }
     }
 }
+
+// MARK: - OpenAITranscriptionModel Tests
+
+struct OpenAITranscriptionModelTests {
+
+    @Test func allCasesContainsAllModels() {
+        let allCases = OpenAITranscriptionModel.allCases
+
+        #expect(allCases.count == 2)
+        #expect(allCases.contains(.gpt4oTranscribe))
+        #expect(allCases.contains(.gpt4oMiniTranscribe))
+    }
+
+    @Test func displayNamesAreNotEmpty() {
+        for model in OpenAITranscriptionModel.allCases {
+            #expect(!model.displayName.isEmpty)
+        }
+    }
+
+    @Test func rawValuesContainGpt() {
+        for model in OpenAITranscriptionModel.allCases {
+            #expect(model.rawValue.contains("gpt"))
+        }
+    }
+
+    @Test func rawValuesAreUnique() {
+        let rawValues = OpenAITranscriptionModel.allCases.map { $0.rawValue }
+        let uniqueValues = Set(rawValues)
+
+        #expect(rawValues.count == uniqueValues.count)
+    }
+}
+
+// MARK: - SQLiteDatabase Tests
+
+struct SQLiteDatabaseTests {
+
+    private func createTempDatabase() -> SQLiteDatabase {
+        let tempDir = FileManager.default.temporaryDirectory
+        let dbPath = tempDir.appendingPathComponent("test_db_\(UUID().uuidString).sqlite").path
+        return SQLiteDatabase(path: dbPath)
+    }
+
+    @Test func databaseCreatesAndOpens() {
+        let db = createTempDatabase()
+        #expect(db.path.contains(".sqlite"))
+    }
+
+    @Test func executeCreatesTable() {
+        let db = createTempDatabase()
+
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS test_table (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL
+            )
+        """)
+
+        // Verify table exists by inserting a row
+        if let statement = db.prepareStatement("INSERT INTO test_table (id, name) VALUES (?, ?)") {
+            db.bindText(statement, index: 1, value: "1")
+            db.bindText(statement, index: 2, value: "Test")
+            let success = db.step(statement)
+            db.finalize(statement)
+            #expect(success)
+        }
+    }
+
+    @Test func bindAndRetrieveText() {
+        let db = createTempDatabase()
+        db.execute("CREATE TABLE test (value TEXT)")
+
+        if let insertStmt = db.prepareStatement("INSERT INTO test (value) VALUES (?)") {
+            db.bindText(insertStmt, index: 1, value: "Hello World")
+            db.step(insertStmt)
+            db.finalize(insertStmt)
+        }
+
+        if let selectStmt = db.prepareStatement("SELECT value FROM test") {
+            let hasRow = db.stepRow(selectStmt)
+            #expect(hasRow)
+
+            let value = db.columnText(selectStmt, index: 0)
+            #expect(value == "Hello World")
+            db.finalize(selectStmt)
+        }
+    }
+
+    @Test func bindAndRetrieveDouble() {
+        let db = createTempDatabase()
+        db.execute("CREATE TABLE test (value REAL)")
+
+        if let insertStmt = db.prepareStatement("INSERT INTO test (value) VALUES (?)") {
+            db.bindDouble(insertStmt, index: 1, value: 3.14159)
+            db.step(insertStmt)
+            db.finalize(insertStmt)
+        }
+
+        if let selectStmt = db.prepareStatement("SELECT value FROM test") {
+            let hasRow = db.stepRow(selectStmt)
+            #expect(hasRow)
+
+            let value = db.columnDouble(selectStmt, index: 0)
+            #expect(abs(value - 3.14159) < 0.0001)
+            db.finalize(selectStmt)
+        }
+    }
+}
+
+// MARK: - SQLiteTranscriptionRepository Tests
+
+struct SQLiteTranscriptionRepositoryTests {
+
+    private func createTempRepository() -> SQLiteTranscriptionRepository {
+        let tempDir = FileManager.default.temporaryDirectory
+        let dbPath = tempDir.appendingPathComponent("test_repo_\(UUID().uuidString).sqlite").path
+        return SQLiteTranscriptionRepository(dbPath: dbPath)
+    }
+
+    @Test func saveAndFetchRecord() {
+        let repo = createTempRepository()
+        let record = TranscriptionRecord(text: "Hello", language: "en", duration: 5)
+
+        repo.save(record)
+        let fetched = repo.fetchAll()
+
+        #expect(fetched.count == 1)
+        #expect(fetched.first?.text == "Hello")
+        #expect(fetched.first?.id == record.id)
+    }
+
+    @Test func fetchAllReturnsInReverseChronologicalOrder() {
+        let repo = createTempRepository()
+
+        let old = TranscriptionRecord(
+            text: "Old",
+            language: "en",
+            duration: 5,
+            createdAt: Date(timeIntervalSince1970: 1000)
+        )
+        let new = TranscriptionRecord(
+            text: "New",
+            language: "en",
+            duration: 5,
+            createdAt: Date(timeIntervalSince1970: 2000)
+        )
+
+        repo.save(old)
+        repo.save(new)
+
+        let fetched = repo.fetchAll()
+
+        #expect(fetched.count == 2)
+        #expect(fetched[0].text == "New")
+        #expect(fetched[1].text == "Old")
+    }
+
+    @Test func deleteRemovesRecord() {
+        let repo = createTempRepository()
+        let record = TranscriptionRecord(text: "Delete me", language: "en", duration: 5)
+
+        repo.save(record)
+        #expect(repo.fetchAll().count == 1)
+
+        repo.delete(id: record.id)
+        #expect(repo.fetchAll().count == 0)
+    }
+
+    @Test func deleteAllClearsAllRecords() {
+        let repo = createTempRepository()
+
+        repo.save(TranscriptionRecord(text: "One", language: "en", duration: 5))
+        repo.save(TranscriptionRecord(text: "Two", language: "en", duration: 5))
+        repo.save(TranscriptionRecord(text: "Three", language: "en", duration: 5))
+
+        #expect(repo.fetchAll().count == 3)
+
+        repo.deleteAll()
+        #expect(repo.fetchAll().count == 0)
+    }
+
+    @Test func saveUpdatesExistingRecord() {
+        let repo = createTempRepository()
+        let id = UUID()
+
+        let original = TranscriptionRecord(id: id, text: "Original", language: "en", duration: 5)
+        repo.save(original)
+
+        let updated = TranscriptionRecord(id: id, text: "Updated", language: "ru", duration: 10)
+        repo.save(updated)
+
+        let fetched = repo.fetchAll()
+        #expect(fetched.count == 1)
+        #expect(fetched.first?.text == "Updated")
+        #expect(fetched.first?.language == "ru")
+    }
+}
+
+// MARK: - Dependency Injection Tests
+
+struct DependencyInjectionTests {
+
+    @Test func transcriptionServiceAcceptsDependencies() {
+        let mockSettings = MockSettings()
+        mockSettings.transcriptionMode = "local"
+        mockSettings.whisperModel = "tiny"
+
+        let service = TranscriptionService(settings: mockSettings)
+
+        #expect(service.isDaemonRunning == false)
+    }
+
+    @Test func daemonManagerAcceptsSettings() {
+        let mockSettings = MockSettings()
+        mockSettings.whisperModel = "base"
+
+        let manager = DaemonManager(settings: mockSettings)
+
+        #expect(manager.isRunning == false)
+        #expect(manager.socketPath.contains("daemon.sock"))
+    }
+
+    @Test func globalHotkeyManagerAcceptsSettings() {
+        let mockSettings = MockSettings()
+
+        let manager = GlobalHotkeyManager(settings: mockSettings)
+
+        #expect(manager.isRecording == false)
+    }
+
+    @Test func aiPostProcessingServiceAcceptsSettings() async throws {
+        let mockSettings = MockSettings()
+        mockSettings.claudeApiKey = ""  // Empty key
+
+        let mockAPIClient = MockAnthropicAPIClient()
+        let service = AIPostProcessingService(settings: mockSettings, apiClient: mockAPIClient)
+
+        // Should throw noApiKey error because key is empty
+        do {
+            _ = try await service.process(text: "Test")
+            #expect(Bool(false), "Should have thrown an error")
+        } catch let error as MurmurixError {
+            if case .ai(.noApiKey) = error {
+                #expect(true)
+            } else {
+                #expect(Bool(false), "Wrong error type: \(error)")
+            }
+        }
+    }
+
+    @Test func generalSettingsViewModelAcceptsDownloadService() {
+        let mockService = MockModelDownloadService()
+        let viewModel = GeneralSettingsViewModel(downloadService: mockService)
+
+        #expect(viewModel.downloadStatus == .idle)
+    }
+
+    @MainActor
+    @Test func aiSettingsViewModelAcceptsSettings() {
+        let mockSettings = MockSettings()
+        mockSettings.claudeApiKey = "test-key"
+        mockSettings.aiPrompt = "Custom prompt"
+
+        let viewModel = AISettingsViewModel(settings: mockSettings)
+        viewModel.loadSettings()
+
+        #expect(viewModel.apiKey == "test-key")
+        #expect(viewModel.prompt == "Custom prompt")
+    }
+
+    @Test func historyServiceAcceptsRepository() {
+        let tempDir = FileManager.default.temporaryDirectory
+        let dbPath = tempDir.appendingPathComponent("test_di_\(UUID().uuidString).sqlite").path
+        let repository = SQLiteTranscriptionRepository(dbPath: dbPath)
+
+        let service = HistoryService(repository: repository)
+
+        // Should work with injected repository
+        let record = TranscriptionRecord(text: "Test", language: "en", duration: 5)
+        service.save(record: record)
+
+        #expect(service.fetchAll().count == 1)
+    }
+}

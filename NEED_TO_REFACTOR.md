@@ -4,172 +4,48 @@
 
 This document tracks remaining refactoring tasks and technical debt. Items are prioritized by impact and effort.
 
----
-
-## High Priority
-
-### ~~1. Migrate to Unified Error Hierarchy~~ COMPLETED
-
-**Status**: Completed
-**File**: `Services/MurmurixError.swift`
-
-All error types migrated to unified `MurmurixError` hierarchy:
-- `TranscriptionService` now uses `MurmurixError.transcription()`
-- `AIPostProcessingService` now uses `MurmurixError.ai()`
-- `AnthropicAPIClient` now uses `MurmurixError.ai()`
-- `DaemonManager` now uses `MurmurixError.daemon()`
-
----
-
-### 2. Replace Singletons with Dependency Injection
-
-**Current singletons**:
-```swift
-Settings.shared           // Used in 8+ places
-HistoryService.shared     // Used in AppDelegate, HistoryViewModel
-AnthropicAPIClient.shared // Used in AIPostProcessingService, AISettingsViewModel
-ModelDownloadService.shared // Used in GeneralSettingsViewModel
-```
-
-**Problem**: Hard to test, tight coupling
-
-**Solution**: Inject dependencies through initializers
-
-**Files to update**:
-- `App/AppDelegate.swift` — create services and pass down
-- `ViewModels/AISettingsViewModel.swift` — accept `AnthropicAPIClientProtocol`
-- `Views/GeneralSettingsView.swift` — pass ViewModel with injected services
-- `Services/TranscriptionService.swift` — uses `Settings.shared.whisperModel`
-- `Services/DaemonManager.swift` — uses `Settings.shared.whisperModel`
-
-**Effort**: High (4-6 hours)
-
----
-
-## Medium Priority
-
-### ~~3. Apply SettingsStyles to Views~~ COMPLETED
-
-**Status**: Completed
-**File**: `Views/Components/SettingsStyles.swift`
-
-All main settings views now use centralized Layout, Typography, and AppColors constants:
-- `GeneralSettingsView` — migrated
-- `AISettingsView` — migrated
-- `HotkeyRecorderView` — migrated
-- `ResultView` — migrated
-
----
-
-### ~~4. Extract Window Positioning Logic~~ COMPLETED
-
-**Status**: Completed
-**File**: `App/WindowPositioner.swift`
-
-Created `WindowPositioner` utility with:
-- `positionTopCenter(_:topOffset:)` — Position at top center of screen
-- `center(_:)` — Center window
-- `centerAndActivate(_:)` — Center and activate app
-
-Window controllers updated:
-- `RecordingWindowController` — uses `WindowPositioner.positionTopCenter()`
-- `ResultWindowController` — uses `WindowPositioner.centerAndActivate()`
-
----
-
-### 5. HistoryService Repository Pattern
-
-**Current**: Direct SQLite3 C API calls mixed with domain logic
-
-**Problem**:
-- Low-level code in service layer
-- Hard to swap storage implementation
-- Repetitive prepare/bind/step/finalize pattern
-
-**Solution**: Create `DatabaseRepository` protocol:
-```swift
-protocol Repository<T> {
-    func save(_ item: T) throws
-    func fetchAll() throws -> [T]
-    func delete(id: UUID) throws
-    func deleteAll() throws
-}
-
-class SQLiteTranscriptionRepository: Repository<TranscriptionRecord> {
-    // Implementation
-}
-```
-
-**Effort**: Medium (2-3 hours)
-
----
-
-### ~~6. Replace print() with Proper Logging~~ COMPLETED
-
-**Status**: Completed
-**File**: `Services/Logger.swift`
-
-Created `Logger` utility using `os.log` for system integration:
-- `Logger.Audio` — Audio recording logs
-- `Logger.Transcription` — Transcription logs
-- `Logger.Daemon` — Daemon lifecycle logs
-- `Logger.Hotkey` — Hotkey manager logs
-- `Logger.History` — Database logs
-- `Logger.AI` — AI processing logs
-
-Each category has `.info()`, `.error()`, `.debug()`, and `.warning()` methods.
+**Last updated**: 2025-12-23
 
 ---
 
 ## Low Priority
 
-### 7. RecordingWindowController DI
+### 1. Consolidate Color Constants
 
-**Current**: Creates `AudioLevelObserver` internally with concrete `AudioRecorder`
+**Status**: Pending
 
+**Current**: 12 places use raw `Color.white.opacity(X)` instead of `AppColors.*`
+
+**Files with hardcoded colors**:
+- `Views/HotkeyRecorderView.swift` — 3 occurrences
+- `Views/History/HistoryStatsView.swift` — 1 occurrence
+- `Views/AISettingsView.swift` — 1 occurrence
+- `Views/Recording/RecordingComponents.swift` — 2 occurrences
+- `Views/Recording/RecordingView.swift` — 1 occurrence
+- `Views/ResultView.swift` — 2 occurrences
+
+**Solution**: Add missing colors to `AppColors` and use consistently:
 ```swift
-// Current
-audioLevelObserver = AudioLevelObserver(audioRecorder: audioRecorder)
+// Add to AppConstants.swift
+static let buttonBackground = Color.white.opacity(0.15)
+static let overlayBackground = Color.black.opacity(0.9)
+static let subtleBorder = Color.white.opacity(0.2)
 ```
-
-**Problem**: Tightly coupled to concrete type
-
-**Solution**: Accept observer through initializer or use protocol
 
 **Effort**: Low (30 minutes)
 
 ---
 
-### 8. Extract RecordingTimer to ViewModel
+### 2. Add ViewModel Protocols
 
-**Current**: `RecordingTimer` is a class in `Views/Recording/`
+**Status**: Pending
 
-**Better location**: Could be in `ViewModels/` as it's presentation logic
+**Current**: ViewModels have no protocols, can't mock for testing
 
-**Effort**: Very Low (15 minutes)
-
----
-
-### 9. Consolidate Color Constants
-
-**Current**: Colors defined in multiple places
-```swift
-Color.white.opacity(0.05)  // AppColors.cardBackground exists but not used everywhere
-Color.white.opacity(0.1)   // AppColors.borderOpacity exists but not used
-Color.black.opacity(0.9)   // Used in Recording views, not in AppColors
-```
-
-**Solution**: Add missing colors to `AppColors` and use consistently
-
-**Effort**: Low (30 minutes)
-
----
-
-### 10. Add AISettingsView ViewModel Protocol
-
-**Current**: `AISettingsViewModel` has no protocol
-
-**Problem**: Can't mock for testing
+**ViewModels without protocols**:
+- `AISettingsViewModel`
+- `GeneralSettingsViewModel`
+- `HistoryViewModel`
 
 **Solution**:
 ```swift
@@ -185,13 +61,25 @@ protocol AISettingsViewModelProtocol: ObservableObject {
 }
 ```
 
-**Effort**: Low (30 minutes)
+**Effort**: Low (1 hour)
 
 ---
 
-### 11. GeneralSettingsViewModel Protocol
+### 3. RecordingWindowController DI
 
-**Same as above** — add protocol for testability
+**Status**: Pending
+**File**: `Views/RecordingWindowController.swift`
+
+**Current**: Creates `AudioLevelObserver` with concrete `AudioRecorder` type
+```swift
+init(audioRecorder: AudioRecorder, ...) {  // Concrete type
+    audioLevelObserver = AudioLevelObserver(audioRecorder: audioRecorder)
+}
+```
+
+**Problem**: Tightly coupled to concrete type
+
+**Solution**: Accept `AudioRecorderProtocol` instead
 
 **Effort**: Low (30 minutes)
 
@@ -199,9 +87,9 @@ protocol AISettingsViewModelProtocol: ObservableObject {
 
 ## Nice to Have
 
-### 12. SwiftUI Previews for All Views
+### 4. SwiftUI Previews for All Views
 
-**Current**: Some views have previews, some don't
+**Status**: Pending
 
 **Missing previews**:
 - `GeneralSettingsView`
@@ -214,30 +102,14 @@ protocol AISettingsViewModelProtocol: ObservableObject {
 
 ---
 
-### 13. Async/Await Migration
+### 5. Move RecordingTimer to ViewModels
 
-**Current**: Mix of completion handlers and async/await
+**Status**: Pending
+**Current location**: `Views/Recording/RecordingTimer.swift`
 
-**Files with completion handlers**:
-- `ModelDownloadService.downloadModel(_:completion:)`
-- Some internal callbacks
+**Better location**: `ViewModels/` — it's presentation logic, not a view
 
-**Solution**: Migrate to async/await for consistency
-
-**Effort**: Low (1 hour)
-
----
-
-### 14. Documentation Comments
-
-**Current**: Minimal documentation
-
-**Files needing docs**:
-- All protocol files
-- Public API methods
-- Complex algorithms (e.g., voice activity detection)
-
-**Effort**: Medium (2-3 hours)
+**Effort**: Very Low (15 minutes)
 
 ---
 
@@ -245,45 +117,49 @@ protocol AISettingsViewModelProtocol: ObservableObject {
 
 | Priority | Task | Effort | Status |
 |----------|------|--------|--------|
-| ✅ | Migrate to MurmurixError | Medium | DONE |
-| 🔴 High | Replace singletons with DI | High | Pending |
-| ✅ | Apply SettingsStyles | Low-Medium | DONE |
-| ✅ | Extract window positioning | Low | DONE |
-| 🟠 Medium | HistoryService repository | Medium | Pending |
-| ✅ | Replace print() with Logger | Low | DONE |
-| 🟢 Low | RecordingWindowController DI | Low | Pending |
-| 🟢 Low | Move RecordingTimer | Very Low | Pending |
-| 🟢 Low | Consolidate colors | Low | Pending |
-| 🟢 Low | ViewModel protocols | Low | Pending |
-| ⚪ Nice | SwiftUI previews | Low | Pending |
-| ⚪ Nice | Async/await migration | Low | Pending |
-| ⚪ Nice | Documentation | Medium | Pending |
+| 🟢 Low | Consolidate color constants | 30 min | Pending |
+| 🟢 Low | Add ViewModel protocols | 1 hour | Pending |
+| 🟢 Low | RecordingWindowController DI | 30 min | Pending |
+| ⚪ Nice | SwiftUI previews | 1 hour | Pending |
+| ⚪ Nice | Move RecordingTimer | 15 min | Pending |
 
 ---
 
 ## Completed Refactoring
 
-For reference, here's what has been refactored:
+For reference, here's what has been completed:
 
 - ✅ Split `AppDelegate` → `MenuBarManager`, `WindowManager`
 - ✅ Split `TranscriptionService` → `DaemonManager`
 - ✅ Split `RecordingView.swift` → 6 files in `Views/Recording/`
-- ✅ Split `Settings.swift` → `WhisperModel`, `AIModel` extracted
+- ✅ Split `Settings.swift` → `WhisperModel`, `AIModel`, `OpenAITranscriptionModel` extracted
 - ✅ Created `AppConstants.swift` for centralized constants
 - ✅ Created `SettingsStyles.swift` for view modifiers
 - ✅ Created `MurmurixError.swift` unified error hierarchy
-- ✅ Created `GeneralSettingsViewModel`
-- ✅ Created `AISettingsViewModel`
-- ✅ Created `HistoryViewModel`
+- ✅ Created `GeneralSettingsViewModel`, `AISettingsViewModel`, `HistoryViewModel`
 - ✅ Eliminated voice activity threshold duplication
 - ✅ Moved default AI prompt to `AIConfig`
 - ✅ Migrated all services to unified `MurmurixError` (removed 4 duplicate error enums)
-- ✅ Applied `Layout`, `Typography`, `AppColors` constants to all settings views
+- ✅ Applied `Layout`, `Typography`, `AppColors` constants to main settings views
 - ✅ Created `Logger.swift` with `os.log` integration (replaced 22 print statements)
 - ✅ Created `WindowPositioner.swift` for centralized window positioning
-- ✅ Added 58 new tests (114 total): MurmurixError, AppConstants, WindowPositioner, Logger, WhisperModel, AIModel, voice activity, AI post-processing, skip AI feature
+- ✅ Added 114 tests with full mocking
 - ✅ Integrated Lottie library for animated cat loading states
 - ✅ Created `LottieView.swift` (NSViewRepresentable wrapper with color replacement)
 - ✅ Created `CatLoadingView.swift` (unified transcribing/processing states)
 - ✅ Created app icon (waveform, white on black with rounded corners)
+- ✅ Added OpenAI cloud transcription (gpt-4o-transcribe)
+- ✅ Added audio compression (WAV → M4A for cloud uploads)
+- ✅ Async/await migration (only `AudioRecorder.requestPermission` uses completion handler)
 - ✅ Released Version 1.0
+- ✅ **Removed debug print statements** from `RecordingWindowController.swift`
+- ✅ **Replaced singletons with Dependency Injection**:
+  - Added protocols: `OpenAITranscriptionServiceProtocol`, `ModelDownloadServiceProtocol`
+  - Made `SettingsStorageProtocol` class-only (`AnyObject`)
+  - Updated services to accept dependencies via init: `TranscriptionService`, `DaemonManager`, `GlobalHotkeyManager`, `AIPostProcessingService`
+  - Updated ViewModels to use protocol-based dependencies
+- ✅ **HistoryService → Repository pattern**:
+  - Created `Repository.swift` with generic `Repository<T>` protocol
+  - Created `SQLiteDatabase` helper class for common SQLite operations
+  - Created `SQLiteTranscriptionRepository` implementation
+  - Simplified `HistoryService` to delegate to repository

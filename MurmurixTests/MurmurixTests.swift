@@ -66,7 +66,8 @@ struct HistoryServiceTests {
     private func createTempDatabase() -> HistoryService {
         let tempDir = FileManager.default.temporaryDirectory
         let dbPath = tempDir.appendingPathComponent("test_\(UUID().uuidString).sqlite").path
-        return HistoryService(dbPath: dbPath)
+        let repository = SQLiteTranscriptionRepository(dbPath: dbPath)
+        return HistoryService(repository: repository)
     }
 
     @Test func saveAndFetchRecord() {

@@ -12,12 +12,17 @@ enum DownloadStatus: Equatable {
     case error(String)
 }
 
-final class ModelDownloadService {
+protocol ModelDownloadServiceProtocol {
+    func downloadModel(_ modelName: String, onProgress: @escaping (DownloadStatus) -> Void)
+    func cancelDownload()
+}
+
+final class ModelDownloadService: ModelDownloadServiceProtocol {
     static let shared = ModelDownloadService()
 
     private var downloadProcess: Process?
 
-    private init() {}
+    init() {}
 
     func downloadModel(_ modelName: String, onProgress: @escaping (DownloadStatus) -> Void) {
         guard let script = PythonResolver.findDaemonScript(), let python = PythonResolver.findPython() else {

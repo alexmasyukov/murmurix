@@ -7,10 +7,19 @@ import Foundation
 
 final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProtocol {
     private let daemonManager: DaemonManagerProtocol
+    private let settings: SettingsStorageProtocol
+    private let openAIService: OpenAITranscriptionServiceProtocol
     private let language: String
 
-    init(daemonManager: DaemonManagerProtocol? = nil, language: String = "ru") {
-        self.daemonManager = daemonManager ?? DaemonManager(language: language)
+    init(
+        daemonManager: DaemonManagerProtocol? = nil,
+        settings: SettingsStorageProtocol = Settings.shared,
+        openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
+        language: String = "ru"
+    ) {
+        self.settings = settings
+        self.openAIService = openAIService
+        self.daemonManager = daemonManager ?? DaemonManager(settings: settings, language: language)
         self.language = language
     }
 
@@ -29,7 +38,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     }
 
     func transcribe(audioURL: URL, useDaemon: Bool = true) async throws -> String {
-        let mode = Settings.shared.transcriptionMode
+        let mode = settings.transcriptionMode
 
         // Cloud mode - use OpenAI API
         if mode == "cloud" {
@@ -47,15 +56,15 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     // MARK: - OpenAI Transcription
 
     private func transcribeViaOpenAI(audioURL: URL) async throws -> String {
-        let apiKey = Settings.shared.openaiApiKey
+        let apiKey = settings.openaiApiKey
         guard !apiKey.isEmpty else {
             throw MurmurixError.transcription(.failed("OpenAI API key not set"))
         }
 
-        let model = Settings.shared.openaiTranscriptionModel
+        let model = settings.openaiTranscriptionModel
         Logger.Transcription.info("OpenAI mode, model=\(model), audio=\(audioURL.path)")
 
-        return try await OpenAITranscriptionService.shared.transcribe(
+        return try await openAIService.transcribe(
             audioURL: audioURL,
             language: language,
             model: model,
@@ -169,7 +178,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
             throw MurmurixError.transcription(.scriptNotFound)
         }
 
-        let modelName = Settings.shared.whisperModel
+        let modelName = settings.whisperModel
 
         Logger.Transcription.info("Direct mode, audio=\(audioURL.path)")
 

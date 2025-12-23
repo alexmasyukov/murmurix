@@ -10,16 +10,17 @@ protocol AIPostProcessingServiceProtocol: Sendable {
 }
 
 final class AIPostProcessingService: AIPostProcessingServiceProtocol, @unchecked Sendable {
-    private let settings: Settings
+    private let settings: SettingsStorageProtocol
     private let apiClient: AnthropicAPIClientProtocol
 
-    init(settings: Settings = .shared, apiClient: AnthropicAPIClientProtocol = AnthropicAPIClient.shared) {
+    init(settings: SettingsStorageProtocol = Settings.shared, apiClient: AnthropicAPIClientProtocol = AnthropicAPIClient.shared) {
         self.settings = settings
         self.apiClient = apiClient
     }
 
     func process(text: String) async throws -> String {
-        guard let apiKey = KeychainService.load(key: "claudeApiKey"), !apiKey.isEmpty else {
+        let apiKey = settings.claudeApiKey
+        guard !apiKey.isEmpty else {
             throw MurmurixError.ai(.noApiKey)
         }
 

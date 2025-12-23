@@ -15,10 +15,12 @@ protocol DaemonManagerProtocol: Sendable {
 
 final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
     let socketPath: String
+    private let settings: SettingsStorageProtocol
     private let language: String
     private var daemonProcess: Process?
 
-    init(language: String = "ru") {
+    init(settings: SettingsStorageProtocol = Settings.shared, language: String = "ru") {
+        self.settings = settings
         self.language = language
         self.socketPath = AppPaths.socketPath
     }
@@ -39,7 +41,7 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
             return
         }
 
-        let modelName = Settings.shared.whisperModel
+        let modelName = settings.whisperModel
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: python)

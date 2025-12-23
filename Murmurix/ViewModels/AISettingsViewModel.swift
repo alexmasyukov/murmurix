@@ -17,10 +17,10 @@ final class AISettingsViewModel: ObservableObject {
     @Published var isTesting = false
     @Published var testResult: APITestResult?
 
-    private let settings: Settings
+    private let settings: SettingsStorageProtocol
     private let apiClient: AnthropicAPIClientProtocol
 
-    init(settings: Settings = .shared, apiClient: AnthropicAPIClientProtocol = AnthropicAPIClient.shared) {
+    init(settings: SettingsStorageProtocol = Settings.shared, apiClient: AnthropicAPIClientProtocol = AnthropicAPIClient.shared) {
         self.settings = settings
         self.apiClient = apiClient
     }

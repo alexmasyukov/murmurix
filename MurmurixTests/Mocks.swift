@@ -106,6 +106,13 @@ final class MockSettings: SettingsStorageProtocol {
     var keepDaemonRunning: Bool = true
     var language: String = "ru"
     var aiPostProcessingEnabled: Bool = false
+    var transcriptionMode: String = "local"
+    var whisperModel: String = "small"
+    var openaiApiKey: String = ""
+    var openaiTranscriptionModel: String = "gpt-4o-transcribe"
+    var claudeApiKey: String = ""
+    var aiPrompt: String = "Test prompt"
+    var aiModel: String = "claude-haiku-4-5"
 
     private var toggleHotkey: Hotkey = .toggleDefault
     private var toggleNoAIHotkey: Hotkey = .toggleNoAIDefault
@@ -204,5 +211,83 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
 
     func transcriptionDidCancel() {
         transcriptionDidCancelCallCount += 1
+    }
+}
+
+// MARK: - Mock Anthropic API Client
+
+final class MockAnthropicAPIClient: AnthropicAPIClientProtocol, @unchecked Sendable {
+    var validateAPIKeyCallCount = 0
+    var processTextCallCount = 0
+
+    var validateAPIKeyResult: Result<Bool, Error> = .success(true)
+    var processTextResult: Result<String, Error> = .success("Processed text")
+
+    func validateAPIKey(_ apiKey: String) async throws -> Bool {
+        validateAPIKeyCallCount += 1
+        switch validateAPIKeyResult {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            throw error
+        }
+    }
+
+    func processText(_ text: String, systemPrompt: String, model: String, apiKey: String) async throws -> String {
+        processTextCallCount += 1
+        switch processTextResult {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            throw error
+        }
+    }
+}
+
+// MARK: - Mock Model Download Service
+
+final class MockModelDownloadService: ModelDownloadServiceProtocol {
+    var downloadModelCallCount = 0
+    var cancelDownloadCallCount = 0
+    var lastDownloadedModel: String?
+
+    func downloadModel(_ modelName: String, onProgress: @escaping (DownloadStatus) -> Void) {
+        downloadModelCallCount += 1
+        lastDownloadedModel = modelName
+        onProgress(.downloading)
+    }
+
+    func cancelDownload() {
+        cancelDownloadCallCount += 1
+    }
+}
+
+// MARK: - Mock OpenAI Transcription Service
+
+final class MockOpenAITranscriptionService: OpenAITranscriptionServiceProtocol, @unchecked Sendable {
+    var transcribeCallCount = 0
+    var validateAPIKeyCallCount = 0
+
+    var transcribeResult: Result<String, Error> = .success("Transcribed text")
+    var validateAPIKeyResult: Result<Bool, Error> = .success(true)
+
+    func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
+        transcribeCallCount += 1
+        switch transcribeResult {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            throw error
+        }
+    }
+
+    func validateAPIKey(_ apiKey: String) async throws -> Bool {
+        validateAPIKeyCallCount += 1
+        switch validateAPIKeyResult {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            throw error
+        }
     }
 }
