@@ -929,18 +929,26 @@ actor MetricsService {
 - [x] GeneralSettingsViewModelSettingsDITests - 2 tests
 - [x] TestServiceEnumTests - 1 test
 
-### Phase 4: Polish (Optional)
-1. Documentation (DocC comments)
-2. Keychain key enum
+### Phase 4: Polish (Optional) ✅ DONE (Keychain enum)
+1. Documentation (DocC comments) - *optional*
+2. Keychain key enum ✅
+
+**Implementation:**
+- Added `KeychainKey` enum in `Services/KeychainService.swift`
+- Type-safe keys: `.openaiApiKey`, `.geminiApiKey`
+- Added overloaded methods `save/load/delete/exists` for KeychainKey
+- Updated `Settings.swift` to use KeychainKey instead of string literals
+
+**Tests for Phase 4:** ✅ DONE
+- [x] KeychainKeyEnumTests - 4 tests
+- [x] KeychainServiceTypeSafeAPITests - 4 tests
 
 **Deferred tasks (low priority):**
-3. Remove @unchecked Sendable (requires actor conversion)
-4. Split GeneralSettingsView into sections (file already well-structured at 552 lines)
-5. Add Process/FileManager abstractions
-6. Swift 6 strict concurrency preparation (do when upgrading to Swift 6)
-
-**Tests to add after Phase 4:**
-- [ ] Verify all tests pass with strict concurrency (when needed)
+1. Remove @unchecked Sendable (requires actor conversion)
+2. Split GeneralSettingsView into sections (file already well-structured at 552 lines)
+3. Add Process/FileManager abstractions
+4. Swift 6 strict concurrency preparation (do when upgrading to Swift 6)
+5. DocC documentation (optional)
 
 ---
 

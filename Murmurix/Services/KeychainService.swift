@@ -6,6 +6,12 @@
 import Foundation
 import Security
 
+/// Keys for storing sensitive data in Keychain
+enum KeychainKey: String, CaseIterable {
+    case openaiApiKey = "openaiApiKey"
+    case geminiApiKey = "geminiApiKey"
+}
+
 final class KeychainService {
     private static let serviceName = "com.murmurix.app"
 
@@ -15,6 +21,32 @@ final class KeychainService {
         case itemNotFound
         case invalidData
     }
+
+    // MARK: - Type-safe API (preferred)
+
+    /// Save a string value to Keychain using type-safe key
+    @discardableResult
+    static func save(_ key: KeychainKey, value: String) -> Bool {
+        save(key: key.rawValue, value: value)
+    }
+
+    /// Load a string value from Keychain using type-safe key
+    static func load(_ key: KeychainKey) -> String? {
+        load(key: key.rawValue)
+    }
+
+    /// Delete a value from Keychain using type-safe key
+    @discardableResult
+    static func delete(_ key: KeychainKey) -> Bool {
+        delete(key: key.rawValue)
+    }
+
+    /// Check if a key exists in Keychain using type-safe key
+    static func exists(_ key: KeychainKey) -> Bool {
+        exists(key: key.rawValue)
+    }
+
+    // MARK: - String-based API (internal)
 
     /// Save a string value to Keychain
     @discardableResult

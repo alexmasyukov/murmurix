@@ -51,18 +51,25 @@ Murmurix - macOS Menu Bar приложение для голосовой тра�
 
 4. **Тесты** в `MurmurixTests/Phase3Tests.swift` - 18 тестов
 
-## Что нужно сделать
+### Phase 4 ✅ DONE (Keychain enum)
 
-### Phase 4 (Optional - Polish)
+1. **KeychainKey enum** в `Services/KeychainService.swift`:
+   - Type-safe ключи: `.openaiApiKey`, `.geminiApiKey`
+   - Перегруженные методы `save/load/delete/exists`
+   - Обновлен `Settings.swift` для использования enum
+
+2. **Тесты** в `MurmurixTests/Phase4Tests.swift` - 8 тестов
+
+## Что осталось (Optional - Polish)
+
 ```
-1. Documentation (DocC comments)
-2. Keychain key enum
+1. Documentation (DocC comments) - необязательно
 
 Deferred (low priority):
-3. Remove @unchecked Sendable (требует конвертации в actors)
-4. Split GeneralSettingsView into sections (файл уже хорошо структурирован)
-5. Add Process/FileManager abstractions
-6. Swift 6 strict concurrency (делать при переходе на Swift 6)
+2. Remove @unchecked Sendable (требует конвертации в actors)
+3. Split GeneralSettingsView into sections (файл уже хорошо структурирован)
+4. Add Process/FileManager abstractions
+5. Swift 6 strict concurrency (делать при переходе на Swift 6)
 ```
 
 ## Ключевые файлы
@@ -71,8 +78,10 @@ Deferred (low priority):
 - `MurmurixTests/Phase1Tests.swift` - тесты Phase 1
 - `MurmurixTests/Phase2Tests.swift` - тесты Phase 2
 - `MurmurixTests/Phase3Tests.swift` - тесты Phase 3
+- `MurmurixTests/Phase4Tests.swift` - тесты Phase 4
 - `MurmurixTests/Mocks.swift` - все моки
 - `Murmurix/Services/UnixSocketClient.swift` - сокет-клиент
+- `Murmurix/Services/KeychainService.swift` - сервис Keychain с type-safe API
 - `Murmurix/ViewModels/GeneralSettingsViewModel.swift` - ViewModel с тестовой логикой
 
 ## Статистика тестов
@@ -82,7 +91,8 @@ Deferred (low priority):
 | Phase1Tests.swift | 55 |
 | Phase2Tests.swift | 20 |
 | Phase3Tests.swift | 18 |
-| **Всего новых** | **93** |
+| Phase4Tests.swift | 8 |
+| **Всего новых** | **101** |
 
 ## Команда для запуска тестов
 

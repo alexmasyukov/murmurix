@@ -112,12 +112,12 @@ final class Settings: SettingsStorageProtocol {
     }
 
     var openaiApiKey: String {
-        get { KeychainService.load(key: "openaiApiKey") ?? "" }
+        get { KeychainService.load(KeychainKey.openaiApiKey) ?? "" }
         set {
             if newValue.isEmpty {
-                KeychainService.delete(key: "openaiApiKey")
+                KeychainService.delete(KeychainKey.openaiApiKey)
             } else {
-                KeychainService.save(key: "openaiApiKey", value: newValue)
+                KeychainService.save(KeychainKey.openaiApiKey, value: newValue)
             }
         }
     }
@@ -125,12 +125,12 @@ final class Settings: SettingsStorageProtocol {
     // MARK: - Gemini Settings
 
     var geminiApiKey: String {
-        get { KeychainService.load(key: "geminiApiKey") ?? "" }
+        get { KeychainService.load(KeychainKey.geminiApiKey) ?? "" }
         set {
             if newValue.isEmpty {
-                KeychainService.delete(key: "geminiApiKey")
+                KeychainService.delete(KeychainKey.geminiApiKey)
             } else {
-                KeychainService.save(key: "geminiApiKey", value: newValue)
+                KeychainService.save(KeychainKey.geminiApiKey, value: newValue)
             }
         }
     }
