@@ -929,13 +929,18 @@ actor MetricsService {
 - [x] GeneralSettingsViewModelSettingsDITests - 2 tests
 - [x] TestServiceEnumTests - 1 test
 
-### Phase 4: Polish
+### Phase 4: Polish (Optional)
 1. Documentation (DocC comments)
 2. Keychain key enum
-3. Swift 6 strict concurrency preparation
+
+**Deferred tasks (low priority):**
+3. Remove @unchecked Sendable (requires actor conversion)
+4. Split GeneralSettingsView into sections (file already well-structured at 552 lines)
+5. Add Process/FileManager abstractions
+6. Swift 6 strict concurrency preparation (do when upgrading to Swift 6)
 
 **Tests to add after Phase 4:**
-- [ ] Verify all tests pass with strict concurrency
+- [ ] Verify all tests pass with strict concurrency (when needed)
 
 ---
 

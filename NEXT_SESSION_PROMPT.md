@@ -53,14 +53,16 @@ Murmurix - macOS Menu Bar приложение для голосовой тра�
 
 ## Что нужно сделать
 
-### Phase 4 (Polish + Deferred)
+### Phase 4 (Optional - Polish)
 ```
 1. Documentation (DocC comments)
 2. Keychain key enum
-3. Swift 6 strict concurrency preparation
-4. Remove @unchecked Sendable (требует конвертации в actors)
-5. Split GeneralSettingsView into sections (опционально)
-6. Add Process/FileManager abstractions (опционально)
+
+Deferred (low priority):
+3. Remove @unchecked Sendable (требует конвертации в actors)
+4. Split GeneralSettingsView into sections (файл уже хорошо структурирован)
+5. Add Process/FileManager abstractions
+6. Swift 6 strict concurrency (делать при переходе на Swift 6)
 ```
 
 ## Ключевые файлы
