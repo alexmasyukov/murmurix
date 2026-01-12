@@ -371,3 +371,86 @@ final class MockTranscriptionRepository: TranscriptionRepositoryProtocol {
         records.removeAll()
     }
 }
+
+// MARK: - Mock URL Session
+
+final class MockURLSession: URLSessionProtocol, @unchecked Sendable {
+    var responseData: Data = Data()
+    var responseStatusCode: Int = 200
+    var error: Error?
+    var lastRequest: URLRequest?
+    var requestCallCount = 0
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        requestCallCount += 1
+        lastRequest = request
+
+        if let error = error {
+            throw error
+        }
+
+        let url = request.url ?? URL(string: "https://example.com")!
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: responseStatusCode,
+            httpVersion: "HTTP/1.1",
+            headerFields: nil
+        )!
+
+        return (responseData, response)
+    }
+
+    /// Helper to set up a successful JSON response
+    func setSuccessResponse(json: [String: Any]) {
+        responseData = (try? JSONSerialization.data(withJSONObject: json)) ?? Data()
+        responseStatusCode = 200
+        error = nil
+    }
+
+    /// Helper to set up an error response
+    func setErrorResponse(statusCode: Int, message: String) {
+        let errorJson: [String: Any] = ["error": ["message": message]]
+        responseData = (try? JSONSerialization.data(withJSONObject: errorJson)) ?? Data()
+        responseStatusCode = statusCode
+        error = nil
+    }
+}
+
+// MARK: - Mock Socket Client
+
+final class MockSocketClient: SocketClientProtocol, @unchecked Sendable {
+    var response: [String: Any] = [:]
+    var error: Error?
+    var lastRequest: [String: Any]?
+    var lastTimeout: Int?
+    var sendCallCount = 0
+
+    func send(request: [String: Any], timeout: Int) throws -> [String: Any] {
+        sendCallCount += 1
+        lastRequest = request
+        lastTimeout = timeout
+
+        if let error = error {
+            throw error
+        }
+
+        return response
+    }
+
+    /// Helper to set up a successful transcription response
+    func setTranscriptionResponse(text: String) {
+        response = ["text": text]
+        error = nil
+    }
+
+    /// Helper to set up an error response
+    func setErrorResponse(message: String) {
+        response = ["error": message]
+        error = nil
+    }
+
+    /// Helper to set up a socket error
+    func setSocketError(_ socketError: SocketError) {
+        error = socketError
+    }
+}

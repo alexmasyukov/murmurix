@@ -39,6 +39,14 @@ protocol HotkeyManagerProtocol: AnyObject {
     func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey)
 }
 
+// MARK: - Network
+
+protocol URLSessionProtocol: Sendable {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse)
+}
+
+extension URLSession: URLSessionProtocol {}
+
 // MARK: - Settings Storage
 
 protocol SettingsStorageProtocol: AnyObject {

@@ -10,6 +10,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     private let settings: SettingsStorageProtocol
     private let openAIService: OpenAITranscriptionServiceProtocol
     private let geminiService: GeminiTranscriptionServiceProtocol
+    private let socketClientFactory: (String) -> SocketClientProtocol
     private let language: String
 
     init(
@@ -17,12 +18,14 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         settings: SettingsStorageProtocol = Settings.shared,
         openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
         geminiService: GeminiTranscriptionServiceProtocol = GeminiTranscriptionService.shared,
+        socketClientFactory: ((String) -> SocketClientProtocol)? = nil,
         language: String = "ru"
     ) {
         self.settings = settings
         self.openAIService = openAIService
         self.geminiService = geminiService
         self.daemonManager = daemonManager ?? DaemonManager(settings: settings, language: language)
+        self.socketClientFactory = socketClientFactory ?? { path in UnixSocketClient(socketPath: path) }
         self.language = language
     }
 
@@ -105,8 +108,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async { [self] in
                 do {
-                    let response = try sendTranscriptionRequest(audioPath: audioURL.path)
-                    let text = try parseTranscriptionResponse(response)
+                    let text = try sendTranscriptionRequest(audioPath: audioURL.path)
                     continuation.resume(returning: text)
                 } catch {
                     continuation.resume(throwing: error)
@@ -116,16 +118,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     }
 
     private func sendTranscriptionRequest(audioPath: String) throws -> String {
-        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard fd >= 0 else {
-            throw MurmurixError.transcription(.daemonNotRunning)
-        }
-        defer { close(fd) }
-
-        var timeout = timeval(tv_sec: NetworkConfig.daemonSocketTimeout, tv_usec: 0)
-        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
-
-        try connectToSocket(fd: fd)
+        let socketClient = socketClientFactory(daemonManager.socketPath)
 
         let request: [String: Any] = [
             "command": "transcribe",
@@ -133,58 +126,24 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
             "audio_path": audioPath
         ]
 
-        let jsonData = try JSONSerialization.data(withJSONObject: request)
-        let jsonString = String(data: jsonData, encoding: .utf8)! + "\n"
-
-        jsonString.withCString { ptr in
-            _ = send(fd, ptr, strlen(ptr), 0)
-        }
-
-        var buffer = [CChar](repeating: 0, count: 65536)
-        let bytesRead = recv(fd, &buffer, buffer.count - 1, 0)
-
-        guard bytesRead > 0 else {
-            if errno == EAGAIN || errno == EWOULDBLOCK {
+        do {
+            let response = try socketClient.send(request: request, timeout: NetworkConfig.daemonSocketTimeout)
+            return try parseTranscriptionResponse(response)
+        } catch let error as SocketError {
+            switch error {
+            case .connectionFailed:
+                throw MurmurixError.transcription(.daemonNotRunning)
+            case .timeout:
                 throw MurmurixError.transcription(.timeout)
+            case .noResponse:
+                throw MurmurixError.transcription(.failed("No response from daemon"))
+            case .invalidResponse:
+                throw MurmurixError.transcription(.failed("Invalid response from daemon"))
             }
-            throw MurmurixError.transcription(.failed("No response from daemon"))
-        }
-
-        return String(cString: buffer)
-    }
-
-    private func connectToSocket(fd: Int32) throws {
-        var addr = sockaddr_un()
-        addr.sun_family = sa_family_t(AF_UNIX)
-
-        let socketPath = daemonManager.socketPath
-        let maxPathLen = MemoryLayout.size(ofValue: addr.sun_path) - 1
-
-        socketPath.withCString { ptr in
-            withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
-                let pathBuf = UnsafeMutableRawPointer(pathPtr).assumingMemoryBound(to: CChar.self)
-                strncpy(pathBuf, ptr, maxPathLen)
-                pathBuf[maxPathLen] = 0
-            }
-        }
-
-        let connectResult = withUnsafePointer(to: &addr) { ptr in
-            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
-                connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
-            }
-        }
-
-        guard connectResult == 0 else {
-            throw MurmurixError.transcription(.daemonNotRunning)
         }
     }
 
-    private func parseTranscriptionResponse(_ response: String) throws -> String {
-        guard let data = response.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw MurmurixError.transcription(.failed("Failed to parse response"))
-        }
-
+    private func parseTranscriptionResponse(_ json: [String: Any]) throws -> String {
         if let text = json["text"] as? String {
             return text
         } else if let error = json["error"] as? String {

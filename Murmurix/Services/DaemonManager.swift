@@ -17,12 +17,18 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
     let socketPath: String
     private let settings: SettingsStorageProtocol
     private let language: String
+    private let socketClientFactory: (String) -> SocketClientProtocol
     private var daemonProcess: Process?
 
-    init(settings: SettingsStorageProtocol = Settings.shared, language: String = "ru") {
+    init(
+        settings: SettingsStorageProtocol = Settings.shared,
+        language: String = "ru",
+        socketClientFactory: ((String) -> SocketClientProtocol)? = nil
+    ) {
         self.settings = settings
         self.language = language
         self.socketPath = AppPaths.socketPath
+        self.socketClientFactory = socketClientFactory ?? { path in UnixSocketClient(socketPath: path) }
     }
 
     var isRunning: Bool {
@@ -113,54 +119,22 @@ final class DaemonManager: @unchecked Sendable, DaemonManagerProtocol {
         try? FileManager.default.removeItem(atPath: pidPath)
     }
 
-    private func sendCommand(_ command: String) throws -> String {
-        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard fd >= 0 else {
-            throw MurmurixError.daemon(.notRunning)
-        }
-        defer { close(fd) }
-
-        var timeout = timeval(tv_sec: NetworkConfig.shutdownTimeout, tv_usec: 0)
-        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
-
-        var addr = sockaddr_un()
-        addr.sun_family = sa_family_t(AF_UNIX)
-
-        let maxPathLen = MemoryLayout.size(ofValue: addr.sun_path) - 1
-        socketPath.withCString { ptr in
-            withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
-                let pathBuf = UnsafeMutableRawPointer(pathPtr).assumingMemoryBound(to: CChar.self)
-                strncpy(pathBuf, ptr, maxPathLen)
-                pathBuf[maxPathLen] = 0
-            }
-        }
-
-        let connectResult = withUnsafePointer(to: &addr) { ptr in
-            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
-                connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
-            }
-        }
-
-        guard connectResult == 0 else {
-            throw MurmurixError.daemon(.notRunning)
-        }
-
+    private func sendCommand(_ command: String) throws -> [String: Any] {
+        let socketClient = socketClientFactory(socketPath)
         let request: [String: Any] = ["command": command]
-        let jsonData = try JSONSerialization.data(withJSONObject: request)
-        let jsonString = String(data: jsonData, encoding: .utf8)! + "\n"
 
-        jsonString.withCString { ptr in
-            _ = send(fd, ptr, strlen(ptr), 0)
+        do {
+            return try socketClient.send(request: request, timeout: NetworkConfig.shutdownTimeout)
+        } catch let error as SocketError {
+            switch error {
+            case .connectionFailed:
+                throw MurmurixError.daemon(.notRunning)
+            case .timeout, .noResponse:
+                throw MurmurixError.daemon(.communicationFailed)
+            case .invalidResponse:
+                throw MurmurixError.daemon(.communicationFailed)
+            }
         }
-
-        var buffer = [CChar](repeating: 0, count: 4096)
-        let bytesRead = recv(fd, &buffer, buffer.count - 1, 0)
-
-        guard bytesRead > 0 else {
-            throw MurmurixError.daemon(.communicationFailed)
-        }
-
-        return String(cString: buffer)
     }
 
 }

@@ -14,11 +14,14 @@ final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscription
     static let shared = OpenAITranscriptionService()
 
     private let baseURL = "https://api.openai.com/v1/audio/transcriptions"
+    private let session: URLSessionProtocol
 
     // Промпт для улучшения распознавания технических терминов
     private let defaultPrompt = "Диалог на темы программирования. Технические термины: Anthropic, Claude, Bun, React, Docker, Kubernetes, Golang, Python, Swift, Xcode, GitHub, API, JSON, REST, GraphQL, PostgreSQL, MongoDB, Redis, AWS, Azure, GCP и так далее."
 
-    init() {}
+    init(session: URLSessionProtocol = URLSession.shared) {
+        self.session = session
+    }
 
     // MARK: - Transcription
 
@@ -81,7 +84,7 @@ final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscription
         request.httpBody = body
 
         // Отправляем запрос
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw MurmurixError.transcription(.failed("Invalid response"))
@@ -146,7 +149,7 @@ final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscription
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = body
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw MurmurixError.transcription(.failed("Invalid response"))
