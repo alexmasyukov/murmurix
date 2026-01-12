@@ -1,4 +1,4 @@
-# Промпт для продолжения рефакторинга Murmurix
+# Промпт для продолжения работы над Murmurix
 
 ## Контекст
 
@@ -60,16 +60,34 @@ Murmurix - macOS Menu Bar приложение для голосовой тра�
 
 2. **Тесты** в `MurmurixTests/Phase4Tests.swift` - 8 тестов
 
-## Что осталось (Optional - Polish)
+### Integration Tests ✅ DONE
+
+1. **Интеграционные тесты с реальным демоном** в `MurmurixTests/IntegrationTests.swift`:
+   - `daemonStartsAndStops()` - проверка lifecycle демона
+   - `daemonCleansUpSocketFile()` - проверка cleanup сокета
+   - `daemonTranscribesSilentAudio()` - реальная транскрипция
+
+2. **DaemonCleanup** утилита:
+   - Убивает демон по PID из файла
+   - Fallback через `pkill -f transcribe_daemon.py`
+   - Чистит socket и pid файлы
+
+3. **Исправлены flaky тесты**:
+   - `toggleRecordingWithOpenAIMode` - timeout 100ms → 2s
+   - `toggleRecordingWithGeminiMode` - timeout 100ms → 2s
+   - `serviceAcceptsCustomSocketClientFactory` - убрана зависимость от внешнего состояния
+
+## Рефакторинг завершён
+
+Все основные фазы выполнены. Остались только низкоприоритетные задачи:
 
 ```
-1. Documentation (DocC comments) - необязательно
-
 Deferred (low priority):
-2. Remove @unchecked Sendable (требует конвертации в actors)
-3. Split GeneralSettingsView into sections (файл уже хорошо структурирован)
-4. Add Process/FileManager abstractions
-5. Swift 6 strict concurrency (делать при переходе на Swift 6)
+1. Remove @unchecked Sendable (требует конвертации в actors)
+2. Split GeneralSettingsView into sections (файл уже хорошо структурирован)
+3. Add Process/FileManager abstractions
+4. Swift 6 strict concurrency (делать при переходе на Swift 6)
+5. DocC comments (необязательно)
 ```
 
 ## Ключевые файлы
@@ -79,6 +97,7 @@ Deferred (low priority):
 - `MurmurixTests/Phase2Tests.swift` - тесты Phase 2
 - `MurmurixTests/Phase3Tests.swift` - тесты Phase 3
 - `MurmurixTests/Phase4Tests.swift` - тесты Phase 4
+- `MurmurixTests/IntegrationTests.swift` - интеграционные тесты с демоном
 - `MurmurixTests/Mocks.swift` - все моки
 - `Murmurix/Services/UnixSocketClient.swift` - сокет-клиент
 - `Murmurix/Services/KeychainService.swift` - сервис Keychain с type-safe API
@@ -92,7 +111,10 @@ Deferred (low priority):
 | Phase2Tests.swift | 20 |
 | Phase3Tests.swift | 18 |
 | Phase4Tests.swift | 8 |
-| **Всего новых** | **101** |
+| IntegrationTests.swift | 3 |
+| RecordingCoordinatorTests.swift | ~15 |
+| Другие тесты | ~15 |
+| **Всего** | **~114** |
 
 ## Команда для запуска тестов
 
@@ -100,8 +122,4 @@ Deferred (low priority):
 xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=macOS' test
 ```
 
-## Начни с
-
-```
-Прочитай REFACTORING_PLAN.md и начни Phase 4 с добавления DocC комментариев к публичным API
-```
+Все тесты проходят (unit, integration, UI).

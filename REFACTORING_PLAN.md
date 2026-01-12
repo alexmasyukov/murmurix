@@ -943,6 +943,26 @@ actor MetricsService {
 - [x] KeychainKeyEnumTests - 4 tests
 - [x] KeychainServiceTypeSafeAPITests - 4 tests
 
+### Integration Tests ✅ DONE
+
+1. **Интеграционные тесты с реальным демоном** в `MurmurixTests/IntegrationTests.swift`:
+   - `daemonStartsAndStops()` - проверка lifecycle демона
+   - `daemonCleansUpSocketFile()` - проверка cleanup сокета
+   - `daemonTranscribesSilentAudio()` - реальная транскрипция
+
+2. **DaemonCleanup** утилита для принудительного убийства демона:
+   - Убивает по PID из файла
+   - Fallback через `pkill -f transcribe_daemon.py`
+   - Чистит socket и pid файлы
+
+3. **Исправлены flaky тесты**:
+   - `toggleRecordingWithOpenAIMode` - timeout 100ms → 2s
+   - `toggleRecordingWithGeminiMode` - timeout 100ms → 2s
+   - `serviceAcceptsCustomSocketClientFactory` - убрана зависимость от внешнего состояния
+
+**Tests:** ✅ DONE
+- [x] DaemonIntegrationTests - 3 tests
+
 **Deferred tasks (low priority):**
 1. Remove @unchecked Sendable (requires actor conversion)
 2. Split GeneralSettingsView into sections (file already well-structured at 552 lines)
