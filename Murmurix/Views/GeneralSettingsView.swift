@@ -22,6 +22,8 @@ struct GeneralSettingsView: View {
     @State private var openaiApiKey: String = ""
     @State private var isTestingOpenAI = false
     @State private var openaiTestResult: APITestResult?
+    @State private var isTestingLocal = false
+    @State private var localTestResult: APITestResult?
 
     @StateObject private var viewModel = GeneralSettingsViewModel()
     @Binding var isDaemonRunning: Bool
@@ -191,6 +193,7 @@ struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: Layout.Spacing.item) {
                 modelPicker
                 modelDownloadStatus
+                localTestButton
             }
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.vertical, Layout.Padding.vertical)
@@ -199,6 +202,110 @@ struct GeneralSettingsView: View {
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.bottom, Layout.Padding.section)
         }
+    }
+
+    private var localTestButton: some View {
+        VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+            HStack {
+                Button(action: testLocalModel) {
+                    HStack(spacing: 6) {
+                        if isTestingLocal {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(isTestingLocal ? "Testing..." : "Test Local Model")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(isTestingLocal || !viewModel.isModelInstalled(whisperModel))
+
+                Spacer()
+            }
+
+            // Test result
+            if let result = localTestResult {
+                HStack(spacing: 4) {
+                    switch result {
+                    case .success:
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Model works correctly")
+                            .foregroundColor(.green)
+                    case .failure(let message):
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                        Text(message)
+                            .foregroundColor(.red)
+                    }
+                }
+                .font(Typography.description)
+            }
+        }
+    }
+
+    private func testLocalModel() {
+        isTestingLocal = true
+        localTestResult = nil
+
+        Task {
+            do {
+                // Create a short silent audio file for testing
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("test_audio.wav")
+                try createSilentWavFile(at: tempURL, duration: 0.5)
+
+                // Try to transcribe it
+                let service = TranscriptionService()
+                let result = try await service.transcribe(audioURL: tempURL, useDaemon: isDaemonRunning, mode: .local)
+
+                // Clean up
+                try? FileManager.default.removeItem(at: tempURL)
+
+                await MainActor.run {
+                    // Empty or short result from silence is expected
+                    localTestResult = .success
+                    isTestingLocal = false
+                }
+            } catch {
+                await MainActor.run {
+                    localTestResult = .failure(error.localizedDescription)
+                    isTestingLocal = false
+                }
+            }
+        }
+    }
+
+    private func createSilentWavFile(at url: URL, duration: Double) throws {
+        let sampleRate: Int = 16000
+        let numSamples = Int(Double(sampleRate) * duration)
+
+        var header = Data()
+
+        // RIFF header
+        header.append(contentsOf: "RIFF".utf8)
+        let fileSize = UInt32(36 + numSamples * 2)
+        header.append(contentsOf: withUnsafeBytes(of: fileSize.littleEndian) { Array($0) })
+        header.append(contentsOf: "WAVE".utf8)
+
+        // fmt chunk
+        header.append(contentsOf: "fmt ".utf8)
+        header.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian) { Array($0) }) // chunk size
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Array($0) })  // PCM
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Array($0) })  // mono
+        header.append(contentsOf: withUnsafeBytes(of: UInt32(sampleRate).littleEndian) { Array($0) }) // sample rate
+        header.append(contentsOf: withUnsafeBytes(of: UInt32(sampleRate * 2).littleEndian) { Array($0) }) // byte rate
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(2).littleEndian) { Array($0) })  // block align
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(16).littleEndian) { Array($0) }) // bits per sample
+
+        // data chunk
+        header.append(contentsOf: "data".utf8)
+        header.append(contentsOf: withUnsafeBytes(of: UInt32(numSamples * 2).littleEndian) { Array($0) })
+
+        // Silent samples (zeros)
+        let silentData = Data(count: numSamples * 2)
+        header.append(silentData)
+
+        try header.write(to: url)
     }
 
     private var cloudSettingsSection: some View {
