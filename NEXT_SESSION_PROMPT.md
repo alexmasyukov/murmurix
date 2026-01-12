@@ -4,7 +4,9 @@
 
 Murmurix - macOS Menu Bar приложение для голосовой транскрипции (Whisper, OpenAI, Gemini).
 
-## Что было сделано (Phase 1)
+## Что было сделано
+
+### Phase 1 ✅ DONE (код + тесты)
 
 1. **Добавлены моки** в `MurmurixTests/Mocks.swift`:
    - `MockDaemonManager`
@@ -23,17 +25,17 @@ Murmurix - macOS Menu Bar приложение для голосовой тра�
 4. **Протоколы**:
    - `TranscriptionRepositoryProtocol` в `Repository.swift`
 
+5. **Тесты** в `MurmurixTests/Phase1Tests.swift`:
+   - AudioTestUtilityTests (13 тестов)
+   - MIMETypeResolverTests (12 тестов)
+   - APITestResultTests (8 тестов)
+   - MockDaemonManager tests (8 тестов)
+   - MockHotkeyManager tests (6 тестов)
+   - MockTranscriptionRepository tests (8 тестов)
+
 ## Что нужно сделать
 
-### Сначала: Тесты для Phase 1
-```
-- [ ] AudioTestUtilityTests (createWavData, createSilentWavFile)
-- [ ] MIMETypeResolverTests (все типы файлов)
-- [ ] Тесты с использованием MockDaemonManager
-- [ ] Тесты с использованием MockHotkeyManager
-```
-
-### Потом: Phase 2 (Improve Testability)
+### Phase 2 (Improve Testability)
 ```
 1. Абстрагировать URLSession (протокол + мок)
 2. Извлечь UnixSocketClient из TranscriptionService/DaemonManager
@@ -51,7 +53,7 @@ Murmurix - macOS Menu Bar приложение для голосовой тра�
 ## Ключевые файлы
 
 - `REFACTORING_PLAN.md` - полный план с деталями
-- `NEED_TO_REFACTOR.md` - история рефакторинга
+- `MurmurixTests/Phase1Tests.swift` - тесты Phase 1
 - `MurmurixTests/Mocks.swift` - все моки
 
 ## Команда для запуска тестов
@@ -63,5 +65,5 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=m
 ## Начни с
 
 ```
-Прочитай REFACTORING_PLAN.md и напиши тесты для Phase 1 (AudioTestUtility, MIMETypeResolver, новые моки)
+Прочитай REFACTORING_PLAN.md и начни Phase 2 с абстракции URLSession
 ```

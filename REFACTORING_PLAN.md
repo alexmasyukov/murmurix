@@ -896,10 +896,13 @@ actor MetricsService {
 6. Create MIMETypeResolver ✅
 7. DRY hotkey methods ✅
 
-**Tests to add after Phase 1:**
-- [ ] AudioTestUtility tests (WAV generation)
-- [ ] MIMETypeResolver tests (all file types)
-- [ ] Tests using new mocks (MockDaemonManager, MockHotkeyManager)
+**Tests for Phase 1:** ✅ DONE
+- [x] AudioTestUtility tests (WAV generation) - 13 tests
+- [x] MIMETypeResolver tests (all file types) - 12 tests
+- [x] APITestResult tests - 8 tests
+- [x] MockDaemonManager tests - 8 tests
+- [x] MockHotkeyManager tests - 6 tests
+- [x] MockTranscriptionRepository tests - 8 tests
 
 ### Phase 2: Improve Testability
 1. Abstract URLSession for network testing
