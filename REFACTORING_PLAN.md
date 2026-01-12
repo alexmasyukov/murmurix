@@ -884,30 +884,50 @@ actor MetricsService {
 
 ## Recommended Implementation Order
 
-### Phase 1: Enable Testing (Priority)
-1. Add MockDaemonManager
-2. Add MockHotkeyManager
-3. Extract APITestResult to Models/
-4. Extract AudioTestUtility
-5. Move test logic from View to ViewModel
-6. Add TranscriptionRepositoryProtocol
+> **IMPORTANT**: Write/update tests after EACH phase before moving to the next one.
+> This ensures issues are caught early and makes debugging easier.
+
+### Phase 1: Enable Testing (Priority) ✅ DONE
+1. Add MockDaemonManager ✅
+2. Add MockHotkeyManager ✅
+3. Extract APITestResult to Models/ ✅
+4. Extract AudioTestUtility ✅
+5. Add TranscriptionRepositoryProtocol ✅
+6. Create MIMETypeResolver ✅
+7. DRY hotkey methods ✅
+
+**Tests to add after Phase 1:**
+- [ ] AudioTestUtility tests (WAV generation)
+- [ ] MIMETypeResolver tests (all file types)
+- [ ] Tests using new mocks (MockDaemonManager, MockHotkeyManager)
 
 ### Phase 2: Improve Testability
-7. Abstract URLSession
-8. Extract UnixSocketClient
-9. Remove Settings.shared from Views
-10. Extract MIMETypeResolver
+1. Abstract URLSession for network testing
+2. Extract UnixSocketClient from TranscriptionService/DaemonManager
+3. Remove Settings.shared from Views (use DI)
+4. Move test logic from GeneralSettingsView to ViewModel
+
+**Tests to add after Phase 2:**
+- [ ] MockURLSession tests
+- [ ] MockSocketClient tests
+- [ ] GeneralSettingsViewModel tests (API testing logic)
 
 ### Phase 3: Code Quality
-11. Split GeneralSettingsView
-12. DRY hotkey methods
-13. Remove @unchecked Sendable
-14. Add Process/FileManager abstractions
+1. Split GeneralSettingsView into sections (~656 lines → ~100 each)
+2. Remove @unchecked Sendable (use actors or proper Sendable)
+3. Add Process/FileManager abstractions
+
+**Tests to add after Phase 3:**
+- [ ] MockProcessRunner tests
+- [ ] MockFileManager tests
 
 ### Phase 4: Polish
-15. Documentation
-16. Keychain key enum
-17. Swift 6 preparation
+1. Documentation (DocC comments)
+2. Keychain key enum
+3. Swift 6 strict concurrency preparation
+
+**Tests to add after Phase 4:**
+- [ ] Verify all tests pass with strict concurrency
 
 ---
 
