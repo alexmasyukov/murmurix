@@ -18,7 +18,7 @@ Murmurix is a native macOS menubar application for voice-to-text transcription w
 ├─────────────────────────────────────────────────────────────────┤
 │                         Service Layer                            │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │   Audio     │  │Transcription│  │      AI Processing      │  │
+│  │   Audio     │  │Transcription│  │   Audio Compression     │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
 │                          Data Layer                              │
@@ -28,11 +28,11 @@ Murmurix is a native macOS menubar application for voice-to-text transcription w
 ├─────────────────────────────────────────────────────────────────┤
 │                        External Layer                            │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │   Python    │  │ Claude API  │  │     Hugging Face        │  │
+│  │   Python    │  │ OpenAI API  │  │     Hugging Face        │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-│  ┌─────────────┐  ┌─────────────┐                               │
-│  │   Lottie    │  │ OpenAI API  │                               │
-│  └─────────────┘  └─────────────┘                               │
+│  ┌─────────────┐                                                 │
+│  │   Lottie    │                                                 │
+│  └─────────────┘                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,19 +53,16 @@ Murmurix/
 │   ├── Hotkey.swift             # Hotkey model with key codes
 │   ├── TranscriptionRecord.swift # History record
 │   ├── WhisperModel.swift       # Whisper model enum
-│   ├── AIModel.swift            # Claude model enum
 │   └── OpenAITranscriptionModel.swift # OpenAI transcription models
 │
 ├── ViewModels/                   # Presentation logic
 │   ├── HistoryViewModel.swift   # History list logic
 │   ├── GeneralSettingsViewModel.swift
-│   ├── AISettingsViewModel.swift
 │   └── RecordingTimer.swift     # Recording duration timer
 │
 ├── Views/                        # SwiftUI views
-│   ├── SettingsView.swift       # Settings container (TabView)
-│   ├── GeneralSettingsView.swift
-│   ├── AISettingsView.swift
+│   ├── SettingsView.swift       # Settings wrapper
+│   ├── GeneralSettingsView.swift # All settings in one view
 │   ├── HistoryView.swift
 │   ├── HotkeyRecorderView.swift
 │   ├── ResultView.swift
@@ -73,7 +70,7 @@ Murmurix/
 │   ├── Recording/               # Recording UI components
 │   │   ├── RecordingView.swift
 │   │   ├── EqualizerView.swift
-│   │   ├── CatLoadingView.swift  # Lottie cat animation (transcribing/processing)
+│   │   ├── CatLoadingView.swift  # Lottie cat animation (transcribing state)
 │   │   └── RecordingComponents.swift
 │   │
 │   ├── History/                 # History UI components
@@ -98,8 +95,6 @@ Murmurix/
 │   ├── DaemonManager.swift      # Python daemon lifecycle
 │   ├── RecordingCoordinator.swift # Recording state machine
 │   │
-│   ├── AIPostProcessingService.swift # Claude post-processing
-│   ├── AnthropicAPIClient.swift # Claude API client
 │   ├── OpenAITranscriptionService.swift # OpenAI Audio API client
 │   ├── AudioCompressor.swift    # WAV to M4A compression
 │   │
@@ -153,7 +148,7 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 - Manage recording, result, settings, history windows
 - Provide unified window API for AppDelegate
 
-#### AppConstants (142 lines)
+#### AppConstants
 **Role**: Centralized configuration constants
 
 **Contains**:
@@ -162,7 +157,6 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 - `AppColors` — opacity values, background colors
 - `AudioConfig` — voice threshold, sample rate
 - `NetworkConfig` — socket timeouts
-- `AIConfig` — API tokens, default prompt
 - `WindowSize` — window dimensions
 - `AppPaths` — file paths
 
@@ -178,15 +172,14 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 
 ### Models Layer
 
-#### Settings (160 lines)
+#### Settings
 **Role**: UserDefaults wrapper with type safety
 
 **Manages**:
 - Core: `keepDaemonRunning`, `language`, `whisperModel`
 - Transcription: `transcriptionMode` (local/cloud), `openaiTranscriptionModel`
 - Hotkeys: JSON encode/decode for toggle/cancel
-- AI: `aiPostProcessingEnabled`, `aiModel`, `aiPrompt`
-- API keys via KeychainService (Claude, OpenAI)
+- API keys via KeychainService (OpenAI)
 
 **Protocol**: `SettingsStorageProtocol`
 
@@ -202,19 +195,13 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 **Properties**: `id`, `text`, `language`, `duration`, `createdAt`
 **Features**: Identifiable, Codable, Hashable
 
-#### WhisperModel (49 lines)
+#### WhisperModel
 **Role**: Whisper model definitions
 
 **Cases**: tiny, base, small, medium, large-v2, large-v3
 **Features**: Display names, installation check via HF cache
 
-#### AIModel (20 lines)
-**Role**: Claude model definitions
-
-**Cases**: haiku, sonnet, opus
-**Features**: Model IDs, display names
-
-#### OpenAITranscriptionModel (20 lines)
+#### OpenAITranscriptionModel
 **Role**: OpenAI transcription model definitions
 
 **Cases**: gpt4oTranscribe, gpt4oMiniTranscribe
@@ -234,21 +221,14 @@ All ViewModels have protocols for testability.
 **Computed**: totalDuration, totalWords
 **Protocol**: `HistoryViewModelProtocol`
 
-#### GeneralSettingsViewModel (75 lines)
+#### GeneralSettingsViewModel
 **Role**: Model download and installation state
 
 **Published**: `installedModels`, `downloadStatus`
 **Actions**: loadInstalledModels, startDownload, cancelDownload
 **Protocol**: `GeneralSettingsViewModelProtocol`
 
-#### AISettingsViewModel (80 lines)
-**Role**: API key validation and prompt management
-
-**Published**: `apiKey`, `prompt`, `isTesting`, `testResult`
-**Actions**: loadSettings, testConnection, resetPromptToDefault
-**Protocol**: `AISettingsViewModelProtocol`
-
-#### RecordingTimer (35 lines)
+#### RecordingTimer
 **Role**: Recording duration timer
 
 **Published**: `elapsedTime`
@@ -259,20 +239,20 @@ All ViewModels have protocols for testability.
 
 ### Services Layer
 
-#### RecordingCoordinator (223 lines)
+#### RecordingCoordinator
 **Role**: Recording state machine and orchestration
 
 **State Machine**:
 ```
-idle → recording → transcribing → processing → idle
-         ↓              ↓            ↓
-       cancel        cancel       cancel
-         ↓              ↓            ↓
-       idle           idle         idle
+idle → recording → transcribing → idle
+         ↓              ↓
+       cancel        cancel
+         ↓              ↓
+       idle           idle
 ```
 
 **Responsibilities**:
-- Coordinate AudioRecorder, TranscriptionService, AIService
+- Coordinate AudioRecorder and TranscriptionService
 - Manage recording lifecycle
 - Save to history, notify delegate
 
@@ -284,14 +264,13 @@ protocol RecordingCoordinatorDelegate: AnyObject {
     func recordingDidStop()
     func recordingDidStopWithoutVoice()
     func transcriptionDidStart()
-    func processingDidStart()
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID)
     func transcriptionDidFail(error: Error)
     func transcriptionDidCancel()
 }
 ```
 
-#### AudioRecorder (151 lines)
+#### AudioRecorder
 **Role**: Audio recording with level monitoring
 
 **Responsibilities**:
@@ -301,7 +280,7 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 
 **Protocol**: `AudioRecorderProtocol`
 
-#### TranscriptionService (220 lines)
+#### TranscriptionService
 **Role**: Transcription orchestration
 
 **Modes**:
@@ -313,7 +292,7 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 
 **Protocol**: `TranscriptionServiceProtocol`
 
-#### OpenAITranscriptionService (200 lines)
+#### OpenAITranscriptionService
 **Role**: OpenAI Audio API client
 
 **Responsibilities**:
@@ -326,7 +305,7 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 - Includes technical terms prompt for better recognition
 - Supports gpt-4o-transcribe and gpt-4o-mini-transcribe models
 
-#### AudioCompressor (88 lines)
+#### AudioCompressor
 **Role**: Audio compression for cloud upload
 
 **Responsibilities**:
@@ -334,7 +313,7 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 - ~10x size reduction
 - Uses AVAssetExportSession
 
-#### DaemonManager (168 lines)
+#### DaemonManager
 **Role**: Python daemon process lifecycle
 
 **Responsibilities**:
@@ -345,26 +324,7 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 
 **Protocol**: `DaemonManagerProtocol`
 
-#### AIPostProcessingService (54 lines)
-**Role**: Claude API integration for text correction
-
-**Responsibilities**:
-- Fix technical terms in transcriptions
-- Use structured outputs for clean JSON
-
-**Protocol**: `AIPostProcessingServiceProtocol`
-
-#### AnthropicAPIClient (166 lines)
-**Role**: Low-level Claude API communication
-
-**Responsibilities**:
-- API key validation
-- Text processing with structured outputs
-- Error handling and response parsing
-
-**Protocol**: `AnthropicAPIClientProtocol`
-
-#### GlobalHotkeyManager (127 lines)
+#### GlobalHotkeyManager
 **Role**: System-wide keyboard shortcuts
 
 **Responsibilities**:
@@ -374,21 +334,21 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 
 **Protocol**: `HotkeyManagerProtocol`
 
-#### TextPaster (110 lines)
+#### TextPaster
 **Role**: Smart text insertion
 
 **Responsibilities**:
 - Detect if text field is focused
 - Paste via clipboard + Cmd+V simulation
 
-#### HistoryService (45 lines)
+#### HistoryService
 **Role**: SQLite persistence for transcription history
 
 **Operations**: save, fetchAll, delete, deleteAll
 **Protocol**: `HistoryServiceProtocol`
 **Delegates to**: `SQLiteTranscriptionRepository`
 
-#### Repository.swift (175 lines)
+#### Repository.swift
 **Role**: Repository pattern for data persistence
 
 **Components**:
@@ -396,22 +356,22 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 - `SQLiteDatabase` — helper class for common SQLite operations
 - `SQLiteTranscriptionRepository` — concrete implementation for TranscriptionRecord
 
-#### KeychainService (86 lines)
+#### KeychainService
 **Role**: Secure storage for API keys
 
 **Operations**: save, load, delete
 
-#### ModelDownloadService (74 lines)
+#### ModelDownloadService
 **Role**: Whisper model download management
 
 **Operations**: downloadModel, cancelDownload
 
-#### PythonResolver (38 lines)
+#### PythonResolver
 **Role**: Find Python executable and scripts
 
 **Checks**: Homebrew, system Python, pyenv
 
-#### Logger (100 lines)
+#### Logger
 **Role**: Centralized logging using os.log
 
 **Categories**:
@@ -420,7 +380,6 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 - `Logger.Daemon` — Daemon lifecycle
 - `Logger.Hotkey` — Hotkey manager
 - `Logger.History` — Database operations
-- `Logger.AI` — AI post-processing
 
 **Methods**: `.info()`, `.error()`, `.debug()`, `.warning()`
 
@@ -436,12 +395,6 @@ MurmurixError
 │   ├── daemonNotRunning
 │   ├── failed(String)
 │   └── timeout
-├── ai(AIError)
-│   ├── noApiKey
-│   ├── invalidApiKey
-│   ├── invalidResponse
-│   ├── apiError(String)
-│   └── networkError(Error)
 ├── daemon(DaemonError)
 │   ├── notRunning
 │   ├── startFailed(String)
@@ -479,8 +432,6 @@ User presses hotkey again
 AudioRecorder.stopRecording() → audioURL
         ↓
 TranscriptionService.transcribe(audioURL)
-        ↓
-[If AI enabled] AIPostProcessingService.process(text)
         ↓
 HistoryService.save(record)
         ↓
@@ -531,8 +482,7 @@ init(
     audioRecorder: AudioRecorderProtocol,
     transcriptionService: TranscriptionServiceProtocol,
     historyService: HistoryServiceProtocol,
-    settings: SettingsStorageProtocol,
-    aiService: AIPostProcessingServiceProtocol
+    settings: SettingsStorageProtocol
 )
 ```
 
@@ -547,7 +497,6 @@ init(
 | AudioRecorder level updates | Main (via timer) |
 | TranscriptionService.transcribe | Background (Task.detached) |
 | DaemonManager socket ops | Background |
-| AIPostProcessingService | Background (async) |
 | HistoryService | Main (SQLite is fast) |
 
 ---
@@ -557,23 +506,23 @@ init(
 | Category | Files | Total Lines |
 |----------|-------|-------------|
 | App | 6 | ~700 |
-| Models | 5 | ~300 |
-| ViewModels | 4 | ~250 |
-| Views | 19 | ~2,400 |
-| Services | 17 | ~1,900 |
-| Tests | 5 | ~2,000 |
-| **Total** | **58** | **~7,000** |
+| Models | 4 | ~250 |
+| ViewModels | 3 | ~200 |
+| Views | 17 | ~2,100 |
+| Services | 15 | ~1,700 |
+| Tests | 6 | ~1,850 |
+| **Total** | **56** | **~6,800** |
 
 ---
 
 ## Testing
 
-134 unit tests covering:
-- Model serialization (TranscriptionRecord, Hotkey, WhisperModel, AIModel, OpenAITranscriptionModel)
+116 unit tests covering:
+- Model serialization (TranscriptionRecord, Hotkey, WhisperModel, OpenAITranscriptionModel)
 - Service logic (HistoryService, RecordingCoordinator)
 - Repository pattern (SQLiteDatabase, SQLiteTranscriptionRepository)
 - Dependency injection (all services accept protocol-based dependencies)
-- ViewModel behavior (HistoryViewModel, AISettingsViewModel, GeneralSettingsViewModel)
+- ViewModel behavior (HistoryViewModel, GeneralSettingsViewModel)
 - Settings persistence
 - Window controllers and positioning (WindowPositioner)
 - Error hierarchy (MurmurixError with all cases)
@@ -582,5 +531,5 @@ init(
 
 All services have mock implementations in `MurmurixTests/Mocks.swift`:
 - MockAudioRecorder, MockTranscriptionService, MockHistoryService
-- MockSettings, MockAnthropicAPIClient, MockModelDownloadService
+- MockSettings, MockModelDownloadService
 - MockOpenAITranscriptionService, MockRecordingCoordinatorDelegate

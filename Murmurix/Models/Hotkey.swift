@@ -10,8 +10,7 @@ struct Hotkey: Equatable, Codable {
     var keyCode: UInt32
     var modifiers: UInt32
 
-    static let toggleDefault = Hotkey(keyCode: 2, modifiers: UInt32(controlKey) | UInt32(shiftKey))  // Control+Shift+D (with AI)
-    static let toggleNoAIDefault = Hotkey(keyCode: 2, modifiers: UInt32(controlKey))  // Control+D (without AI)
+    static let toggleDefault = Hotkey(keyCode: 2, modifiers: UInt32(controlKey))  // Control+D
     static let cancelDefault = Hotkey(keyCode: 53, modifiers: 0)  // Escape
 
     var displayParts: [String] {

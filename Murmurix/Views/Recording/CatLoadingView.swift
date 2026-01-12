@@ -2,14 +2,13 @@
 //  CatLoadingView.swift
 //  Murmurix
 //
-//  Loading view with animated cat for transcribing and AI processing states
+//  Loading view with animated cat for transcribing state
 //
 
 import SwiftUI
 
 enum LoadingState {
     case transcribing
-    case processing
 }
 
 struct CatLoadingView: View {
@@ -20,7 +19,7 @@ struct CatLoadingView: View {
     private let animationName = "LoadingCat"
     private let animationSpeed = 2.0
 
-    // Keypaths for orange body parts
+    // Keypaths for gray body parts (transcribing state)
     private let bodyKeypaths = [
         // Hands
         "Hand_outside_000_fill.Shape 1.Fill 1.Color",
@@ -42,7 +41,7 @@ struct CatLoadingView: View {
         "ears.Shape 1.Fill 1.Color"
     ]
 
-    // Keypaths for black outline parts
+    // Keypaths for outline parts
     private let outlineKeypaths = [
         "Hand_outside_000_stroke.Shape 1.Stroke 1.Color",
         "Hand_outside_001_stroke.Group 1.Stroke 1.Color",
@@ -62,26 +61,13 @@ struct CatLoadingView: View {
     ]
 
     private var colorReplacements: [ColorReplacement] {
-        switch state {
-        case .transcribing:
-            return [
-                ColorReplacement(colorHex: "#777777", keypaths: bodyKeypaths),
-                ColorReplacement(colorHex: "#777777", keypaths: outlineKeypaths)
-            ]
-        case .processing:
-            return [
-                ColorReplacement(colorHex: "#CB7C5E", keypaths: bodyKeypaths),
-                ColorReplacement(colorHex: "#1B1616", keypaths: outlineKeypaths)  // Original black
-            ]
-        }
-    }
-
-    private var showLabel: Bool {
-        state == .processing
+        [
+            ColorReplacement(colorHex: "#777777", keypaths: bodyKeypaths),
+            ColorReplacement(colorHex: "#777777", keypaths: outlineKeypaths)
+        ]
     }
 
     var body: some View {
-        let _ = print("🐱 CatLoadingView body, state: \(state), showLabel: \(showLabel)")
         HStack(spacing: 6) {
             AnimatedLottieView(
                 animationName: animationName,
@@ -90,18 +76,9 @@ struct CatLoadingView: View {
             )
             .frame(width: 42, height: 42)
 
-            if showLabel {
-                let _ = print("🐱 Showing Claude label")
-                Text("Claude")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
-                    .transition(.opacity.combined(with: .scale))
-            }
-
             CancelButton(action: onCancel)
         }
         .modifier(FloatingCapsuleStyle())
-        .animation(.easeInOut(duration: 0.3), value: state)
     }
 }
 
@@ -109,12 +86,5 @@ struct CatLoadingView: View {
     ZStack {
         Color.gray
         CatLoadingView(state: .transcribing, onCancel: {})
-    }
-}
-
-#Preview("Processing") {
-    ZStack {
-        Color.gray
-        CatLoadingView(state: .processing, onCancel: {})
     }
 }

@@ -2,17 +2,16 @@
 
 A native macOS menubar app for local voice-to-text transcription using [faster-whisper](https://github.com/guillaumekln/faster-whisper).
 
-**Version 1.0** | 7000+ lines of Swift | 58 files | 134 tests
+**Version 1.1** | 6800+ lines of Swift | 56 files | 116 tests
 
 ## Features
 
 - **Global Hotkeys** — Trigger recording from anywhere with customizable shortcuts
-- **Local or Cloud Processing** — Choose between local Whisper or OpenAI cloud transcription
-- **AI Post-Processing** — Optional Claude API integration to fix technical terms (with structured outputs)
+- **Local or Cloud Transcription** — Choose between local Whisper daemon or OpenAI cloud (gpt-4o-transcribe)
 - **In-App Model Download** — Download Whisper models directly from Settings with progress indicator
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
 - **Multiple Models** — Choose from 6 Whisper models (tiny to large-v3)
-- **Animated UI** — Lottie cat animation during transcription/processing states
+- **Animated UI** — Lottie cat animation during transcription states
 - **Dynamic Island UI** — Minimal floating window with voice-reactive equalizer
 - **Voice Activity Detection** — Automatically skips transcription if no voice detected
 - **Smart Text Insertion** — Pastes directly into text fields, shows result window otherwise
@@ -88,14 +87,11 @@ The app requires:
 
 | Action | Default | Menu |
 |--------|---------|------|
-| Record without AI | `⌃D` | Shown in menu |
-| Toggle Recording (with AI) | `⌃⇧D` | Shown in menu |
+| Toggle Recording | `⌃D` | Shown in menu |
 | Cancel Recording | `Esc` | — |
 | History | `⌘H` | History... |
 | Settings | `⌘,` | Settings... |
 | Quit | `⌘Q` | Quit |
-
-> **Tip:** Use `⌃D` for quick transcription without AI post-processing. Use `⌃⇧D` when you need AI to fix technical terms.
 
 Customize hotkeys in **Settings** (⌘,)
 
@@ -142,42 +138,13 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 ### General
 | Setting | Description |
 |---------|-------------|
-| Record without AI | Customizable hotkey (default: `⌃D`) — skips AI post-processing |
-| Toggle Recording | Customizable hotkey (default: `⌃⇧D`) — with AI if enabled |
+| Toggle Recording | Customizable hotkey (default: `⌃D`) |
 | Cancel Recording | Customizable hotkey (default: `Esc`) |
 | Recognition Mode | Local (Whisper) or Cloud (OpenAI) |
 | Keep model in memory | For local mode: faster transcription, uses ~500MB RAM |
 | Language | Russian, English, or Auto-detect |
 | Model | Whisper model for local, or GPT-4o model for cloud |
 | OpenAI API Key | Required for cloud mode (stored in Keychain) |
-
-### AI Processing
-| Setting | Description |
-|---------|-------------|
-| Enable AI post-processing | Send transcription to Claude for term correction |
-| API Key | Your Claude API key (stored in Keychain) |
-| Test | Verify API key connection before saving |
-| Model | Haiku 4.5 (fast), Sonnet 4.5, or Opus 4.5 (best) |
-| Prompt | Customizable instructions for term replacement |
-
-**Claude Models:**
-- `claude-haiku-4-5` — Fastest, best for simple corrections
-- `claude-sonnet-4-5` — Balanced speed and quality
-- `claude-opus-4-5` — Highest quality
-
-The AI post-processing uses [structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) to guarantee clean JSON responses without extra commentary.
-
-**What it does:**
-- Fixes technical terms transcribed as Russian phonetic equivalents (e.g., "кафка" → "Kafka")
-- Corrects spelling errors
-- Preserves original text structure and meaning
-
-**Example replacements:**
-- "кафка" → "Kafka"
-- "реакт" → "React"
-- "гоуэнг" → "Golang"
-- "докер" → "Docker"
-- "кубернетис" → "Kubernetes"
 
 ## Data Storage
 
@@ -242,7 +209,7 @@ faster-whisper supports 99 languages. Currently exposed in UI:
 
 ## Testing
 
-The project includes 134 unit tests with mocks for all services:
+The project includes 116 unit tests with mocks for all services:
 
 ```bash
 # Run tests in Xcode

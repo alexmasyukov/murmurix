@@ -117,37 +117,6 @@ class RecordingWindowController: NSWindowController {
         WindowPositioner.positionTopCenter(window)
     }
 
-    func showProcessing() {
-        // If we already have the cat view, just update the state
-        if let loadingState = catLoadingState {
-            loadingState.objectWillChange.send()
-            loadingState.state = .processing
-            // Update window size after SwiftUI updates
-            DispatchQueue.main.async { [weak self] in
-                self?.updateWindowSize()
-            }
-        } else {
-            // Fallback: create new view
-            let loadingState = CatLoadingState()
-            loadingState.state = .processing
-            self.catLoadingState = loadingState
-
-            let contentView = CatLoadingContentView(
-                loadingState: loadingState,
-                onCancel: { [weak self] in
-                    self?.onCancelTranscription?()
-                }
-            )
-            let hostingView = NSHostingView(rootView: contentView)
-            hostingView.layer?.backgroundColor = .clear
-            if #available(macOS 13.0, *) {
-                hostingView.sizingOptions = [.intrinsicContentSize]
-            }
-            window?.contentView = hostingView
-            updateWindowSize()
-        }
-    }
-
     private func recenterWindow() {
         guard let window = window else { return }
         WindowPositioner.positionTopCenter(window)

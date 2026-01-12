@@ -14,21 +14,13 @@ final class Settings: SettingsStorageProtocol {
 
     private enum Keys {
         static let toggleHotkey = "toggleHotkey"
-        static let toggleNoAIHotkey = "toggleNoAIHotkey"
         static let cancelHotkey = "cancelHotkey"
         static let keepDaemonRunning = "keepDaemonRunning"
         static let language = "language"
         static let whisperModel = "whisperModel"
-        static let aiPostProcessingEnabled = "aiPostProcessingEnabled"
-        static let aiModel = "aiModel"
-        static let aiPrompt = "aiPrompt"
         static let transcriptionMode = "transcriptionMode"
         static let openaiTranscriptionModel = "openaiTranscriptionModel"
     }
-
-    // MARK: - Defaults
-
-    static let defaultAIPrompt = AIConfig.defaultPrompt
 
     // MARK: - Init
 
@@ -79,20 +71,6 @@ final class Settings: SettingsStorageProtocol {
         }
     }
 
-    func loadToggleNoAIHotkey() -> Hotkey {
-        guard let data = defaults.data(forKey: Keys.toggleNoAIHotkey),
-              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
-            return .toggleNoAIDefault
-        }
-        return hotkey
-    }
-
-    func saveToggleNoAIHotkey(_ hotkey: Hotkey) {
-        if let data = try? JSONEncoder().encode(hotkey) {
-            defaults.set(data, forKey: Keys.toggleNoAIHotkey)
-        }
-    }
-
     func loadCancelHotkey() -> Hotkey {
         guard let data = defaults.data(forKey: Keys.cancelHotkey),
               let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
@@ -104,34 +82,6 @@ final class Settings: SettingsStorageProtocol {
     func saveCancelHotkey(_ hotkey: Hotkey) {
         if let data = try? JSONEncoder().encode(hotkey) {
             defaults.set(data, forKey: Keys.cancelHotkey)
-        }
-    }
-
-    // MARK: - AI Settings
-
-    var aiPostProcessingEnabled: Bool {
-        get { defaults.bool(forKey: Keys.aiPostProcessingEnabled) }
-        set { defaults.set(newValue, forKey: Keys.aiPostProcessingEnabled) }
-    }
-
-    var aiModel: String {
-        get { defaults.string(forKey: Keys.aiModel) ?? AIModel.haiku.rawValue }
-        set { defaults.set(newValue, forKey: Keys.aiModel) }
-    }
-
-    var aiPrompt: String {
-        get { defaults.string(forKey: Keys.aiPrompt) ?? Self.defaultAIPrompt }
-        set { defaults.set(newValue, forKey: Keys.aiPrompt) }
-    }
-
-    var claudeApiKey: String {
-        get { KeychainService.load(key: "claudeApiKey") ?? "" }
-        set {
-            if newValue.isEmpty {
-                KeychainService.delete(key: "claudeApiKey")
-            } else {
-                KeychainService.save(key: "claudeApiKey", value: newValue)
-            }
         }
     }
 

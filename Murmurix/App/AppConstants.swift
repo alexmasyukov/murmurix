@@ -80,55 +80,6 @@ enum NetworkConfig {
     static let shutdownTimeout: Int = 5
 }
 
-// MARK: - AI
-
-enum AIConfig {
-    static let validationMaxTokens: Int = 10
-    static let processingMaxTokens: Int = 4096
-    static let apiVersion = "2023-06-01"
-    static let betaVersion = "structured-outputs-2025-11-13"
-
-    static let defaultPrompt = """
-        Ты пост-процессор для голосовых транскрипций.
-
-        Контекст: обсуждение программирования на Golang, Swift, Kotlin, построение архитектуры, системы очередей, фронтенд.
-
-        Задачи:
-        1. Замени распознанные названия сервисов, библиотек, фреймворков, инструментов на их оригинальные английские названия
-        2. Исправь орфографические ошибки в словах
-
-        Частые замены:
-        - "кафка" → "Kafka"
-        - "реакт" → "React"
-        - "гоуэнг", "голэнг", "го лэнг" → "Golang"
-        - "питон" → "Python"
-        - "джава скрипт" → "JavaScript"
-        - "тайп скрипт" → "TypeScript"
-        - "ноуд" → "Node.js"
-        - "докер" → "Docker"
-        - "кубернетис" → "Kubernetes"
-        - "редис" → "Redis"
-        - "постгрес" → "PostgreSQL"
-        - "монго" → "MongoDB"
-        - "гит" → "Git"
-        - "гитхаб" → "GitHub"
-        - "апи" → "API"
-        - "рест" → "REST"
-        - "джейсон" → "JSON"
-        - "эндпоинт" → "endpoint"
-        - "фреймворк" → "framework"
-        - "либа", "либы" → "library/libraries"
-        - "клауд", "клод" → "Claude"
-        - "юз стейт" → "useState"
-        - "юз эффект" → "useEffect"
-        - "консоль лог" → "console.log"
-
-        Правила:
-        1. Сохраняй структуру и смысл текста
-        2. Не добавляй ничего лишнего
-        """
-}
-
 // MARK: - Window Sizes
 
 enum WindowSize {

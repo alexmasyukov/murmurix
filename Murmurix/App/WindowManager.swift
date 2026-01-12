@@ -30,10 +30,6 @@ final class WindowManager {
         recordingController?.showTranscribing()
     }
 
-    func showProcessing() {
-        recordingController?.showProcessing()
-    }
-
     func dismissRecordingWindow() {
         recordingController?.close()
         recordingController = nil
@@ -68,7 +64,7 @@ final class WindowManager {
     func showSettingsWindow(
         isDaemonRunning: Bool,
         onDaemonToggle: @escaping (Bool) -> Void,
-        onHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey) -> Void,
+        onHotkeysChanged: @escaping (Hotkey, Hotkey) -> Void,
         onModelChanged: @escaping () -> Void,
         onWindowOpen: @escaping () -> Void,
         onWindowClose: @escaping () -> Void

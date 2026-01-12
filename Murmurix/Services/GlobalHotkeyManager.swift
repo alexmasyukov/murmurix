@@ -9,7 +9,6 @@ import AppKit
 
 class GlobalHotkeyManager: HotkeyManagerProtocol {
     var onToggleRecording: (() -> Void)?
-    var onToggleRecordingNoAI: (() -> Void)?
     var onCancelRecording: (() -> Void)?
 
     // Only intercept cancel hotkey when recording is active
@@ -25,20 +24,17 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private var runLoopSource: CFRunLoopSource?
 
     private var toggleHotkey: Hotkey
-    private var toggleNoAIHotkey: Hotkey
     private var cancelHotkey: Hotkey
     private let settings: SettingsStorageProtocol
 
     init(settings: SettingsStorageProtocol = Settings.shared) {
         self.settings = settings
         toggleHotkey = settings.loadToggleHotkey()
-        toggleNoAIHotkey = settings.loadToggleNoAIHotkey()
         cancelHotkey = settings.loadCancelHotkey()
     }
 
-    func updateHotkeys(toggle: Hotkey, toggleNoAI: Hotkey, cancel: Hotkey) {
+    func updateHotkeys(toggle: Hotkey, cancel: Hotkey) {
         toggleHotkey = toggle
-        toggleNoAIHotkey = toggleNoAI
         cancelHotkey = cancel
     }
 
@@ -113,12 +109,6 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
             // Check toggle hotkey
             if keyCode == toggleHotkey.keyCode && carbonModifiers == toggleHotkey.modifiers {
                 onToggleRecording?()
-                return nil // consume the event
-            }
-
-            // Check toggle without AI hotkey
-            if keyCode == toggleNoAIHotkey.keyCode && carbonModifiers == toggleNoAIHotkey.modifiers {
-                onToggleRecordingNoAI?()
                 return nil // consume the event
             }
 

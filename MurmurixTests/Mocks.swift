@@ -105,17 +105,12 @@ final class MockHistoryService: HistoryServiceProtocol {
 final class MockSettings: SettingsStorageProtocol {
     var keepDaemonRunning: Bool = true
     var language: String = "ru"
-    var aiPostProcessingEnabled: Bool = false
     var transcriptionMode: String = "local"
     var whisperModel: String = "small"
     var openaiApiKey: String = ""
     var openaiTranscriptionModel: String = "gpt-4o-transcribe"
-    var claudeApiKey: String = ""
-    var aiPrompt: String = "Test prompt"
-    var aiModel: String = "claude-haiku-4-5"
 
     private var toggleHotkey: Hotkey = .toggleDefault
-    private var toggleNoAIHotkey: Hotkey = .toggleNoAIDefault
     private var cancelHotkey: Hotkey = .cancelDefault
 
     func loadToggleHotkey() -> Hotkey {
@@ -124,14 +119,6 @@ final class MockSettings: SettingsStorageProtocol {
 
     func saveToggleHotkey(_ hotkey: Hotkey) {
         toggleHotkey = hotkey
-    }
-
-    func loadToggleNoAIHotkey() -> Hotkey {
-        return toggleNoAIHotkey
-    }
-
-    func saveToggleNoAIHotkey(_ hotkey: Hotkey) {
-        toggleNoAIHotkey = hotkey
     }
 
     func loadCancelHotkey() -> Hotkey {
@@ -143,23 +130,6 @@ final class MockSettings: SettingsStorageProtocol {
     }
 }
 
-// MARK: - Mock AI Post-Processing Service
-
-final class MockAIPostProcessingService: AIPostProcessingServiceProtocol, @unchecked Sendable {
-    var processCallCount = 0
-    var processResult: Result<String, Error> = .success("Processed text")
-
-    func process(text: String) async throws -> String {
-        processCallCount += 1
-        switch processResult {
-        case .success(let result):
-            return result
-        case .failure(let error):
-            throw error
-        }
-    }
-}
-
 // MARK: - Mock Recording Coordinator Delegate
 
 final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
@@ -167,7 +137,6 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
     var recordingDidStopCallCount = 0
     var recordingDidStopWithoutVoiceCallCount = 0
     var transcriptionDidStartCallCount = 0
-    var processingDidStartCallCount = 0
     var transcriptionDidCompleteCallCount = 0
     var transcriptionDidFailCallCount = 0
     var transcriptionDidCancelCallCount = 0
@@ -193,10 +162,6 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
         transcriptionDidStartCallCount += 1
     }
 
-    func processingDidStart() {
-        processingDidStartCallCount += 1
-    }
-
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID) {
         transcriptionDidCompleteCallCount += 1
         lastCompletedText = text
@@ -211,36 +176,6 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
 
     func transcriptionDidCancel() {
         transcriptionDidCancelCallCount += 1
-    }
-}
-
-// MARK: - Mock Anthropic API Client
-
-final class MockAnthropicAPIClient: AnthropicAPIClientProtocol, @unchecked Sendable {
-    var validateAPIKeyCallCount = 0
-    var processTextCallCount = 0
-
-    var validateAPIKeyResult: Result<Bool, Error> = .success(true)
-    var processTextResult: Result<String, Error> = .success("Processed text")
-
-    func validateAPIKey(_ apiKey: String) async throws -> Bool {
-        validateAPIKeyCallCount += 1
-        switch validateAPIKeyResult {
-        case .success(let result):
-            return result
-        case .failure(let error):
-            throw error
-        }
-    }
-
-    func processText(_ text: String, systemPrompt: String, model: String, apiKey: String) async throws -> String {
-        processTextCallCount += 1
-        switch processTextResult {
-        case .success(let result):
-            return result
-        case .failure(let error):
-            throw error
-        }
     }
 }
 

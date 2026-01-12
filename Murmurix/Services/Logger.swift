@@ -15,7 +15,6 @@ enum Logger {
     private static let daemon = OSLog(subsystem: subsystem, category: "Daemon")
     private static let hotkey = OSLog(subsystem: subsystem, category: "Hotkey")
     private static let history = OSLog(subsystem: subsystem, category: "History")
-    private static let ai = OSLog(subsystem: subsystem, category: "AI")
 
     // MARK: - Audio
 
@@ -93,15 +92,4 @@ enum Logger {
         }
     }
 
-    // MARK: - AI
-
-    enum AI {
-        static func error(_ message: String) {
-            os_log(.error, log: Logger.ai, "%{public}@", message)
-        }
-
-        static func debug(_ message: String) {
-            os_log(.debug, log: Logger.ai, "%{public}@", message)
-        }
-    }
 }

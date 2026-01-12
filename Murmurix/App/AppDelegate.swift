@@ -90,12 +90,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager = GlobalHotkeyManager()
         hotkeyManager.onToggleRecording = { [weak self] in
             DispatchQueue.main.async {
-                self?.toggleRecording(skipAI: false)
-            }
-        }
-        hotkeyManager.onToggleRecordingNoAI = { [weak self] in
-            DispatchQueue.main.async {
-                self?.toggleRecording(skipAI: true)
+                self?.toggleRecording()
             }
         }
         hotkeyManager.onCancelRecording = { [weak self] in
@@ -108,11 +103,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Recording Actions
 
-    private func toggleRecording(skipAI: Bool = false) {
+    private func toggleRecording() {
         if coordinator.state == .idle {
             shouldPasteDirectly = TextPaster.isTextFieldFocused()
         }
-        coordinator.toggleRecording(skipAI: skipAI)
+        coordinator.toggleRecording()
     }
 
     private func cancelRecording() {
@@ -131,11 +126,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: MenuBarManagerDelegate {
     func menuBarDidRequestToggleRecording() {
-        toggleRecording(skipAI: false)
-    }
-
-    func menuBarDidRequestToggleRecordingNoAI() {
-        toggleRecording(skipAI: true)
+        toggleRecording()
     }
 
     func menuBarDidRequestOpenHistory() {
@@ -148,8 +139,8 @@ extension AppDelegate: MenuBarManagerDelegate {
             onDaemonToggle: { [weak self] enabled in
                 self?.coordinator.setDaemonEnabled(enabled)
             },
-            onHotkeysChanged: { [weak self] toggle, toggleNoAI, cancel in
-                self?.hotkeyManager.updateHotkeys(toggle: toggle, toggleNoAI: toggleNoAI, cancel: cancel)
+            onHotkeysChanged: { [weak self] toggle, cancel in
+                self?.hotkeyManager.updateHotkeys(toggle: toggle, cancel: cancel)
                 self?.menuBarManager.updateHotkeyDisplay()
             },
             onModelChanged: { [weak self] in
@@ -191,10 +182,6 @@ extension AppDelegate: RecordingCoordinatorDelegate {
 
     func transcriptionDidStart() {
         windowManager.showTranscribing()
-    }
-
-    func processingDidStart() {
-        windowManager.showProcessing()
     }
 
     func recordingDidStopWithoutVoice() {

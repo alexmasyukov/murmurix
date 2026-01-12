@@ -51,44 +51,6 @@ struct MurmurixErrorTests {
         #expect(error.recoverySuggestion?.contains("shorter") == true)
     }
 
-    // MARK: - AIError
-
-    @Test func aiErrorNoApiKey() {
-        let error = MurmurixError.ai(.noApiKey)
-
-        #expect(error.errorDescription?.contains("API key") == true)
-        #expect(error.recoverySuggestion?.contains("Settings") == true)
-    }
-
-    @Test func aiErrorInvalidApiKey() {
-        let error = MurmurixError.ai(.invalidApiKey)
-
-        #expect(error.errorDescription?.contains("Invalid") == true)
-        #expect(error.recoverySuggestion?.contains("API key") == true)
-    }
-
-    @Test func aiErrorInvalidResponse() {
-        let error = MurmurixError.ai(.invalidResponse)
-
-        #expect(error.errorDescription?.contains("Invalid response") == true)
-        #expect(error.recoverySuggestion != nil)
-    }
-
-    @Test func aiErrorApiError() {
-        let error = MurmurixError.ai(.apiError("Rate limit exceeded"))
-
-        #expect(error.errorDescription?.contains("Rate limit exceeded") == true)
-        #expect(error.recoverySuggestion != nil)
-    }
-
-    @Test func aiErrorNetworkError() {
-        let underlyingError = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "No connection"])
-        let error = MurmurixError.ai(.networkError(underlyingError))
-
-        #expect(error.errorDescription?.contains("Network") == true)
-        #expect(error.recoverySuggestion?.contains("internet") == true)
-    }
-
     // MARK: - DaemonError
 
     @Test func daemonErrorNotRunning() {
@@ -152,11 +114,6 @@ struct MurmurixErrorTests {
             .transcription(.daemonNotRunning),
             .transcription(.failed("test")),
             .transcription(.timeout),
-            .ai(.noApiKey),
-            .ai(.invalidApiKey),
-            .ai(.invalidResponse),
-            .ai(.apiError("test")),
-            .ai(.networkError(NSError(domain: "", code: 0))),
             .daemon(.notRunning),
             .daemon(.startFailed("test")),
             .daemon(.communicationFailed),
@@ -246,18 +203,6 @@ struct AppConstantsTests {
         #expect(NetworkConfig.daemonSocketTimeout > 0)
         #expect(NetworkConfig.daemonStartupTimeout > 0)
         #expect(NetworkConfig.shutdownTimeout > 0)
-    }
-
-    // MARK: - AIConfig
-
-    @Test func aiConfigDefaultPromptIsNotEmpty() {
-        #expect(!AIConfig.defaultPrompt.isEmpty)
-        #expect(AIConfig.defaultPrompt.count > 100) // Should be substantial
-    }
-
-    @Test func aiConfigVersionsAreNotEmpty() {
-        #expect(!AIConfig.apiVersion.isEmpty)
-        #expect(!AIConfig.betaVersion.isEmpty)
     }
 
     // MARK: - WindowSize
@@ -423,13 +368,6 @@ struct LoggerTests {
 
         #expect(true)
     }
-
-    @Test func aiLoggerDoesNotCrash() {
-        Logger.AI.error("Test error message")
-        Logger.AI.debug("Test debug message")
-
-        #expect(true)
-    }
 }
 
 // MARK: - WhisperModel Tests
@@ -459,32 +397,6 @@ struct WhisperModelTests {
         let uniqueValues = Set(rawValues)
 
         #expect(rawValues.count == uniqueValues.count)
-    }
-}
-
-// MARK: - AIModel Tests
-
-struct AIModelTests {
-
-    @Test func allCasesContainsAllModels() {
-        let allCases = AIModel.allCases
-
-        #expect(allCases.count == 3)
-        #expect(allCases.contains(.haiku))
-        #expect(allCases.contains(.sonnet))
-        #expect(allCases.contains(.opus))
-    }
-
-    @Test func displayNamesAreNotEmpty() {
-        for model in AIModel.allCases {
-            #expect(!model.displayName.isEmpty)
-        }
-    }
-
-    @Test func rawValuesContainClaudeIdentifier() {
-        for model in AIModel.allCases {
-            #expect(model.rawValue.contains("claude"))
-        }
     }
 }
 
@@ -717,44 +629,11 @@ struct DependencyInjectionTests {
         #expect(manager.isRecording == false)
     }
 
-    @Test func aiPostProcessingServiceAcceptsSettings() async throws {
-        let mockSettings = MockSettings()
-        mockSettings.claudeApiKey = ""  // Empty key
-
-        let mockAPIClient = MockAnthropicAPIClient()
-        let service = AIPostProcessingService(settings: mockSettings, apiClient: mockAPIClient)
-
-        // Should throw noApiKey error because key is empty
-        do {
-            _ = try await service.process(text: "Test")
-            #expect(Bool(false), "Should have thrown an error")
-        } catch let error as MurmurixError {
-            if case .ai(.noApiKey) = error {
-                #expect(true)
-            } else {
-                #expect(Bool(false), "Wrong error type: \(error)")
-            }
-        }
-    }
-
     @Test func generalSettingsViewModelAcceptsDownloadService() {
         let mockService = MockModelDownloadService()
         let viewModel = GeneralSettingsViewModel(downloadService: mockService)
 
         #expect(viewModel.downloadStatus == .idle)
-    }
-
-    @MainActor
-    @Test func aiSettingsViewModelAcceptsSettings() {
-        let mockSettings = MockSettings()
-        mockSettings.claudeApiKey = "test-key"
-        mockSettings.aiPrompt = "Custom prompt"
-
-        let viewModel = AISettingsViewModel(settings: mockSettings)
-        viewModel.loadSettings()
-
-        #expect(viewModel.apiKey == "test-key")
-        #expect(viewModel.prompt == "Custom prompt")
     }
 
     @Test func historyServiceAcceptsRepository() {

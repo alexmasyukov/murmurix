@@ -5,6 +5,11 @@
 
 import SwiftUI
 
+enum APITestResult {
+    case success
+    case failure(String)
+}
+
 struct GeneralSettingsView: View {
     @AppStorage("keepDaemonRunning") private var keepDaemonRunning = true
     @AppStorage("language") private var language = "ru"
@@ -13,7 +18,6 @@ struct GeneralSettingsView: View {
     @AppStorage("openaiTranscriptionModel") private var openaiTranscriptionModel = OpenAITranscriptionModel.gpt4oTranscribe.rawValue
 
     @State private var toggleHotkey: Hotkey
-    @State private var toggleNoAIHotkey: Hotkey
     @State private var cancelHotkey: Hotkey
     @State private var openaiApiKey: String = ""
     @State private var isTestingOpenAI = false
@@ -23,13 +27,13 @@ struct GeneralSettingsView: View {
     @Binding var isDaemonRunning: Bool
 
     var onDaemonToggle: ((Bool) -> Void)?
-    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
+    var onHotkeysChanged: ((Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
 
     init(
         isDaemonRunning: Binding<Bool>,
         onDaemonToggle: ((Bool) -> Void)? = nil,
-        onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)? = nil,
+        onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil,
         onModelChanged: (() -> Void)? = nil
     ) {
         self._isDaemonRunning = isDaemonRunning
@@ -37,7 +41,6 @@ struct GeneralSettingsView: View {
         self.onHotkeysChanged = onHotkeysChanged
         self.onModelChanged = onModelChanged
         _toggleHotkey = State(initialValue: Settings.shared.loadToggleHotkey())
-        _toggleNoAIHotkey = State(initialValue: Settings.shared.loadToggleNoAIHotkey())
         _cancelHotkey = State(initialValue: Settings.shared.loadCancelHotkey())
         _openaiApiKey = State(initialValue: Settings.shared.openaiApiKey)
     }
@@ -73,23 +76,7 @@ struct GeneralSettingsView: View {
                 )
                 .onChange(of: toggleHotkey) { _, newValue in
                     Settings.shared.saveToggleHotkey(newValue)
-                    onHotkeysChanged?(newValue, toggleNoAIHotkey, cancelHotkey)
-                }
-                .padding(.horizontal, Layout.Padding.standard)
-                .padding(.vertical, Layout.Padding.vertical)
-
-                Divider()
-                    .background(AppColors.divider)
-                    .padding(.leading, Layout.Padding.standard)
-
-                HotkeyRecorderView(
-                    title: "Record without AI",
-                    description: "Skips AI post-processing even if enabled",
-                    hotkey: $toggleNoAIHotkey
-                )
-                .onChange(of: toggleNoAIHotkey) { _, newValue in
-                    Settings.shared.saveToggleNoAIHotkey(newValue)
-                    onHotkeysChanged?(toggleHotkey, newValue, cancelHotkey)
+                    onHotkeysChanged?(newValue, cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -105,7 +92,7 @@ struct GeneralSettingsView: View {
                 )
                 .onChange(of: cancelHotkey) { _, newValue in
                     Settings.shared.saveCancelHotkey(newValue)
-                    onHotkeysChanged?(toggleHotkey, toggleNoAIHotkey, newValue)
+                    onHotkeysChanged?(toggleHotkey, newValue)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)

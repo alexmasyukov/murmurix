@@ -8,14 +8,12 @@ import Foundation
 /// Unified error type for Murmurix application
 enum MurmurixError: LocalizedError {
     case transcription(TranscriptionError)
-    case ai(AIError)
     case daemon(DaemonError)
     case system(SystemError)
 
     var errorDescription: String? {
         switch self {
         case .transcription(let error): return error.errorDescription
-        case .ai(let error): return error.errorDescription
         case .daemon(let error): return error.errorDescription
         case .system(let error): return error.errorDescription
         }
@@ -24,7 +22,6 @@ enum MurmurixError: LocalizedError {
     var recoverySuggestion: String? {
         switch self {
         case .transcription(let error): return error.recoverySuggestion
-        case .ai(let error): return error.recoverySuggestion
         case .daemon(let error): return error.recoverySuggestion
         case .system(let error): return error.recoverySuggestion
         }
@@ -67,46 +64,6 @@ enum TranscriptionError: LocalizedError {
             return "Try recording again"
         case .timeout:
             return "The transcription took too long. Try a shorter recording"
-        }
-    }
-}
-
-// MARK: - AI Errors
-
-enum AIError: LocalizedError {
-    case noApiKey
-    case invalidApiKey
-    case invalidResponse
-    case apiError(String)
-    case networkError(Error)
-
-    var errorDescription: String? {
-        switch self {
-        case .noApiKey:
-            return "Claude API key not configured"
-        case .invalidApiKey:
-            return "Invalid API key"
-        case .invalidResponse:
-            return "Invalid response from Claude API"
-        case .apiError(let message):
-            return "Claude API error: \(message)"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
-        }
-    }
-
-    var recoverySuggestion: String? {
-        switch self {
-        case .noApiKey:
-            return "Add your Claude API key in Settings → AI Processing"
-        case .invalidApiKey:
-            return "Check your API key in Settings → AI Processing"
-        case .invalidResponse:
-            return "Try again later"
-        case .apiError:
-            return "Check your API key or try again later"
-        case .networkError:
-            return "Check your internet connection"
         }
     }
 }
