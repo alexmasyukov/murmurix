@@ -14,7 +14,6 @@ struct GeneralSettingsView: View {
     @AppStorage("keepDaemonRunning") private var keepDaemonRunning = true
     @AppStorage("language") private var language = "ru"
     @AppStorage("whisperModel") private var whisperModel = WhisperModel.small.rawValue
-    @AppStorage("transcriptionMode") private var transcriptionMode = "local"
     @AppStorage("openaiTranscriptionModel") private var openaiTranscriptionModel = OpenAITranscriptionModel.gpt4oTranscribe.rawValue
 
     @State private var toggleLocalHotkey: Hotkey
@@ -169,80 +168,52 @@ struct GeneralSettingsView: View {
 
             VStack(alignment: .leading, spacing: Layout.Spacing.section) {
                 languagePicker
-
-                Divider()
-                    .background(AppColors.divider)
-
-                // Local mode radio
-                localModeOption
-
-                // Cloud mode radio
-                cloudModeOption
             }
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.vertical, Layout.Padding.vertical)
             .background(AppColors.cardBackground)
             .cornerRadius(Layout.CornerRadius.card)
             .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
+
+            // Local Whisper settings
+            localSettingsSection
+
+            // Cloud OpenAI settings
+            cloudSettingsSection
         }
     }
 
-    private var localModeOption: some View {
-        VStack(alignment: .leading, spacing: Layout.Spacing.item) {
-            // Radio button for Local
-            HStack {
-                Image(systemName: transcriptionMode == "local" ? "largecircle.fill.circle" : "circle")
-                    .foregroundColor(transcriptionMode == "local" ? .blue : .gray)
-                Text("Local (Whisper)")
-                    .font(Typography.label)
-                    .foregroundColor(.white)
-                Spacer()
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                transcriptionMode = "local"
-            }
+    private var localSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: "Local (Whisper)")
 
-            // Show local settings when selected
-            if transcriptionMode == "local" {
-                VStack(alignment: .leading, spacing: Layout.Spacing.item) {
-                    modelPicker
-                    modelDownloadStatus
-                }
-                .padding(.leading, 24)
+            VStack(alignment: .leading, spacing: Layout.Spacing.item) {
+                modelPicker
+                modelDownloadStatus
             }
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
         }
     }
 
-    private var cloudModeOption: some View {
-        VStack(alignment: .leading, spacing: Layout.Spacing.item) {
-            // Radio button for Cloud
-            HStack {
-                Image(systemName: transcriptionMode == "cloud" ? "largecircle.fill.circle" : "circle")
-                    .foregroundColor(transcriptionMode == "cloud" ? .blue : .gray)
-                Text("Cloud (OpenAI)")
-                    .font(Typography.label)
-                    .foregroundColor(.white)
-                Spacer()
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                transcriptionMode = "cloud"
-                // Stop daemon when switching to cloud
-                if isDaemonRunning {
-                    keepDaemonRunning = false
-                    onDaemonToggle?(false)
-                }
-            }
+    private var cloudSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: "Cloud (OpenAI)")
 
-            // Show cloud settings when selected
-            if transcriptionMode == "cloud" {
-                VStack(alignment: .leading, spacing: Layout.Spacing.item) {
-                    openaiModelPicker
-                    openaiApiKeyField
-                }
-                .padding(.leading, 24)
+            VStack(alignment: .leading, spacing: Layout.Spacing.item) {
+                openaiModelPicker
+                openaiApiKeyField
             }
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
         }
     }
 
