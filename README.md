@@ -1,8 +1,8 @@
 # Murmurix
 
-A native macOS menubar app for local voice-to-text transcription using [faster-whisper](https://github.com/guillaumekln/faster-whisper).
+A native macOS menubar app for voice-to-text transcription using local Whisper, OpenAI, or Google Gemini.
 
-**Version 1.3** | 7200+ lines of Swift | 58 files | 135 tests
+**Version 1.4** | 6000+ lines of Swift | 66 files | 114+ tests
 
 ## Features
 
@@ -239,15 +239,26 @@ faster-whisper supports 99 languages. Currently exposed in UI:
 
 ## Testing
 
-The project includes 135+ unit tests with mocks for all services:
+The project includes 114+ tests (unit, integration, UI):
 
 ```bash
 # Run tests in Xcode
 ⌘U
 
 # Run from command line
-xcodebuild test -scheme Murmurix -destination 'platform=macOS' -only-testing:MurmurixTests -parallel-testing-enabled NO
+xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=macOS' test
 ```
+
+### Test Suites
+
+| Suite | Tests | Description |
+|-------|-------|-------------|
+| Phase1Tests | 55 | Mocks, utilities, DRY refactoring |
+| Phase2Tests | 20 | URLSession, UnixSocketClient abstractions |
+| Phase3Tests | 18 | ViewModel API testing, Settings DI |
+| Phase4Tests | 8 | KeychainKey enum |
+| IntegrationTests | 3 | Real daemon lifecycle and transcription |
+| RecordingCoordinatorTests | ~10 | Recording state machine |
 
 ## Architecture
 
