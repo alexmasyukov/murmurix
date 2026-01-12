@@ -289,3 +289,85 @@ final class MockGeminiTranscriptionService: GeminiTranscriptionServiceProtocol, 
         }
     }
 }
+
+// MARK: - Mock Daemon Manager
+
+final class MockDaemonManager: DaemonManagerProtocol, @unchecked Sendable {
+    var isRunning: Bool = false
+    var socketPath: String = "/tmp/test_murmurix.sock"
+
+    var startCallCount = 0
+    var stopCallCount = 0
+
+    func start() {
+        startCallCount += 1
+        isRunning = true
+    }
+
+    func stop() {
+        stopCallCount += 1
+        isRunning = false
+    }
+}
+
+// MARK: - Mock Hotkey Manager
+
+final class MockHotkeyManager: HotkeyManagerProtocol {
+    var onToggleLocalRecording: (() -> Void)?
+    var onToggleCloudRecording: (() -> Void)?
+    var onToggleGeminiRecording: (() -> Void)?
+    var onCancelRecording: (() -> Void)?
+
+    var startCallCount = 0
+    var stopCallCount = 0
+    var updateHotkeysCallCount = 0
+    var lastHotkeys: (local: Hotkey, cloud: Hotkey, gemini: Hotkey, cancel: Hotkey)?
+    var isPaused = false
+
+    func start() {
+        startCallCount += 1
+    }
+
+    func stop() {
+        stopCallCount += 1
+    }
+
+    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey) {
+        updateHotkeysCallCount += 1
+        lastHotkeys = (toggleLocal, toggleCloud, toggleGemini, cancel)
+    }
+}
+
+// MARK: - Mock Transcription Repository
+
+final class MockTranscriptionRepository: TranscriptionRepositoryProtocol {
+    var records: [TranscriptionRecord] = []
+    var saveCallCount = 0
+    var fetchAllCallCount = 0
+    var deleteCallCount = 0
+    var deleteAllCallCount = 0
+
+    func save(_ item: TranscriptionRecord) {
+        saveCallCount += 1
+        if let index = records.firstIndex(where: { $0.id == item.id }) {
+            records[index] = item
+        } else {
+            records.append(item)
+        }
+    }
+
+    func fetchAll() -> [TranscriptionRecord] {
+        fetchAllCallCount += 1
+        return records.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func delete(id: UUID) {
+        deleteCallCount += 1
+        records.removeAll { $0.id == id }
+    }
+
+    func deleteAll() {
+        deleteAllCallCount += 1
+        records.removeAll()
+    }
+}

@@ -60,46 +60,43 @@ final class Settings: SettingsStorageProtocol {
 
     // MARK: - Hotkey Settings
 
-    func loadToggleLocalHotkey() -> Hotkey {
-        guard let data = defaults.data(forKey: Keys.toggleLocalHotkey),
+    // Private helpers for DRY
+    private func loadHotkey(key: String, defaultHotkey: Hotkey) -> Hotkey {
+        guard let data = defaults.data(forKey: key),
               let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
-            return .toggleLocalDefault
+            return defaultHotkey
         }
         return hotkey
+    }
+
+    private func saveHotkey(key: String, hotkey: Hotkey) {
+        if let data = try? JSONEncoder().encode(hotkey) {
+            defaults.set(data, forKey: key)
+        }
+    }
+
+    func loadToggleLocalHotkey() -> Hotkey {
+        loadHotkey(key: Keys.toggleLocalHotkey, defaultHotkey: .toggleLocalDefault)
     }
 
     func saveToggleLocalHotkey(_ hotkey: Hotkey) {
-        if let data = try? JSONEncoder().encode(hotkey) {
-            defaults.set(data, forKey: Keys.toggleLocalHotkey)
-        }
+        saveHotkey(key: Keys.toggleLocalHotkey, hotkey: hotkey)
     }
 
     func loadToggleCloudHotkey() -> Hotkey {
-        guard let data = defaults.data(forKey: Keys.toggleCloudHotkey),
-              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
-            return .toggleCloudDefault
-        }
-        return hotkey
+        loadHotkey(key: Keys.toggleCloudHotkey, defaultHotkey: .toggleCloudDefault)
     }
 
     func saveToggleCloudHotkey(_ hotkey: Hotkey) {
-        if let data = try? JSONEncoder().encode(hotkey) {
-            defaults.set(data, forKey: Keys.toggleCloudHotkey)
-        }
+        saveHotkey(key: Keys.toggleCloudHotkey, hotkey: hotkey)
     }
 
     func loadCancelHotkey() -> Hotkey {
-        guard let data = defaults.data(forKey: Keys.cancelHotkey),
-              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
-            return .cancelDefault
-        }
-        return hotkey
+        loadHotkey(key: Keys.cancelHotkey, defaultHotkey: .cancelDefault)
     }
 
     func saveCancelHotkey(_ hotkey: Hotkey) {
-        if let data = try? JSONEncoder().encode(hotkey) {
-            defaults.set(data, forKey: Keys.cancelHotkey)
-        }
+        saveHotkey(key: Keys.cancelHotkey, hotkey: hotkey)
     }
 
     // MARK: - Transcription Mode Settings
@@ -144,16 +141,10 @@ final class Settings: SettingsStorageProtocol {
     }
 
     func loadToggleGeminiHotkey() -> Hotkey {
-        guard let data = defaults.data(forKey: Keys.toggleGeminiHotkey),
-              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
-            return .toggleGeminiDefault
-        }
-        return hotkey
+        loadHotkey(key: Keys.toggleGeminiHotkey, defaultHotkey: .toggleGeminiDefault)
     }
 
     func saveToggleGeminiHotkey(_ hotkey: Hotkey) {
-        if let data = try? JSONEncoder().encode(hotkey) {
-            defaults.set(data, forKey: Keys.toggleGeminiHotkey)
-        }
+        saveHotkey(key: Keys.toggleGeminiHotkey, hotkey: hotkey)
     }
 }

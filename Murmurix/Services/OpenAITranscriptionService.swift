@@ -48,7 +48,7 @@ final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscription
 
         // file
         let filename = audioURL.lastPathComponent
-        let mimeType = mimeTypeForPath(audioURL.pathExtension)
+        let mimeType = MIMETypeResolver.mimeType(for: audioURL.pathExtension)
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
@@ -116,7 +116,7 @@ final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscription
         }
 
         // Создаём минимальный WAV файл (тишина) для тестового запроса
-        let testAudioData = createMinimalWavFile()
+        let testAudioData = AudioTestUtility.createWavData(duration: 0.1)
 
         guard let url = URL(string: baseURL) else {
             throw MurmurixError.transcription(.failed("Invalid API URL"))
@@ -169,46 +169,6 @@ final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscription
         }
     }
 
-    /// Создаёт минимальный WAV файл (0.1 сек тишины)
-    private func createMinimalWavFile() -> Data {
-        let sampleRate: UInt32 = 16000
-        let numChannels: UInt16 = 1
-        let bitsPerSample: UInt16 = 16
-        let duration: Double = 0.1 // 100ms
-
-        let numSamples = Int(Double(sampleRate) * duration)
-        let dataSize = UInt32(numSamples * Int(numChannels) * Int(bitsPerSample / 8))
-        let fileSize = 36 + dataSize
-
-        var wav = Data()
-
-        // RIFF header
-        wav.append("RIFF".data(using: .ascii)!)
-        wav.append(withUnsafeBytes(of: fileSize.littleEndian) { Data($0) })
-        wav.append("WAVE".data(using: .ascii)!)
-
-        // fmt chunk
-        wav.append("fmt ".data(using: .ascii)!)
-        wav.append(withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) }) // chunk size
-        wav.append(withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) })  // PCM format
-        wav.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
-        wav.append(withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
-        let byteRate = sampleRate * UInt32(numChannels) * UInt32(bitsPerSample / 8)
-        wav.append(withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
-        let blockAlign = numChannels * (bitsPerSample / 8)
-        wav.append(withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
-        wav.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
-
-        // data chunk
-        wav.append("data".data(using: .ascii)!)
-        wav.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
-
-        // Silence (zeros)
-        wav.append(Data(count: Int(dataSize)))
-
-        return wav
-    }
-
     // MARK: - Helpers
 
     private func parseTranscriptionResponse(_ data: Data) throws -> String {
@@ -226,22 +186,5 @@ final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscription
             return nil
         }
         return message
-    }
-
-    private func mimeTypeForPath(_ pathExtension: String) -> String {
-        switch pathExtension.lowercased() {
-        case "mp3":
-            return "audio/mpeg"
-        case "mp4", "m4a":
-            return "audio/mp4"
-        case "wav":
-            return "audio/wav"
-        case "webm":
-            return "audio/webm"
-        case "mpeg", "mpga":
-            return "audio/mpeg"
-        default:
-            return "audio/mpeg"
-        }
     }
 }

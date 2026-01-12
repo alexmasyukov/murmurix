@@ -16,6 +16,16 @@ protocol Repository<T> {
     func deleteAll()
 }
 
+// MARK: - Transcription Repository Protocol
+
+/// Specific protocol for TranscriptionRecord repository, easier to mock
+protocol TranscriptionRepositoryProtocol {
+    func save(_ item: TranscriptionRecord)
+    func fetchAll() -> [TranscriptionRecord]
+    func delete(id: UUID)
+    func deleteAll()
+}
+
 // MARK: - SQLite Helper
 
 final class SQLiteDatabase {
@@ -88,7 +98,7 @@ final class SQLiteDatabase {
 
 // MARK: - Transcription Repository
 
-final class SQLiteTranscriptionRepository: Repository {
+final class SQLiteTranscriptionRepository: Repository, TranscriptionRepositoryProtocol {
     typealias T = TranscriptionRecord
 
     private let database: SQLiteDatabase

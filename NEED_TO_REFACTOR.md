@@ -1,8 +1,8 @@
-# Murmurix: Refactoring Complete
+# Murmurix: Refactoring Progress
 
 ## Overview
 
-All refactoring tasks have been completed! This document is kept for reference.
+Ongoing refactoring for improved testability and maintainability.
 
 **Last updated**: 2026-01-12
 
@@ -10,7 +10,7 @@ All refactoring tasks have been completed! This document is kept for reference.
 
 ## Summary
 
-**Total tasks completed**: 11 major refactoring items
+**Total tasks completed**: 18 major refactoring items
 
 | Priority | Task | Status |
 |----------|------|--------|
@@ -19,6 +19,12 @@ All refactoring tasks have been completed! This document is kept for reference.
 | 🔴 High | Remove AI post-processing | Done |
 | 🔴 High | Dual hotkey system (local/cloud) | Done |
 | 🔴 High | **Gemini transcription integration** | **Done** |
+| 🔴 High | **Add MockDaemonManager & MockHotkeyManager** | **Done** |
+| 🔴 High | **Add TranscriptionRepositoryProtocol** | **Done** |
+| 🔴 High | **Extract APITestResult to Models/** | **Done** |
+| 🔴 High | **Create AudioTestUtility (DRY WAV generation)** | **Done** |
+| 🔴 High | **Create MIMETypeResolver (DRY MIME types)** | **Done** |
+| 🔴 High | **DRY hotkey methods in Settings** | **Done** |
 | 🟠 Medium | HistoryService to Repository pattern | Done |
 | 🟢 Low | Consolidate color constants | Done |
 | 🟢 Low | Add ViewModel protocols | Done |
@@ -30,7 +36,27 @@ All refactoring tasks have been completed! This document is kept for reference.
 
 ## Completed Refactoring
 
-### Session 2026-01-12 (Latest) - Gemini Integration
+### Session 2026-01-12 (Latest) - Testability Improvements
+
+- **Added missing mock implementations**:
+  - `MockDaemonManager` for `DaemonManagerProtocol`
+  - `MockHotkeyManager` for `HotkeyManagerProtocol`
+  - `MockTranscriptionRepository` for `TranscriptionRepositoryProtocol`
+
+- **Created new utility files**:
+  - `Models/APITestResult.swift` - extracted from GeneralSettingsView
+  - `Services/AudioTestUtility.swift` - DRY WAV file generation
+  - `Services/MIMETypeResolver.swift` - DRY MIME type resolution
+
+- **Code deduplication**:
+  - Removed WAV generation from `OpenAITranscriptionService` and `GeneralSettingsView`
+  - Removed MIME type methods from `OpenAITranscriptionService` and `GeminiTranscriptionService`
+  - DRY hotkey load/save methods in `Settings.swift` using private helpers
+
+- **New protocols for testability**:
+  - `TranscriptionRepositoryProtocol` in `Repository.swift`
+
+### Session 2026-01-12 (Earlier) - Gemini Integration
 
 - **Implemented Google Gemini transcription**:
   - Added GoogleGenerativeAI SPM package
@@ -133,8 +159,17 @@ All refactoring tasks have been completed! This document is kept for reference.
 
 | Metric | Value |
 |--------|-------|
-| Swift files | 58 |
-| Lines of code | ~7,200 |
+| Swift files | 61 |
+| Lines of code | ~7,000 (reduced via DRY) |
 | Unit tests | 135+ |
 | Test coverage | Services, ViewModels, Models |
-| Protocols | 14+ |
+| Protocols | 17+ |
+| Mock implementations | 11 |
+
+## New Files Created
+
+| File | Purpose |
+|------|---------|
+| `Models/APITestResult.swift` | API test result enum |
+| `Services/AudioTestUtility.swift` | WAV file generation utility |
+| `Services/MIMETypeResolver.swift` | MIME type resolution utility |

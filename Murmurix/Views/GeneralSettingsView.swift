@@ -5,11 +5,6 @@
 
 import SwiftUI
 
-enum APITestResult {
-    case success
-    case failure(String)
-}
-
 struct GeneralSettingsView: View {
     @AppStorage("keepDaemonRunning") private var keepDaemonRunning = true
     @AppStorage("language") private var language = "ru"
@@ -267,12 +262,12 @@ struct GeneralSettingsView: View {
         Task {
             do {
                 // Create a short silent audio file for testing
-                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("test_audio.wav")
-                try createSilentWavFile(at: tempURL, duration: 0.5)
+                let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
+                try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
 
                 // Try to transcribe it
                 let service = TranscriptionService()
-                let result = try await service.transcribe(audioURL: tempURL, useDaemon: isDaemonRunning, mode: .local)
+                _ = try await service.transcribe(audioURL: tempURL, useDaemon: isDaemonRunning, mode: .local)
 
                 // Clean up
                 try? FileManager.default.removeItem(at: tempURL)
@@ -289,39 +284,6 @@ struct GeneralSettingsView: View {
                 }
             }
         }
-    }
-
-    private func createSilentWavFile(at url: URL, duration: Double) throws {
-        let sampleRate: Int = 16000
-        let numSamples = Int(Double(sampleRate) * duration)
-
-        var header = Data()
-
-        // RIFF header
-        header.append(contentsOf: "RIFF".utf8)
-        let fileSize = UInt32(36 + numSamples * 2)
-        header.append(contentsOf: withUnsafeBytes(of: fileSize.littleEndian) { Array($0) })
-        header.append(contentsOf: "WAVE".utf8)
-
-        // fmt chunk
-        header.append(contentsOf: "fmt ".utf8)
-        header.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian) { Array($0) }) // chunk size
-        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Array($0) })  // PCM
-        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Array($0) })  // mono
-        header.append(contentsOf: withUnsafeBytes(of: UInt32(sampleRate).littleEndian) { Array($0) }) // sample rate
-        header.append(contentsOf: withUnsafeBytes(of: UInt32(sampleRate * 2).littleEndian) { Array($0) }) // byte rate
-        header.append(contentsOf: withUnsafeBytes(of: UInt16(2).littleEndian) { Array($0) })  // block align
-        header.append(contentsOf: withUnsafeBytes(of: UInt16(16).littleEndian) { Array($0) }) // bits per sample
-
-        // data chunk
-        header.append(contentsOf: "data".utf8)
-        header.append(contentsOf: withUnsafeBytes(of: UInt32(numSamples * 2).littleEndian) { Array($0) })
-
-        // Silent samples (zeros)
-        let silentData = Data(count: numSamples * 2)
-        header.append(silentData)
-
-        try header.write(to: url)
     }
 
     private var cloudSettingsSection: some View {

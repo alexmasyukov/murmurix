@@ -30,7 +30,7 @@ final class GeminiTranscriptionService: @unchecked Sendable, GeminiTranscription
         }
 
         // Determine MIME type
-        let mimeType = mimeTypeForPath(audioURL.pathExtension)
+        let mimeType = MIMETypeResolver.mimeType(for: audioURL.pathExtension)
         Logger.Transcription.debug("Audio MIME type: \(mimeType), size: \(audioData.count) bytes")
 
         // Create Gemini model
@@ -108,27 +108,6 @@ final class GeminiTranscriptionService: @unchecked Sendable, GeminiTranscription
                 return false
             }
             throw MurmurixError.transcription(.failed("Gemini validation error: \(error.localizedDescription)"))
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func mimeTypeForPath(_ pathExtension: String) -> String {
-        switch pathExtension.lowercased() {
-        case "mp3":
-            return "audio/mp3"
-        case "mp4", "m4a":
-            return "audio/mp4"
-        case "wav":
-            return "audio/wav"
-        case "webm":
-            return "audio/webm"
-        case "ogg":
-            return "audio/ogg"
-        case "flac":
-            return "audio/flac"
-        default:
-            return "audio/mpeg"
         }
     }
 }
