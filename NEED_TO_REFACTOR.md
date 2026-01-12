@@ -10,13 +10,14 @@ All refactoring tasks have been completed! This document is kept for reference.
 
 ## Summary
 
-**Total tasks completed**: 9 major refactoring items
+**Total tasks completed**: 10 major refactoring items
 
 | Priority | Task | Status |
 |----------|------|--------|
 | 🔴 High | Remove debug print statements | Done |
 | 🔴 High | Replace singletons with DI | Done |
 | 🔴 High | Remove AI post-processing | Done |
+| 🔴 High | Dual hotkey system (local/cloud) | Done |
 | 🟠 Medium | HistoryService to Repository pattern | Done |
 | 🟢 Low | Consolidate color constants | Done |
 | 🟢 Low | Add ViewModel protocols | Done |
@@ -28,7 +29,29 @@ All refactoring tasks have been completed! This document is kept for reference.
 
 ## Completed Refactoring
 
-### Session 2026-01-12
+### Session 2026-01-12 (Latest)
+
+- **Implemented dual hotkey system**:
+  - `toggleLocalHotkey` (Ctrl+C) — triggers local Whisper transcription
+  - `toggleCloudHotkey` (Ctrl+D) — triggers cloud OpenAI transcription
+  - `cancelHotkey` (Esc) — cancels active recording
+  - Updated `GlobalHotkeyManager` with `onToggleLocalRecording` and `onToggleCloudRecording` callbacks
+  - Updated `MenuBarManager` with two recording menu items
+  - Updated `SettingsStorageProtocol` with 3 hotkey methods
+  - Updated `Settings` with separate hotkey storage
+  - Updated `GeneralSettingsView` with 3 hotkey recorders
+  - Updated `RecordingCoordinator.toggleRecording(mode:)` to accept `TranscriptionMode`
+  - Updated `TranscriptionService.transcribe(audioURL:useDaemon:mode:)` to accept mode
+
+- **Audio file cleanup**:
+  - Audio files are now deleted after transcription (success, failure, cancel, no voice)
+  - Added 6 new tests for file cleanup verification
+
+- **Test local model**:
+  - Added "Test Local Model" button in Settings
+  - Creates silent WAV file and transcribes to verify model works
+
+### Session 2026-01-12 (Earlier)
 
 - **Removed AI post-processing completely**:
   - Deleted `AIPostProcessingService.swift`, `AnthropicAPIClient.swift`
@@ -37,8 +60,6 @@ All refactoring tasks have been completed! This document is kept for reference.
   - Removed `MurmurixError.ai` cases
   - Removed `Logger.AI` category
   - Simplified Settings to single General tab (no AI tab)
-  - Simplified hotkeys to just Toggle Recording (Ctrl+D) and Cancel (Esc)
-  - Removed "Record without AI" hotkey (Ctrl+Shift+D)
 
 ### Session 2025-12-23
 
@@ -78,7 +99,7 @@ All refactoring tasks have been completed! This document is kept for reference.
 - Applied `Layout`, `Typography`, `AppColors` constants
 - Created `Logger.swift` with `os.log` integration
 - Created `WindowPositioner.swift`
-- Added 116 tests with full mocking
+- Added 122 tests with full mocking
 - Integrated Lottie library for animated cat loading states
 - Created `LottieView.swift` and `CatLoadingView.swift`
 - Created app icon
@@ -95,6 +116,6 @@ All refactoring tasks have been completed! This document is kept for reference.
 |--------|-------|
 | Swift files | 56 |
 | Lines of code | ~6,800 |
-| Unit tests | 116 |
+| Unit tests | 122 |
 | Test coverage | Services, ViewModels, Models |
 | Protocols | 12+ |

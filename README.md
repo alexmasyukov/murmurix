@@ -2,16 +2,17 @@
 
 A native macOS menubar app for local voice-to-text transcription using [faster-whisper](https://github.com/guillaumekln/faster-whisper).
 
-**Version 1.1** | 6800+ lines of Swift | 56 files | 116 tests
+**Version 1.2** | 6800+ lines of Swift | 56 files | 122 tests
 
 ## Features
 
-- **Global Hotkeys** — Trigger recording from anywhere with customizable shortcuts
-- **Local or Cloud Transcription** — Choose between local Whisper daemon or OpenAI cloud (gpt-4o-transcribe)
+- **Dual Hotkeys** — Separate shortcuts for local (Whisper) and cloud (OpenAI) transcription
+- **Local Transcription** — Use local Whisper daemon for privacy and offline use
+- **Cloud Transcription** — Use OpenAI gpt-4o-transcribe for high accuracy
 - **In-App Model Download** — Download Whisper models directly from Settings with progress indicator
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
 - **Multiple Models** — Choose from 6 Whisper models (tiny to large-v3)
-- **Animated UI** — Lottie cat animation during transcription states
+- **Animated UI** — Lottie cat animation during transcription
 - **Dynamic Island UI** — Minimal floating window with voice-reactive equalizer
 - **Voice Activity Detection** — Automatically skips transcription if no voice detected
 - **Smart Text Insertion** — Pastes directly into text fields, shows result window otherwise
@@ -74,9 +75,11 @@ The app requires:
 
 ## Usage
 
-1. Click the waveform icon in the menubar or press the hotkey (default: `⌃D`)
+1. Click the waveform icon in the menubar or press a hotkey:
+   - `⌃C` for local Whisper transcription
+   - `⌃D` for cloud OpenAI transcription
 2. Speak — the equalizer animates when voice is detected
-3. Press the hotkey again or click Stop to finish
+3. Press the same hotkey again or click Stop to finish
 4. Transcription appears:
    - **In text fields** — Text is pasted directly at cursor position
    - **Elsewhere** — Result window appears with Copy button
@@ -85,13 +88,14 @@ The app requires:
 
 ### Keyboard Shortcuts
 
-| Action | Default | Menu |
-|--------|---------|------|
-| Toggle Recording | `⌃D` | Shown in menu |
-| Cancel Recording | `Esc` | — |
-| History | `⌘H` | History... |
-| Settings | `⌘,` | Settings... |
-| Quit | `⌘Q` | Quit |
+| Action | Default | Description |
+|--------|---------|-------------|
+| Local Recording | `⌃C` | Record with local Whisper model |
+| Cloud Recording | `⌃D` | Record with OpenAI cloud API |
+| Cancel Recording | `Esc` | Cancel active recording |
+| History | `⌘H` | Open history window |
+| Settings | `⌘,` | Open settings |
+| Quit | `⌘Q` | Quit application |
 
 Customize hotkeys in **Settings** (⌘,)
 
@@ -99,7 +103,7 @@ Customize hotkeys in **Settings** (⌘,)
 
 ### Switching Models
 
-1. Open **Settings** → **General**
+1. Open **Settings** → **Local (Whisper)** section
 2. Select a model from the **Model** dropdown
 3. If model is not installed:
    - You'll see "(not installed)" warning and **Download** button
@@ -135,16 +139,35 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 
 ## Settings
 
-### General
+### Keyboard Shortcuts
 | Setting | Description |
 |---------|-------------|
-| Toggle Recording | Customizable hotkey (default: `⌃D`) |
-| Cancel Recording | Customizable hotkey (default: `Esc`) |
-| Recognition Mode | Local (Whisper) or Cloud (OpenAI) |
-| Keep model in memory | For local mode: faster transcription, uses ~500MB RAM |
+| Local Recording | Hotkey for local Whisper (default: `⌃C`) |
+| Cloud Recording | Hotkey for cloud OpenAI (default: `⌃D`) |
+| Cancel Recording | Hotkey to cancel (default: `Esc`) |
+
+### Performance
+| Setting | Description |
+|---------|-------------|
+| Keep model in memory | Faster local transcription, uses ~500MB RAM |
+
+### Recognition
+| Setting | Description |
+|---------|-------------|
 | Language | Russian, English, or Auto-detect |
-| Model | Whisper model for local, or GPT-4o model for cloud |
-| OpenAI API Key | Required for cloud mode (stored in Keychain) |
+
+### Local (Whisper)
+| Setting | Description |
+|---------|-------------|
+| Model | Whisper model (tiny to large-v3) |
+| Test | Verify local model works correctly |
+
+### Cloud (OpenAI)
+| Setting | Description |
+|---------|-------------|
+| Model | GPT-4o or GPT-4o-mini transcribe |
+| API Key | OpenAI API key (stored in Keychain) |
+| Test | Verify API connection |
 
 ## Data Storage
 
@@ -209,7 +232,7 @@ faster-whisper supports 99 languages. Currently exposed in UI:
 
 ## Testing
 
-The project includes 116 unit tests with mocks for all services:
+The project includes 122 unit tests with mocks for all services:
 
 ```bash
 # Run tests in Xcode

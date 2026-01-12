@@ -137,8 +137,19 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 - Create and manage NSStatusItem
 - Display hotkey shortcuts in menu
 - Delegate menu actions to AppDelegate
+- Two recording options: Local (Whisper) and Cloud (OpenAI)
 
 **Protocol**: `MenuBarManagerDelegate`
+
+```swift
+protocol MenuBarManagerDelegate: AnyObject {
+    func menuBarDidRequestToggleLocalRecording()
+    func menuBarDidRequestToggleCloudRecording()
+    func menuBarDidRequestOpenHistory()
+    func menuBarDidRequestOpenSettings()
+    func menuBarDidRequestQuit()
+}
+```
 
 #### WindowManager (91 lines)
 **Role**: Window lifecycle management
@@ -178,15 +189,34 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 **Manages**:
 - Core: `keepDaemonRunning`, `language`, `whisperModel`
 - Transcription: `transcriptionMode` (local/cloud), `openaiTranscriptionModel`
-- Hotkeys: JSON encode/decode for toggle/cancel
+- Hotkeys: `toggleLocalHotkey`, `toggleCloudHotkey`, `cancelHotkey`
 - API keys via KeychainService (OpenAI)
 
 **Protocol**: `SettingsStorageProtocol`
+
+```swift
+protocol SettingsStorageProtocol: AnyObject {
+    var keepDaemonRunning: Bool { get set }
+    var language: String { get set }
+    var transcriptionMode: String { get set }
+    var whisperModel: String { get set }
+    var openaiApiKey: String { get set }
+    var openaiTranscriptionModel: String { get set }
+
+    func loadToggleLocalHotkey() -> Hotkey
+    func saveToggleLocalHotkey(_ hotkey: Hotkey)
+    func loadToggleCloudHotkey() -> Hotkey
+    func saveToggleCloudHotkey(_ hotkey: Hotkey)
+    func loadCancelHotkey() -> Hotkey
+    func saveCancelHotkey(_ hotkey: Hotkey)
+}
+```
 
 #### Hotkey (64 lines)
 **Role**: Keyboard shortcut representation
 
 **Properties**: `keyCode`, `modifiers`
+**Defaults**: `.toggleLocalDefault` (⌃C), `.toggleCloudDefault` (⌃D), `.cancelDefault` (Esc)
 **Features**: Codable, display formatting, key code mapping
 
 #### TranscriptionRecord (43 lines)
@@ -254,7 +284,11 @@ idle → recording → transcribing → idle
 **Responsibilities**:
 - Coordinate AudioRecorder and TranscriptionService
 - Manage recording lifecycle
+- Pass transcription mode (local/cloud) to service
 - Save to history, notify delegate
+- Delete audio files after transcription
+
+**Key Method**: `toggleRecording(mode: TranscriptionMode)`
 
 **Protocol**: `RecordingCoordinatorDelegate`
 
@@ -283,14 +317,24 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 #### TranscriptionService
 **Role**: Transcription orchestration
 
-**Modes**:
-1. **Cloud mode** — via OpenAI Audio API (gpt-4o-transcribe)
-2. **Daemon mode** — via Unix socket to Python daemon
-3. **Direct mode** — spawn Python process (fallback)
+**Modes** (via `TranscriptionMode` enum):
+1. **Local mode** — via Unix socket to Python daemon or direct Python process
+2. **Cloud mode** — via OpenAI Audio API (gpt-4o-transcribe)
+
+**Key Method**: `transcribe(audioURL:useDaemon:mode:)`
 
 **Dependencies**: DaemonManager, PythonResolver, OpenAITranscriptionService
 
 **Protocol**: `TranscriptionServiceProtocol`
+
+```swift
+protocol TranscriptionServiceProtocol: Sendable {
+    var isDaemonRunning: Bool { get }
+    func startDaemon()
+    func stopDaemon()
+    func transcribe(audioURL: URL, useDaemon: Bool, mode: TranscriptionMode) async throws -> String
+}
+```
 
 #### OpenAITranscriptionService
 **Role**: OpenAI Audio API client
@@ -329,10 +373,27 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 
 **Responsibilities**:
 - Install CGEvent tap
-- Handle toggle/cancel hotkeys
+- Handle local/cloud/cancel hotkeys
 - Support pause/resume (for Settings window)
 
+**Callbacks**:
+- `onToggleLocalRecording` — triggers local Whisper transcription
+- `onToggleCloudRecording` — triggers cloud OpenAI transcription
+- `onCancelRecording` — cancels active recording
+
 **Protocol**: `HotkeyManagerProtocol`
+
+```swift
+protocol HotkeyManagerProtocol: AnyObject {
+    var onToggleLocalRecording: (() -> Void)? { get set }
+    var onToggleCloudRecording: (() -> Void)? { get set }
+    var onCancelRecording: (() -> Void)? { get set }
+
+    func start()
+    func stop()
+    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, cancel: Hotkey)
+}
+```
 
 #### TextPaster
 **Role**: Smart text insertion
@@ -415,25 +476,27 @@ All errors provide `errorDescription` and `recoverySuggestion`.
 ### Recording Flow
 
 ```
-User presses hotkey
+User presses hotkey (⌃C for local, ⌃D for cloud)
         ↓
-GlobalHotkeyManager.onToggleRecording
+GlobalHotkeyManager.onToggleLocalRecording/onToggleCloudRecording
         ↓
-AppDelegate.toggleRecording()
+AppDelegate.toggleRecording(mode:)
         ↓
-RecordingCoordinator.toggleRecording()
+RecordingCoordinator.toggleRecording(mode:)
         ↓
 AudioRecorder.startRecording()
         ↓
 [User speaks, audio levels monitored]
         ↓
-User presses hotkey again
+User presses same hotkey again
         ↓
 AudioRecorder.stopRecording() → audioURL
         ↓
-TranscriptionService.transcribe(audioURL)
+TranscriptionService.transcribe(audioURL, mode)
         ↓
 HistoryService.save(record)
+        ↓
+Delete audio file (cleanup)
         ↓
 RecordingCoordinatorDelegate.transcriptionDidComplete()
         ↓
@@ -443,7 +506,7 @@ AppDelegate → TextPaster.paste() or ResultWindow
 ### Daemon Communication
 
 ```
-TranscriptionService
+TranscriptionService (mode: .local)
         ↓
     Unix Socket
         ↓
@@ -468,7 +531,7 @@ protocol TranscriptionServiceProtocol: Sendable {
     var isDaemonRunning: Bool { get }
     func startDaemon()
     func stopDaemon()
-    func transcribe(audioURL: URL, useDaemon: Bool) async throws -> String
+    func transcribe(audioURL: URL, useDaemon: Bool, mode: TranscriptionMode) async throws -> String
 }
 
 // Production
@@ -510,14 +573,14 @@ init(
 | ViewModels | 3 | ~200 |
 | Views | 17 | ~2,100 |
 | Services | 15 | ~1,700 |
-| Tests | 6 | ~1,850 |
+| Tests | 6 | ~1,900 |
 | **Total** | **56** | **~6,800** |
 
 ---
 
 ## Testing
 
-116 unit tests covering:
+122 unit tests covering:
 - Model serialization (TranscriptionRecord, Hotkey, WhisperModel, OpenAITranscriptionModel)
 - Service logic (HistoryService, RecordingCoordinator)
 - Repository pattern (SQLiteDatabase, SQLiteTranscriptionRepository)
@@ -528,6 +591,7 @@ init(
 - Error hierarchy (MurmurixError with all cases)
 - Constants validation (AppConstants)
 - Logger categories
+- Audio file cleanup (deletion after transcription)
 
 All services have mock implementations in `MurmurixTests/Mocks.swift`:
 - MockAudioRecorder, MockTranscriptionService, MockHistoryService
