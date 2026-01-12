@@ -316,8 +316,8 @@ struct RecordingCoordinatorTests {
 
         coordinator.toggleRecording(mode: .openai)
 
-        // Wait for async transcription
-        try await Task.sleep(nanoseconds: 100_000_000)
+        // Wait for async transcription (2 seconds to handle parallel test execution)
+        try await Task.sleep(nanoseconds: 2_000_000_000)
 
         #expect(coordinator.state == .idle)
         #expect(transcriptionService.transcribeCallCount == 1)
@@ -333,8 +333,8 @@ struct RecordingCoordinatorTests {
 
         coordinator.toggleRecording(mode: .gemini)
 
-        // Wait for async transcription
-        try await Task.sleep(nanoseconds: 100_000_000)
+        // Wait for async transcription (2 seconds to handle parallel test execution)
+        try await Task.sleep(nanoseconds: 2_000_000_000)
 
         #expect(coordinator.state == .idle)
         #expect(transcriptionService.transcribeCallCount == 1)
