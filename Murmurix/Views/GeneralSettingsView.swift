@@ -52,7 +52,6 @@ struct GeneralSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 keyboardShortcutsSection
-                performanceSection
                 recognitionSection
                 Spacer()
             }
@@ -123,47 +122,6 @@ struct GeneralSettingsView: View {
         }
     }
 
-    private var performanceSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(title: "Performance")
-
-            HStack {
-                VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
-                    HStack(spacing: Layout.Spacing.indicator) {
-                        Text("Keep model in memory")
-                            .font(Typography.label)
-                            .foregroundColor(.white)
-
-                        Circle()
-                            .fill(isDaemonRunning ? Color.green : Color.gray.opacity(AppColors.disabledOpacity))
-                            .frame(width: 8, height: 8)
-
-                        Text(isDaemonRunning ? "Running" : "Stopped")
-                            .font(Typography.caption)
-                            .foregroundColor(isDaemonRunning ? .green : .gray)
-                    }
-                    Text("Faster transcription, uses ~500MB RAM")
-                        .font(Typography.description)
-                        .foregroundColor(.gray)
-                }
-                Spacer()
-                Toggle("", isOn: $keepDaemonRunning)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-                    .transaction { $0.animation = nil }
-                    .onChange(of: keepDaemonRunning) { _, newValue in
-                        onDaemonToggle?(newValue)
-                    }
-            }
-            .padding(.horizontal, Layout.Padding.standard)
-            .padding(.vertical, Layout.Padding.vertical)
-            .background(AppColors.cardBackground)
-            .cornerRadius(Layout.CornerRadius.card)
-            .padding(.horizontal, Layout.Padding.standard)
-            .padding(.bottom, Layout.Padding.section)
-        }
-    }
-
     private var recognitionSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "Recognition")
@@ -193,6 +151,7 @@ struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: Layout.Spacing.item) {
                 modelPicker
                 modelDownloadStatus
+                daemonToggle
                 localTestButton
             }
             .padding(.horizontal, Layout.Padding.standard)
@@ -201,6 +160,37 @@ struct GeneralSettingsView: View {
             .cornerRadius(Layout.CornerRadius.card)
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.bottom, Layout.Padding.section)
+        }
+    }
+
+    private var daemonToggle: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                HStack(spacing: Layout.Spacing.indicator) {
+                    Text("Keep model in memory")
+                        .font(Typography.label)
+                        .foregroundColor(.white)
+
+                    Circle()
+                        .fill(isDaemonRunning ? Color.green : Color.gray.opacity(AppColors.disabledOpacity))
+                        .frame(width: 8, height: 8)
+
+                    Text(isDaemonRunning ? "Running" : "Stopped")
+                        .font(Typography.caption)
+                        .foregroundColor(isDaemonRunning ? .green : .gray)
+                }
+                Text("Faster transcription, uses ~500MB RAM")
+                    .font(Typography.description)
+                    .foregroundColor(.gray)
+            }
+            Spacer()
+            Toggle("", isOn: $keepDaemonRunning)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .transaction { $0.animation = nil }
+                .onChange(of: keepDaemonRunning) { _, newValue in
+                    onDaemonToggle?(newValue)
+                }
         }
     }
 
