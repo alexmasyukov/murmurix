@@ -34,22 +34,33 @@ Murmurix - macOS Menu Bar приложение для голосовой тра�
 
 3. **Тесты** в `MurmurixTests/Phase2Tests.swift` - 20 тестов
 
+### Phase 3 ✅ DONE (код + тесты)
+
+1. **Перенос тестовой логики в ViewModel**:
+   - `testLocalModel`, `testOpenAI`, `testGemini` перенесены из View в ViewModel
+   - `@MainActor` добавлен в `GeneralSettingsViewModel`
+   - Инъекция сервисов: OpenAI, Gemini, Transcription
+
+2. **Удаление Settings.shared из View**:
+   - Все runtime операции используют `viewModel.settings`
+   - Init по-прежнему использует Settings.shared (ограничение SwiftUI)
+
+3. **Новые типы**:
+   - `TestService` enum для идентификации сервисов
+   - `clearTestResult(for:)` метод
+
+4. **Тесты** в `MurmurixTests/Phase3Tests.swift` - 18 тестов
+
 ## Что нужно сделать
 
-### Phase 3 (Code Quality + Deferred)
-```
-1. Remove Settings.shared from Views (use DI)
-2. Move test logic from GeneralSettingsView to ViewModel
-3. Split GeneralSettingsView into sections (~656 lines)
-4. Remove @unchecked Sendable (4 места)
-5. Add Process/FileManager abstractions
-```
-
-### Phase 4 (Polish)
+### Phase 4 (Polish + Deferred)
 ```
 1. Documentation (DocC comments)
 2. Keychain key enum
 3. Swift 6 strict concurrency preparation
+4. Remove @unchecked Sendable (требует конвертации в actors)
+5. Split GeneralSettingsView into sections (опционально)
+6. Add Process/FileManager abstractions (опционально)
 ```
 
 ## Ключевые файлы
@@ -57,8 +68,10 @@ Murmurix - macOS Menu Bar приложение для голосовой тра�
 - `REFACTORING_PLAN.md` - полный план
 - `MurmurixTests/Phase1Tests.swift` - тесты Phase 1
 - `MurmurixTests/Phase2Tests.swift` - тесты Phase 2
+- `MurmurixTests/Phase3Tests.swift` - тесты Phase 3
 - `MurmurixTests/Mocks.swift` - все моки
 - `Murmurix/Services/UnixSocketClient.swift` - сокет-клиент
+- `Murmurix/ViewModels/GeneralSettingsViewModel.swift` - ViewModel с тестовой логикой
 
 ## Статистика тестов
 
@@ -66,7 +79,8 @@ Murmurix - macOS Menu Bar приложение для голосовой тра�
 |------|--------|
 | Phase1Tests.swift | 55 |
 | Phase2Tests.swift | 20 |
-| Всего новых | 75 |
+| Phase3Tests.swift | 18 |
+| **Всего новых** | **93** |
 
 ## Команда для запуска тестов
 
@@ -77,5 +91,5 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=m
 ## Начни с
 
 ```
-Прочитай REFACTORING_PLAN.md и начни Phase 3 с удаления Settings.shared из GeneralSettingsView
+Прочитай REFACTORING_PLAN.md и начни Phase 4 с добавления DocC комментариев к публичным API
 ```

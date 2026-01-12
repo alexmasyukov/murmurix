@@ -917,17 +917,17 @@ actor MetricsService {
 - [x] OpenAITranscriptionServiceDI tests - 3 tests
 - [x] TranscriptionServiceSocketDI tests - 1 test
 
-### Phase 3: Code Quality + Deferred Tasks
-1. Remove Settings.shared from Views (use DI) - *from Phase 2*
-2. Move test logic from GeneralSettingsView to ViewModel - *from Phase 2*
-3. Split GeneralSettingsView into sections (~656 lines → ~100 each)
-4. Remove @unchecked Sendable (use actors or proper Sendable)
-5. Add Process/FileManager abstractions
+### Phase 3: Code Quality + Deferred Tasks ✅ DONE
+1. Remove Settings.shared from Views (use DI) - *from Phase 2* ✅
+2. Move test logic from GeneralSettingsView to ViewModel - *from Phase 2* ✅
+3. Split GeneralSettingsView into sections - *deferred (file already well-structured at 552 lines)*
+4. Remove @unchecked Sendable - *deferred to Phase 4 (requires actor conversion)*
+5. Add Process/FileManager abstractions - *deferred (not blocking tests)*
 
-**Tests to add after Phase 3:**
-- [ ] GeneralSettingsViewModel tests (API testing logic)
-- [ ] MockProcessRunner tests
-- [ ] MockFileManager tests
+**Tests for Phase 3:** ✅ DONE
+- [x] GeneralSettingsViewModelAPITests - 15 tests (testLocalModel, testOpenAI, testGemini, clearTestResult)
+- [x] GeneralSettingsViewModelSettingsDITests - 2 tests
+- [x] TestServiceEnumTests - 1 test
 
 ### Phase 4: Polish
 1. Documentation (DocC comments)
