@@ -325,10 +325,12 @@ struct HotkeyTests {
     }
 
     @Test func defaultHotkeysAreValid() {
-        let toggle = Hotkey.toggleDefault
+        let toggleLocal = Hotkey.toggleLocalDefault
+        let toggleCloud = Hotkey.toggleCloudDefault
         let cancel = Hotkey.cancelDefault
 
-        #expect(Hotkey.keyCodeToName(toggle.keyCode) != nil)
+        #expect(Hotkey.keyCodeToName(toggleLocal.keyCode) != nil)
+        #expect(Hotkey.keyCodeToName(toggleCloud.keyCode) != nil)
         #expect(Hotkey.keyCodeToName(cancel.keyCode) != nil)
     }
 
@@ -399,16 +401,18 @@ struct GlobalHotkeyManagerTests {
         let manager = GlobalHotkeyManager()
 
         #expect(manager.isRecording == false)
-        #expect(manager.onToggleRecording == nil)
+        #expect(manager.onToggleLocalRecording == nil)
+        #expect(manager.onToggleCloudRecording == nil)
         #expect(manager.onCancelRecording == nil)
     }
 
     @Test func hotkeyManagerUpdatesHotkeys() {
         let manager = GlobalHotkeyManager()
-        let newToggle = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey))
-        let newCancel = Hotkey(keyCode: 2, modifiers: UInt32(optionKey))
+        let newToggleLocal = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey))
+        let newToggleCloud = Hotkey(keyCode: 2, modifiers: UInt32(cmdKey))
+        let newCancel = Hotkey(keyCode: 3, modifiers: UInt32(optionKey))
 
-        manager.updateHotkeys(toggle: newToggle, cancel: newCancel)
+        manager.updateHotkeys(toggleLocal: newToggleLocal, toggleCloud: newToggleCloud, cancel: newCancel)
 
         // Manager should accept the update without crashing
         #expect(manager.isRecording == false)
@@ -416,19 +420,24 @@ struct GlobalHotkeyManagerTests {
 
     @Test func hotkeyManagerCallbacksCanBeSet() {
         let manager = GlobalHotkeyManager()
-        var toggleCalled = false
+        var toggleLocalCalled = false
+        var toggleCloudCalled = false
         var cancelCalled = false
 
-        manager.onToggleRecording = { toggleCalled = true }
+        manager.onToggleLocalRecording = { toggleLocalCalled = true }
+        manager.onToggleCloudRecording = { toggleCloudCalled = true }
         manager.onCancelRecording = { cancelCalled = true }
 
-        #expect(manager.onToggleRecording != nil)
+        #expect(manager.onToggleLocalRecording != nil)
+        #expect(manager.onToggleCloudRecording != nil)
         #expect(manager.onCancelRecording != nil)
 
-        manager.onToggleRecording?()
+        manager.onToggleLocalRecording?()
+        manager.onToggleCloudRecording?()
         manager.onCancelRecording?()
 
-        #expect(toggleCalled == true)
+        #expect(toggleLocalCalled == true)
+        #expect(toggleCloudCalled == true)
         #expect(cancelCalled == true)
     }
 

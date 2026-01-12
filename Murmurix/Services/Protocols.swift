@@ -23,18 +23,19 @@ protocol TranscriptionServiceProtocol: Sendable {
 
     func startDaemon()
     func stopDaemon()
-    func transcribe(audioURL: URL, useDaemon: Bool) async throws -> String
+    func transcribe(audioURL: URL, useDaemon: Bool, mode: TranscriptionMode) async throws -> String
 }
 
 // MARK: - Hotkey Management
 
 protocol HotkeyManagerProtocol: AnyObject {
-    var onToggleRecording: (() -> Void)? { get set }
+    var onToggleLocalRecording: (() -> Void)? { get set }
+    var onToggleCloudRecording: (() -> Void)? { get set }
     var onCancelRecording: (() -> Void)? { get set }
 
     func start()
     func stop()
-    func updateHotkeys(toggle: Hotkey, cancel: Hotkey)
+    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, cancel: Hotkey)
 }
 
 // MARK: - Settings Storage
@@ -47,8 +48,10 @@ protocol SettingsStorageProtocol: AnyObject {
     var openaiApiKey: String { get set }
     var openaiTranscriptionModel: String { get set }
 
-    func loadToggleHotkey() -> Hotkey
-    func saveToggleHotkey(_ hotkey: Hotkey)
+    func loadToggleLocalHotkey() -> Hotkey
+    func saveToggleLocalHotkey(_ hotkey: Hotkey)
+    func loadToggleCloudHotkey() -> Hotkey
+    func saveToggleCloudHotkey(_ hotkey: Hotkey)
     func loadCancelHotkey() -> Hotkey
     func saveCancelHotkey(_ hotkey: Hotkey)
 }

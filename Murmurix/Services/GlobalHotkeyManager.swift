@@ -8,7 +8,8 @@ import Carbon
 import AppKit
 
 class GlobalHotkeyManager: HotkeyManagerProtocol {
-    var onToggleRecording: (() -> Void)?
+    var onToggleLocalRecording: (() -> Void)?
+    var onToggleCloudRecording: (() -> Void)?
     var onCancelRecording: (() -> Void)?
 
     // Only intercept cancel hotkey when recording is active
@@ -23,18 +24,21 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    private var toggleHotkey: Hotkey
+    private var toggleLocalHotkey: Hotkey
+    private var toggleCloudHotkey: Hotkey
     private var cancelHotkey: Hotkey
     private let settings: SettingsStorageProtocol
 
     init(settings: SettingsStorageProtocol = Settings.shared) {
         self.settings = settings
-        toggleHotkey = settings.loadToggleHotkey()
+        toggleLocalHotkey = settings.loadToggleLocalHotkey()
+        toggleCloudHotkey = settings.loadToggleCloudHotkey()
         cancelHotkey = settings.loadCancelHotkey()
     }
 
-    func updateHotkeys(toggle: Hotkey, cancel: Hotkey) {
-        toggleHotkey = toggle
+    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, cancel: Hotkey) {
+        toggleLocalHotkey = toggleLocal
+        toggleCloudHotkey = toggleCloud
         cancelHotkey = cancel
     }
 
@@ -106,9 +110,15 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
             if flags.contains(.maskControl) { carbonModifiers |= UInt32(controlKey) }
             if flags.contains(.maskShift) { carbonModifiers |= UInt32(shiftKey) }
 
-            // Check toggle hotkey
-            if keyCode == toggleHotkey.keyCode && carbonModifiers == toggleHotkey.modifiers {
-                onToggleRecording?()
+            // Check toggle local hotkey
+            if keyCode == toggleLocalHotkey.keyCode && carbonModifiers == toggleLocalHotkey.modifiers {
+                onToggleLocalRecording?()
+                return nil // consume the event
+            }
+
+            // Check toggle cloud hotkey
+            if keyCode == toggleCloudHotkey.keyCode && carbonModifiers == toggleCloudHotkey.modifiers {
+                onToggleCloudRecording?()
                 return nil // consume the event
             }
 

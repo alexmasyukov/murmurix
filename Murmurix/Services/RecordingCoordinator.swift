@@ -11,6 +11,11 @@ enum RecordingState: Equatable {
     case transcribing
 }
 
+enum TranscriptionMode: String {
+    case local
+    case cloud
+}
+
 protocol RecordingCoordinatorDelegate: AnyObject {
     func recordingDidStart()
     func recordingDidStop()
@@ -28,6 +33,7 @@ final class RecordingCoordinator {
     private var recordingStartTime: Date?
     private var transcriptionTask: Task<Void, Never>?
     private var currentAudioURL: URL?
+    private var currentTranscriptionMode: TranscriptionMode = .local
 
     private let audioRecorder: AudioRecorderProtocol
     private let transcriptionService: TranscriptionServiceProtocol
@@ -48,9 +54,10 @@ final class RecordingCoordinator {
 
     // MARK: - Recording Control
 
-    func toggleRecording() {
+    func toggleRecording(mode: TranscriptionMode) {
         switch state {
         case .idle:
+            currentTranscriptionMode = mode
             startRecording()
         case .recording:
             stopRecording()
@@ -88,6 +95,7 @@ final class RecordingCoordinator {
         state = .recording
         recordingStartTime = Date()
         audioRecorder.startRecording()
+        Logger.Transcription.info("Recording started, mode: \(currentTranscriptionMode.rawValue)")
         delegate?.recordingDidStart()
     }
 
@@ -120,6 +128,9 @@ final class RecordingCoordinator {
         let service = transcriptionService
         let useDaemon = settings.keepDaemonRunning
         let language = settings.language
+        let mode = currentTranscriptionMode
+
+        Logger.Transcription.info("Starting transcription, mode: \(mode.rawValue), language: \(language), duration: \(String(format: "%.1f", duration))s")
 
         transcriptionTask = Task.detached { [weak self] in
             guard let self = self else { return }
@@ -129,7 +140,7 @@ final class RecordingCoordinator {
                 let transcriptionURL: URL
                 var compressedURL: URL?
 
-                if self.settings.transcriptionMode == "cloud" {
+                if mode == .cloud {
                     compressedURL = try? await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
                     if let compressed = compressedURL {
                         transcriptionURL = compressed
@@ -141,7 +152,7 @@ final class RecordingCoordinator {
                     transcriptionURL = audioURL
                 }
 
-                let transcribedText = try await service.transcribe(audioURL: transcriptionURL, useDaemon: useDaemon)
+                let transcribedText = try await service.transcribe(audioURL: transcriptionURL, useDaemon: useDaemon, mode: mode)
 
                 // Check if cancelled
                 if Task.isCancelled { return }

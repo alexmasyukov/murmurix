@@ -60,7 +60,7 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
         isDaemonRunning = false
     }
 
-    func transcribe(audioURL: URL, useDaemon: Bool) async throws -> String {
+    func transcribe(audioURL: URL, useDaemon: Bool, mode: TranscriptionMode = .local) async throws -> String {
         transcribeCallCount += 1
 
         if transcriptionDelay > 0 {
@@ -119,15 +119,24 @@ final class MockSettings: SettingsStorageProtocol {
     var openaiApiKey: String = ""
     var openaiTranscriptionModel: String = "gpt-4o-transcribe"
 
-    private var toggleHotkey: Hotkey = .toggleDefault
+    private var toggleLocalHotkey: Hotkey = .toggleLocalDefault
+    private var toggleCloudHotkey: Hotkey = .toggleCloudDefault
     private var cancelHotkey: Hotkey = .cancelDefault
 
-    func loadToggleHotkey() -> Hotkey {
-        return toggleHotkey
+    func loadToggleLocalHotkey() -> Hotkey {
+        return toggleLocalHotkey
     }
 
-    func saveToggleHotkey(_ hotkey: Hotkey) {
-        toggleHotkey = hotkey
+    func saveToggleLocalHotkey(_ hotkey: Hotkey) {
+        toggleLocalHotkey = hotkey
+    }
+
+    func loadToggleCloudHotkey() -> Hotkey {
+        return toggleCloudHotkey
+    }
+
+    func saveToggleCloudHotkey(_ hotkey: Hotkey) {
+        toggleCloudHotkey = hotkey
     }
 
     func loadCancelHotkey() -> Hotkey {

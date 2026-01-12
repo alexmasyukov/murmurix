@@ -16,7 +16,7 @@ final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscription
     private let baseURL = "https://api.openai.com/v1/audio/transcriptions"
 
     // Промпт для улучшения распознавания технических терминов
-    private let defaultPrompt = "Диалог на темы программирования. Технические термины: Anthropic, Claude, Bun, React, Docker, Kubernetes, Golang, Python, Swift, Xcode, GitHub, API, JSON, REST, GraphQL, PostgreSQL, MongoDB, Redis, AWS, Azure, GCP."
+    private let defaultPrompt = "Диалог на темы программирования. Технические термины: Anthropic, Claude, Bun, React, Docker, Kubernetes, Golang, Python, Swift, Xcode, GitHub, API, JSON, REST, GraphQL, PostgreSQL, MongoDB, Redis, AWS, Azure, GCP и так далее."
 
     init() {}
 

@@ -17,7 +17,8 @@ struct GeneralSettingsView: View {
     @AppStorage("transcriptionMode") private var transcriptionMode = "local"
     @AppStorage("openaiTranscriptionModel") private var openaiTranscriptionModel = OpenAITranscriptionModel.gpt4oTranscribe.rawValue
 
-    @State private var toggleHotkey: Hotkey
+    @State private var toggleLocalHotkey: Hotkey
+    @State private var toggleCloudHotkey: Hotkey
     @State private var cancelHotkey: Hotkey
     @State private var openaiApiKey: String = ""
     @State private var isTestingOpenAI = false
@@ -27,20 +28,21 @@ struct GeneralSettingsView: View {
     @Binding var isDaemonRunning: Bool
 
     var onDaemonToggle: ((Bool) -> Void)?
-    var onHotkeysChanged: ((Hotkey, Hotkey) -> Void)?
+    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
 
     init(
         isDaemonRunning: Binding<Bool>,
         onDaemonToggle: ((Bool) -> Void)? = nil,
-        onHotkeysChanged: ((Hotkey, Hotkey) -> Void)? = nil,
+        onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)? = nil,
         onModelChanged: (() -> Void)? = nil
     ) {
         self._isDaemonRunning = isDaemonRunning
         self.onDaemonToggle = onDaemonToggle
         self.onHotkeysChanged = onHotkeysChanged
         self.onModelChanged = onModelChanged
-        _toggleHotkey = State(initialValue: Settings.shared.loadToggleHotkey())
+        _toggleLocalHotkey = State(initialValue: Settings.shared.loadToggleLocalHotkey())
+        _toggleCloudHotkey = State(initialValue: Settings.shared.loadToggleCloudHotkey())
         _cancelHotkey = State(initialValue: Settings.shared.loadCancelHotkey())
         _openaiApiKey = State(initialValue: Settings.shared.openaiApiKey)
     }
@@ -70,13 +72,29 @@ struct GeneralSettingsView: View {
 
             VStack(spacing: 0) {
                 HotkeyRecorderView(
-                    title: "Toggle Recording",
-                    description: "Starts and stops recordings",
-                    hotkey: $toggleHotkey
+                    title: "Local Recording",
+                    description: "Record with local Whisper model",
+                    hotkey: $toggleLocalHotkey
                 )
-                .onChange(of: toggleHotkey) { _, newValue in
-                    Settings.shared.saveToggleHotkey(newValue)
-                    onHotkeysChanged?(newValue, cancelHotkey)
+                .onChange(of: toggleLocalHotkey) { _, newValue in
+                    Settings.shared.saveToggleLocalHotkey(newValue)
+                    onHotkeysChanged?(newValue, toggleCloudHotkey, cancelHotkey)
+                }
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
+
+                Divider()
+                    .background(AppColors.divider)
+                    .padding(.leading, Layout.Padding.standard)
+
+                HotkeyRecorderView(
+                    title: "Cloud Recording",
+                    description: "Record with OpenAI cloud API",
+                    hotkey: $toggleCloudHotkey
+                )
+                .onChange(of: toggleCloudHotkey) { _, newValue in
+                    Settings.shared.saveToggleCloudHotkey(newValue)
+                    onHotkeysChanged?(toggleLocalHotkey, newValue, cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -92,7 +110,7 @@ struct GeneralSettingsView: View {
                 )
                 .onChange(of: cancelHotkey) { _, newValue in
                     Settings.shared.saveCancelHotkey(newValue)
-                    onHotkeysChanged?(toggleHotkey, newValue)
+                    onHotkeysChanged?(toggleLocalHotkey, toggleCloudHotkey, newValue)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)

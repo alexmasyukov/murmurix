@@ -86,11 +86,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         windowManager = WindowManager()
     }
 
+    private var currentRecordingMode: TranscriptionMode = .local
+
     private func setupHotkeys() {
         hotkeyManager = GlobalHotkeyManager()
-        hotkeyManager.onToggleRecording = { [weak self] in
+        hotkeyManager.onToggleLocalRecording = { [weak self] in
             DispatchQueue.main.async {
-                self?.toggleRecording()
+                self?.toggleRecording(mode: .local)
+            }
+        }
+        hotkeyManager.onToggleCloudRecording = { [weak self] in
+            DispatchQueue.main.async {
+                self?.toggleRecording(mode: .cloud)
             }
         }
         hotkeyManager.onCancelRecording = { [weak self] in
@@ -103,11 +110,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Recording Actions
 
-    private func toggleRecording() {
+    private func toggleRecording(mode: TranscriptionMode) {
         if coordinator.state == .idle {
             shouldPasteDirectly = TextPaster.isTextFieldFocused()
+            currentRecordingMode = mode
         }
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: currentRecordingMode)
     }
 
     private func cancelRecording() {
@@ -125,8 +133,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - MenuBarManagerDelegate
 
 extension AppDelegate: MenuBarManagerDelegate {
-    func menuBarDidRequestToggleRecording() {
-        toggleRecording()
+    func menuBarDidRequestToggleLocalRecording() {
+        toggleRecording(mode: .local)
+    }
+
+    func menuBarDidRequestToggleCloudRecording() {
+        toggleRecording(mode: .cloud)
     }
 
     func menuBarDidRequestOpenHistory() {
@@ -139,8 +151,8 @@ extension AppDelegate: MenuBarManagerDelegate {
             onDaemonToggle: { [weak self] enabled in
                 self?.coordinator.setDaemonEnabled(enabled)
             },
-            onHotkeysChanged: { [weak self] toggle, cancel in
-                self?.hotkeyManager.updateHotkeys(toggle: toggle, cancel: cancel)
+            onHotkeysChanged: { [weak self] toggleLocal, toggleCloud, cancel in
+                self?.hotkeyManager.updateHotkeys(toggleLocal: toggleLocal, toggleCloud: toggleCloud, cancel: cancel)
                 self?.menuBarManager.updateHotkeyDisplay()
             },
             onModelChanged: { [weak self] in
@@ -168,7 +180,8 @@ extension AppDelegate: RecordingCoordinatorDelegate {
         windowManager.showRecordingWindow(
             audioRecorder: audioRecorder,
             onStop: { [weak self] in
-                self?.coordinator.toggleRecording()
+                guard let self = self else { return }
+                self.coordinator.toggleRecording(mode: self.currentRecordingMode)
             },
             onCancelTranscription: { [weak self] in
                 self?.coordinator.cancelTranscription()

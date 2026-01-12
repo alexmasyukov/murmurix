@@ -37,18 +37,19 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         daemonManager.stop()
     }
 
-    func transcribe(audioURL: URL, useDaemon: Bool = true) async throws -> String {
-        let mode = settings.transcriptionMode
-
+    func transcribe(audioURL: URL, useDaemon: Bool = true, mode: TranscriptionMode = .local) async throws -> String {
         // Cloud mode - use OpenAI API
-        if mode == "cloud" {
+        if mode == .cloud {
+            Logger.Transcription.info("☁️ Cloud mode selected, using OpenAI API")
             return try await transcribeViaOpenAI(audioURL: audioURL)
         }
 
         // Local mode - use daemon or direct
         if useDaemon && isDaemonRunning {
+            Logger.Transcription.info("🏠 Local mode (daemon), model=\(settings.whisperModel)")
             return try await transcribeViaDaemon(audioURL: audioURL)
         } else {
+            Logger.Transcription.info("🏠 Local mode (direct), model=\(settings.whisperModel)")
             return try await transcribeDirectly(audioURL: audioURL)
         }
     }

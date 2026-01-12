@@ -48,7 +48,7 @@ struct RecordingCoordinatorTests {
     @Test func toggleRecordingFromIdleStartsRecording() {
         let (coordinator, audioRecorder, _, _, _, delegate) = createCoordinator()
 
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
 
         #expect(coordinator.state == .recording)
         #expect(audioRecorder.startRecordingCallCount == 1)
@@ -59,11 +59,11 @@ struct RecordingCoordinatorTests {
         let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
 
         // Start recording
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
         #expect(coordinator.state == .recording)
 
         // Stop recording
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
 
         #expect(audioRecorder.stopRecordingCallCount == 1)
         #expect(delegate.recordingDidStopCallCount == 1)
@@ -83,13 +83,13 @@ struct RecordingCoordinatorTests {
         transcriptionService.transcriptionDelay = 0.5
 
         // Start and stop recording to begin transcription
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         #expect(coordinator.state == .transcribing)
 
         // Try to toggle again while transcribing
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
 
         // Should still be transcribing, not start new recording
         #expect(coordinator.state == .transcribing)
@@ -101,7 +101,7 @@ struct RecordingCoordinatorTests {
     @Test func cancelRecordingStopsWithoutTranscription() {
         let (coordinator, audioRecorder, transcriptionService, _, _, _) = createCoordinator()
 
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
         #expect(coordinator.state == .recording)
 
         coordinator.cancelRecording()
@@ -127,8 +127,8 @@ struct RecordingCoordinatorTests {
         transcriptionService.transcriptionResult = .success("Hello world")
         settings.language = "en"
 
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         // Wait for async transcription
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -146,8 +146,8 @@ struct RecordingCoordinatorTests {
         struct TestError: Error {}
         transcriptionService.transcriptionResult = .failure(TestError())
 
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         // Wait for async transcription
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -194,8 +194,8 @@ struct RecordingCoordinatorTests {
         let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
         audioRecorder.hadVoiceActivity = false
 
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         #expect(coordinator.state == .idle)
         #expect(transcriptionService.transcribeCallCount == 0)
@@ -208,8 +208,8 @@ struct RecordingCoordinatorTests {
         let (coordinator, _, transcriptionService, _, _, delegate) = createCoordinator()
         transcriptionService.transcriptionDelay = 1.0 // Long delay
 
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         #expect(coordinator.state == .transcribing)
 
@@ -236,8 +236,8 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         // Wait for async transcription
         try await Task.sleep(nanoseconds: 200_000_000)
@@ -254,8 +254,8 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         // Wait for async transcription
         try await Task.sleep(nanoseconds: 200_000_000)
@@ -270,8 +270,8 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         #expect(!FileManager.default.fileExists(atPath: audioURL.path))
     }
@@ -282,7 +282,7 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
         coordinator.cancelRecording()
 
         #expect(!FileManager.default.fileExists(atPath: audioURL.path))
@@ -295,8 +295,8 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording()
-        coordinator.toggleRecording()
+        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local)
 
         #expect(coordinator.state == .transcribing)
 

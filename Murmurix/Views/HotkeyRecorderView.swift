@@ -137,9 +137,15 @@ struct KeyCapView: View {
 #Preview {
     VStack(spacing: 20) {
         HotkeyRecorderView(
-            title: "Toggle Recording",
-            description: "Starts and stops recordings",
-            hotkey: .constant(Hotkey.toggleDefault)
+            title: "Local Recording",
+            description: "Record with local Whisper",
+            hotkey: .constant(Hotkey.toggleLocalDefault)
+        )
+
+        HotkeyRecorderView(
+            title: "Cloud Recording",
+            description: "Record with OpenAI cloud",
+            hotkey: .constant(Hotkey.toggleCloudDefault)
         )
 
         HotkeyRecorderView(

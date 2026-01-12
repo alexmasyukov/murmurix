@@ -29,10 +29,16 @@ struct SettingsTests {
         #expect(settings.language == "ru")
     }
 
-    @Test func defaultToggleHotkeyIsSet() {
+    @Test func defaultToggleLocalHotkeyIsSet() {
         let settings = createSettings()
-        let hotkey = settings.loadToggleHotkey()
-        #expect(hotkey == Hotkey.toggleDefault)
+        let hotkey = settings.loadToggleLocalHotkey()
+        #expect(hotkey == Hotkey.toggleLocalDefault)
+    }
+
+    @Test func defaultToggleCloudHotkeyIsSet() {
+        let settings = createSettings()
+        let hotkey = settings.loadToggleCloudHotkey()
+        #expect(hotkey == Hotkey.toggleCloudDefault)
     }
 
     @Test func defaultCancelHotkeyIsEscape() {
@@ -63,12 +69,22 @@ struct SettingsTests {
         #expect(settings.language == "auto")
     }
 
-    @Test func toggleHotkeyPersists() {
+    @Test func toggleLocalHotkeyPersists() {
         let settings = createSettings()
         let newHotkey = Hotkey(keyCode: 0, modifiers: UInt32(cmdKey | shiftKey)) // Cmd+Shift+A
 
-        settings.saveToggleHotkey(newHotkey)
-        let loaded = settings.loadToggleHotkey()
+        settings.saveToggleLocalHotkey(newHotkey)
+        let loaded = settings.loadToggleLocalHotkey()
+
+        #expect(loaded == newHotkey)
+    }
+
+    @Test func toggleCloudHotkeyPersists() {
+        let settings = createSettings()
+        let newHotkey = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey | shiftKey)) // Cmd+Shift+S
+
+        settings.saveToggleCloudHotkey(newHotkey)
+        let loaded = settings.loadToggleCloudHotkey()
 
         #expect(loaded == newHotkey)
     }
@@ -85,16 +101,16 @@ struct SettingsTests {
 
     // MARK: - Edge Cases
 
-    @Test func loadToggleHotkeyReturnsDefaultWhenCorrupted() {
+    @Test func loadToggleLocalHotkeyReturnsDefaultWhenCorrupted() {
         let suiteName = "com.murmurix.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
 
         // Write corrupted data
-        defaults.set(Data([0x00, 0x01, 0x02]), forKey: "toggleHotkey")
+        defaults.set(Data([0x00, 0x01, 0x02]), forKey: "toggleLocalHotkey")
 
         let settings = Settings(defaults: defaults)
-        let hotkey = settings.loadToggleHotkey()
+        let hotkey = settings.loadToggleLocalHotkey()
 
-        #expect(hotkey == Hotkey.toggleDefault)
+        #expect(hotkey == Hotkey.toggleLocalDefault)
     }
 }

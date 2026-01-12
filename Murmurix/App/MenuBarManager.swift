@@ -7,7 +7,8 @@ import AppKit
 import Carbon
 
 protocol MenuBarManagerDelegate: AnyObject {
-    func menuBarDidRequestToggleRecording()
+    func menuBarDidRequestToggleLocalRecording()
+    func menuBarDidRequestToggleCloudRecording()
     func menuBarDidRequestOpenHistory()
     func menuBarDidRequestOpenSettings()
     func menuBarDidRequestQuit()
@@ -17,7 +18,8 @@ final class MenuBarManager {
     weak var delegate: MenuBarManagerDelegate?
 
     private var statusItem: NSStatusItem!
-    private var toggleMenuItem: NSMenuItem?
+    private var toggleLocalMenuItem: NSMenuItem?
+    private var toggleCloudMenuItem: NSMenuItem?
     private let settings: SettingsStorageProtocol
 
     init(settings: SettingsStorageProtocol = Settings.shared) {
@@ -30,8 +32,11 @@ final class MenuBarManager {
     }
 
     func updateHotkeyDisplay() {
-        if let menuItem = toggleMenuItem {
-            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleHotkey())
+        if let menuItem = toggleLocalMenuItem {
+            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleLocalHotkey())
+        }
+        if let menuItem = toggleCloudMenuItem {
+            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleCloudHotkey())
         }
     }
 
@@ -48,14 +53,23 @@ final class MenuBarManager {
     private func setupMenu() {
         let menu = NSMenu()
 
-        toggleMenuItem = NSMenuItem(
-            title: "Toggle Recording",
-            action: #selector(handleToggleRecording),
+        toggleLocalMenuItem = NSMenuItem(
+            title: "Local Recording (Whisper)",
+            action: #selector(handleToggleLocalRecording),
             keyEquivalent: ""
         )
-        toggleMenuItem?.target = self
-        applyHotkeyToMenuItem(toggleMenuItem!, hotkey: settings.loadToggleHotkey())
-        menu.addItem(toggleMenuItem!)
+        toggleLocalMenuItem?.target = self
+        applyHotkeyToMenuItem(toggleLocalMenuItem!, hotkey: settings.loadToggleLocalHotkey())
+        menu.addItem(toggleLocalMenuItem!)
+
+        toggleCloudMenuItem = NSMenuItem(
+            title: "Cloud Recording (OpenAI)",
+            action: #selector(handleToggleCloudRecording),
+            keyEquivalent: ""
+        )
+        toggleCloudMenuItem?.target = self
+        applyHotkeyToMenuItem(toggleCloudMenuItem!, hotkey: settings.loadToggleCloudHotkey())
+        menu.addItem(toggleCloudMenuItem!)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -103,8 +117,12 @@ final class MenuBarManager {
 
     // MARK: - Actions
 
-    @objc private func handleToggleRecording() {
-        delegate?.menuBarDidRequestToggleRecording()
+    @objc private func handleToggleLocalRecording() {
+        delegate?.menuBarDidRequestToggleLocalRecording()
+    }
+
+    @objc private func handleToggleCloudRecording() {
+        delegate?.menuBarDidRequestToggleCloudRecording()
     }
 
     @objc private func handleOpenHistory() {

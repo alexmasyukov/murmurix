@@ -13,7 +13,8 @@ final class Settings: SettingsStorageProtocol {
     // MARK: - Keys
 
     private enum Keys {
-        static let toggleHotkey = "toggleHotkey"
+        static let toggleLocalHotkey = "toggleLocalHotkey"
+        static let toggleCloudHotkey = "toggleCloudHotkey"
         static let cancelHotkey = "cancelHotkey"
         static let keepDaemonRunning = "keepDaemonRunning"
         static let language = "language"
@@ -57,17 +58,31 @@ final class Settings: SettingsStorageProtocol {
 
     // MARK: - Hotkey Settings
 
-    func loadToggleHotkey() -> Hotkey {
-        guard let data = defaults.data(forKey: Keys.toggleHotkey),
+    func loadToggleLocalHotkey() -> Hotkey {
+        guard let data = defaults.data(forKey: Keys.toggleLocalHotkey),
               let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
-            return .toggleDefault
+            return .toggleLocalDefault
         }
         return hotkey
     }
 
-    func saveToggleHotkey(_ hotkey: Hotkey) {
+    func saveToggleLocalHotkey(_ hotkey: Hotkey) {
         if let data = try? JSONEncoder().encode(hotkey) {
-            defaults.set(data, forKey: Keys.toggleHotkey)
+            defaults.set(data, forKey: Keys.toggleLocalHotkey)
+        }
+    }
+
+    func loadToggleCloudHotkey() -> Hotkey {
+        guard let data = defaults.data(forKey: Keys.toggleCloudHotkey),
+              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
+            return .toggleCloudDefault
+        }
+        return hotkey
+    }
+
+    func saveToggleCloudHotkey(_ hotkey: Hotkey) {
+        if let data = try? JSONEncoder().encode(hotkey) {
+            defaults.set(data, forKey: Keys.toggleCloudHotkey)
         }
     }
 
