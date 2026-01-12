@@ -11,9 +11,23 @@ enum RecordingState: Equatable {
     case transcribing
 }
 
-enum TranscriptionMode: String {
-    case local
-    case cloud
+enum TranscriptionMode: String, CaseIterable {
+    case local   // Whisper (local)
+    case openai  // OpenAI Cloud API (renamed from cloud)
+    case gemini  // Google Gemini API (new)
+
+    var displayName: String {
+        switch self {
+        case .local: return "Local (Whisper)"
+        case .openai: return "Cloud (OpenAI)"
+        case .gemini: return "Cloud (Gemini)"
+        }
+    }
+
+    /// Is cloud mode (requires audio compression)
+    var isCloud: Bool {
+        self != .local
+    }
 }
 
 protocol RecordingCoordinatorDelegate: AnyObject {
@@ -140,11 +154,11 @@ final class RecordingCoordinator {
                 let transcriptionURL: URL
                 var compressedURL: URL?
 
-                if mode == .cloud {
+                if mode.isCloud {
                     compressedURL = try? await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
                     if let compressed = compressedURL {
                         transcriptionURL = compressed
-                        Logger.Transcription.info("Using M4A for cloud transcription")
+                        Logger.Transcription.info("Using M4A for cloud transcription (\(mode.rawValue))")
                     } else {
                         transcriptionURL = audioURL
                     }

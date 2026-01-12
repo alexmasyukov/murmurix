@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		5627C1552EF3AFD000106B82 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 5627C1542EF3AFD000106B82 /* Lottie */; };
+		5627C1562EF3B00000106B83 /* GoogleGenerativeAI in Frameworks */ = {isa = PBXBuildFile; productRef = 5627C1572EF3B00000106B83 /* GoogleGenerativeAI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +71,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5627C1552EF3AFD000106B82 /* Lottie in Frameworks */,
+				5627C1562EF3B00000106B83 /* GoogleGenerativeAI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +133,7 @@
 			name = Murmurix;
 			packageProductDependencies = (
 				5627C1542EF3AFD000106B82 /* Lottie */,
+				5627C1572EF3B00000106B83 /* GoogleGenerativeAI */,
 			);
 			productName = Murmurix;
 			productReference = 564D384F2EF3119300598DBA /* Murmurix.app */;
@@ -216,6 +219,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				5627C1532EF3AED100106B82 /* XCRemoteSwiftPackageReference "lottie-ios" */,
+				5627C1582EF3B00000106B84 /* XCRemoteSwiftPackageReference "generative-ai-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 564D38502EF3119300598DBA /* Products */;
@@ -583,6 +587,14 @@
 				minimumVersion = 4.5.2;
 			};
 		};
+		5627C1582EF3B00000106B84 /* XCRemoteSwiftPackageReference "generative-ai-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/generative-ai-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -590,6 +602,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5627C1532EF3AED100106B82 /* XCRemoteSwiftPackageReference "lottie-ios" */;
 			productName = Lottie;
+		};
+		5627C1572EF3B00000106B83 /* GoogleGenerativeAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5627C1582EF3B00000106B84 /* XCRemoteSwiftPackageReference "generative-ai-swift" */;
+			productName = GoogleGenerativeAI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

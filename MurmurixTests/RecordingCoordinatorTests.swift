@@ -304,4 +304,52 @@ struct RecordingCoordinatorTests {
 
         #expect(!FileManager.default.fileExists(atPath: audioURL.path))
     }
+
+    // MARK: - Transcription Modes
+
+    @Test func toggleRecordingWithOpenAIMode() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+
+        coordinator.toggleRecording(mode: .openai)
+        #expect(coordinator.state == .recording)
+        #expect(audioRecorder.startRecordingCallCount == 1)
+
+        coordinator.toggleRecording(mode: .openai)
+
+        // Wait for async transcription
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(coordinator.state == .idle)
+        #expect(transcriptionService.transcribeCallCount == 1)
+        #expect(delegate.transcriptionDidCompleteCallCount == 1)
+    }
+
+    @Test func toggleRecordingWithGeminiMode() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+
+        coordinator.toggleRecording(mode: .gemini)
+        #expect(coordinator.state == .recording)
+        #expect(audioRecorder.startRecordingCallCount == 1)
+
+        coordinator.toggleRecording(mode: .gemini)
+
+        // Wait for async transcription
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(coordinator.state == .idle)
+        #expect(transcriptionService.transcribeCallCount == 1)
+        #expect(delegate.transcriptionDidCompleteCallCount == 1)
+    }
+
+    @Test func transcriptionModeIsCloudReturnsCorrectValue() {
+        #expect(TranscriptionMode.local.isCloud == false)
+        #expect(TranscriptionMode.openai.isCloud == true)
+        #expect(TranscriptionMode.gemini.isCloud == true)
+    }
+
+    @Test func transcriptionModeDisplayName() {
+        #expect(TranscriptionMode.local.displayName == "Local (Whisper)")
+        #expect(TranscriptionMode.openai.displayName == "Cloud (OpenAI)")
+        #expect(TranscriptionMode.gemini.displayName == "Cloud (Gemini)")
+    }
 }

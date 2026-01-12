@@ -2,7 +2,7 @@
 
 ## Overview
 
-Murmurix is a native macOS menubar application for voice-to-text transcription with local (Whisper) or cloud (OpenAI) processing. The app follows a layered architecture with clear separation of concerns.
+Murmurix is a native macOS menubar application for voice-to-text transcription with local (Whisper) or cloud (OpenAI/Gemini) processing. The app follows a layered architecture with clear separation of concerns.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -30,9 +30,9 @@ Murmurix is a native macOS menubar application for voice-to-text transcription w
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │   Python    │  │ OpenAI API  │  │     Hugging Face        │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-│  ┌─────────────┐                                                 │
-│  │   Lottie    │                                                 │
-│  └─────────────┘                                                 │
+│  ┌─────────────┐  ┌─────────────┐                               │
+│  │   Lottie    │  │ Gemini API  │                               │
+│  └─────────────┘  └─────────────┘                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,7 +53,8 @@ Murmurix/
 │   ├── Hotkey.swift             # Hotkey model with key codes
 │   ├── TranscriptionRecord.swift # History record
 │   ├── WhisperModel.swift       # Whisper model enum
-│   └── OpenAITranscriptionModel.swift # OpenAI transcription models
+│   ├── OpenAITranscriptionModel.swift # OpenAI transcription models
+│   └── GeminiTranscriptionModel.swift # Gemini transcription models
 │
 ├── ViewModels/                   # Presentation logic
 │   ├── HistoryViewModel.swift   # History list logic
@@ -96,6 +97,7 @@ Murmurix/
 │   ├── RecordingCoordinator.swift # Recording state machine
 │   │
 │   ├── OpenAITranscriptionService.swift # OpenAI Audio API client
+│   ├── GeminiTranscriptionService.swift # Google Gemini API client
 │   ├── AudioCompressor.swift    # WAV to M4A compression
 │   │
 │   ├── GlobalHotkeyManager.swift # CGEvent tap for shortcuts
@@ -130,14 +132,14 @@ Murmurix/
 class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarManagerDelegate
 ```
 
-#### MenuBarManager (122 lines)
+#### MenuBarManager
 **Role**: Status bar icon and dropdown menu
 
 **Responsibilities**:
 - Create and manage NSStatusItem
 - Display hotkey shortcuts in menu
 - Delegate menu actions to AppDelegate
-- Two recording options: Local (Whisper) and Cloud (OpenAI)
+- Three recording options: Local (Whisper), Cloud (OpenAI), and Gemini
 
 **Protocol**: `MenuBarManagerDelegate`
 
@@ -145,6 +147,7 @@ class AppDelegate: NSApplicationDelegate, RecordingCoordinatorDelegate, MenuBarM
 protocol MenuBarManagerDelegate: AnyObject {
     func menuBarDidRequestToggleLocalRecording()
     func menuBarDidRequestToggleCloudRecording()
+    func menuBarDidRequestToggleGeminiRecording()
     func menuBarDidRequestOpenHistory()
     func menuBarDidRequestOpenSettings()
     func menuBarDidRequestQuit()
@@ -188,9 +191,9 @@ protocol MenuBarManagerDelegate: AnyObject {
 
 **Manages**:
 - Core: `keepDaemonRunning`, `language`, `whisperModel`
-- Transcription: `transcriptionMode` (local/cloud), `openaiTranscriptionModel`
-- Hotkeys: `toggleLocalHotkey`, `toggleCloudHotkey`, `cancelHotkey`
-- API keys via KeychainService (OpenAI)
+- Transcription: `transcriptionMode` (local/openai/gemini), `openaiTranscriptionModel`, `geminiModel`
+- Hotkeys: `toggleLocalHotkey`, `toggleCloudHotkey`, `toggleGeminiHotkey`, `cancelHotkey`
+- API keys via KeychainService (OpenAI, Gemini)
 
 **Protocol**: `SettingsStorageProtocol`
 
@@ -202,21 +205,25 @@ protocol SettingsStorageProtocol: AnyObject {
     var whisperModel: String { get set }
     var openaiApiKey: String { get set }
     var openaiTranscriptionModel: String { get set }
+    var geminiApiKey: String { get set }
+    var geminiModel: String { get set }
 
     func loadToggleLocalHotkey() -> Hotkey
     func saveToggleLocalHotkey(_ hotkey: Hotkey)
     func loadToggleCloudHotkey() -> Hotkey
     func saveToggleCloudHotkey(_ hotkey: Hotkey)
+    func loadToggleGeminiHotkey() -> Hotkey
+    func saveToggleGeminiHotkey(_ hotkey: Hotkey)
     func loadCancelHotkey() -> Hotkey
     func saveCancelHotkey(_ hotkey: Hotkey)
 }
 ```
 
-#### Hotkey (64 lines)
+#### Hotkey
 **Role**: Keyboard shortcut representation
 
 **Properties**: `keyCode`, `modifiers`
-**Defaults**: `.toggleLocalDefault` (⌃C), `.toggleCloudDefault` (⌃D), `.cancelDefault` (Esc)
+**Defaults**: `.toggleLocalDefault` (⌃C), `.toggleCloudDefault` (⌃D), `.toggleGeminiDefault` (⌃G), `.cancelDefault` (Esc)
 **Features**: Codable, display formatting, key code mapping
 
 #### TranscriptionRecord (43 lines)
@@ -236,6 +243,12 @@ protocol SettingsStorageProtocol: AnyObject {
 
 **Cases**: gpt4oTranscribe, gpt4oMiniTranscribe
 **Features**: Model IDs, display names
+
+#### GeminiTranscriptionModel
+**Role**: Google Gemini transcription model definitions
+
+**Cases**: flash2 (gemini-2.0-flash), flash (gemini-1.5-flash), pro (gemini-1.5-pro)
+**Features**: Model IDs, display names, descriptions
 
 ---
 
@@ -318,12 +331,13 @@ protocol RecordingCoordinatorDelegate: AnyObject {
 **Role**: Transcription orchestration
 
 **Modes** (via `TranscriptionMode` enum):
-1. **Local mode** — via Unix socket to Python daemon or direct Python process
-2. **Cloud mode** — via OpenAI Audio API (gpt-4o-transcribe)
+1. **Local mode (.local)** — via Unix socket to Python daemon or direct Python process
+2. **OpenAI mode (.openai)** — via OpenAI Audio API (gpt-4o-transcribe)
+3. **Gemini mode (.gemini)** — via Google Gemini API (gemini-2.0-flash)
 
 **Key Method**: `transcribe(audioURL:useDaemon:mode:)`
 
-**Dependencies**: DaemonManager, PythonResolver, OpenAITranscriptionService
+**Dependencies**: DaemonManager, PythonResolver, OpenAITranscriptionService, GeminiTranscriptionService
 
 **Protocol**: `TranscriptionServiceProtocol`
 
@@ -349,6 +363,20 @@ protocol TranscriptionServiceProtocol: Sendable {
 - Includes technical terms prompt for better recognition
 - Supports gpt-4o-transcribe and gpt-4o-mini-transcribe models
 
+#### GeminiTranscriptionService
+**Role**: Google Gemini API client
+
+**Responsibilities**:
+- Transcribe audio via Google Gemini generative AI
+- Validate API keys with test request
+- Handle audio data as multipart content
+
+**Features**:
+- Uses GoogleGenerativeAI SDK
+- Supports multiple audio formats (MP3, M4A, WAV, WebM, OGG, FLAC)
+- Includes language hints for better recognition
+- Supports gemini-2.0-flash, gemini-1.5-flash, gemini-1.5-pro models
+
 #### AudioCompressor
 **Role**: Audio compression for cloud upload
 
@@ -373,12 +401,13 @@ protocol TranscriptionServiceProtocol: Sendable {
 
 **Responsibilities**:
 - Install CGEvent tap
-- Handle local/cloud/cancel hotkeys
+- Handle local/cloud/gemini/cancel hotkeys
 - Support pause/resume (for Settings window)
 
 **Callbacks**:
 - `onToggleLocalRecording` — triggers local Whisper transcription
 - `onToggleCloudRecording` — triggers cloud OpenAI transcription
+- `onToggleGeminiRecording` — triggers cloud Gemini transcription
 - `onCancelRecording` — cancels active recording
 
 **Protocol**: `HotkeyManagerProtocol`
@@ -387,11 +416,12 @@ protocol TranscriptionServiceProtocol: Sendable {
 protocol HotkeyManagerProtocol: AnyObject {
     var onToggleLocalRecording: (() -> Void)? { get set }
     var onToggleCloudRecording: (() -> Void)? { get set }
+    var onToggleGeminiRecording: (() -> Void)? { get set }
     var onCancelRecording: (() -> Void)? { get set }
 
     func start()
     func stop()
-    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, cancel: Hotkey)
+    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey)
 }
 ```
 
@@ -476,9 +506,9 @@ All errors provide `errorDescription` and `recoverySuggestion`.
 ### Recording Flow
 
 ```
-User presses hotkey (⌃C for local, ⌃D for cloud)
+User presses hotkey (⌃C for local, ⌃D for OpenAI, ⌃G for Gemini)
         ↓
-GlobalHotkeyManager.onToggleLocalRecording/onToggleCloudRecording
+GlobalHotkeyManager.onToggle[Local|Cloud|Gemini]Recording
         ↓
 AppDelegate.toggleRecording(mode:)
         ↓
@@ -569,31 +599,33 @@ init(
 | Category | Files | Total Lines |
 |----------|-------|-------------|
 | App | 6 | ~700 |
-| Models | 4 | ~250 |
+| Models | 6 | ~300 |
 | ViewModels | 3 | ~200 |
-| Views | 17 | ~2,100 |
-| Services | 15 | ~1,700 |
-| Tests | 6 | ~1,900 |
-| **Total** | **56** | **~6,800** |
+| Views | 17 | ~2,300 |
+| Services | 17 | ~2,000 |
+| Tests | 7 | ~2,100 |
+| **Total** | **58** | **~7,200** |
 
 ---
 
 ## Testing
 
-122 unit tests covering:
-- Model serialization (TranscriptionRecord, Hotkey, WhisperModel, OpenAITranscriptionModel)
+135+ unit tests covering:
+- Model serialization (TranscriptionRecord, Hotkey, WhisperModel, OpenAITranscriptionModel, GeminiTranscriptionModel)
 - Service logic (HistoryService, RecordingCoordinator)
 - Repository pattern (SQLiteDatabase, SQLiteTranscriptionRepository)
 - Dependency injection (all services accept protocol-based dependencies)
 - ViewModel behavior (HistoryViewModel, GeneralSettingsViewModel)
-- Settings persistence
+- Settings persistence (including Gemini settings)
 - Window controllers and positioning (WindowPositioner)
 - Error hierarchy (MurmurixError with all cases)
 - Constants validation (AppConstants)
 - Logger categories
 - Audio file cleanup (deletion after transcription)
+- Transcription modes (local, openai, gemini)
+- Hotkey defaults (including toggleGeminiDefault)
 
 All services have mock implementations in `MurmurixTests/Mocks.swift`:
 - MockAudioRecorder, MockTranscriptionService, MockHistoryService
 - MockSettings, MockModelDownloadService
-- MockOpenAITranscriptionService, MockRecordingCoordinatorDelegate
+- MockOpenAITranscriptionService, MockGeminiTranscriptionService, MockRecordingCoordinatorDelegate

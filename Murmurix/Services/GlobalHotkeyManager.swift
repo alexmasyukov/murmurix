@@ -10,6 +10,7 @@ import AppKit
 class GlobalHotkeyManager: HotkeyManagerProtocol {
     var onToggleLocalRecording: (() -> Void)?
     var onToggleCloudRecording: (() -> Void)?
+    var onToggleGeminiRecording: (() -> Void)?
     var onCancelRecording: (() -> Void)?
 
     // Only intercept cancel hotkey when recording is active
@@ -26,6 +27,7 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
 
     private var toggleLocalHotkey: Hotkey
     private var toggleCloudHotkey: Hotkey
+    private var toggleGeminiHotkey: Hotkey
     private var cancelHotkey: Hotkey
     private let settings: SettingsStorageProtocol
 
@@ -33,12 +35,14 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
         self.settings = settings
         toggleLocalHotkey = settings.loadToggleLocalHotkey()
         toggleCloudHotkey = settings.loadToggleCloudHotkey()
+        toggleGeminiHotkey = settings.loadToggleGeminiHotkey()
         cancelHotkey = settings.loadCancelHotkey()
     }
 
-    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, cancel: Hotkey) {
+    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey) {
         toggleLocalHotkey = toggleLocal
         toggleCloudHotkey = toggleCloud
+        toggleGeminiHotkey = toggleGemini
         cancelHotkey = cancel
     }
 
@@ -116,9 +120,15 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
                 return nil // consume the event
             }
 
-            // Check toggle cloud hotkey
+            // Check toggle cloud (OpenAI) hotkey
             if keyCode == toggleCloudHotkey.keyCode && carbonModifiers == toggleCloudHotkey.modifiers {
                 onToggleCloudRecording?()
+                return nil // consume the event
+            }
+
+            // Check toggle Gemini hotkey
+            if keyCode == toggleGeminiHotkey.keyCode && carbonModifiers == toggleGeminiHotkey.modifiers {
+                onToggleGeminiRecording?()
                 return nil // consume the event
             }
 

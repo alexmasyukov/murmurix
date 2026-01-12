@@ -9,16 +9,19 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     private let daemonManager: DaemonManagerProtocol
     private let settings: SettingsStorageProtocol
     private let openAIService: OpenAITranscriptionServiceProtocol
+    private let geminiService: GeminiTranscriptionServiceProtocol
     private let language: String
 
     init(
         daemonManager: DaemonManagerProtocol? = nil,
         settings: SettingsStorageProtocol = Settings.shared,
         openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
+        geminiService: GeminiTranscriptionServiceProtocol = GeminiTranscriptionService.shared,
         language: String = "ru"
     ) {
         self.settings = settings
         self.openAIService = openAIService
+        self.geminiService = geminiService
         self.daemonManager = daemonManager ?? DaemonManager(settings: settings, language: language)
         self.language = language
     }
@@ -38,19 +41,23 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     }
 
     func transcribe(audioURL: URL, useDaemon: Bool = true, mode: TranscriptionMode = .local) async throws -> String {
-        // Cloud mode - use OpenAI API
-        if mode == .cloud {
-            Logger.Transcription.info("☁️ Cloud mode selected, using OpenAI API")
+        switch mode {
+        case .openai:
+            Logger.Transcription.info("☁️ Cloud mode (OpenAI)")
             return try await transcribeViaOpenAI(audioURL: audioURL)
-        }
 
-        // Local mode - use daemon or direct
-        if useDaemon && isDaemonRunning {
-            Logger.Transcription.info("🏠 Local mode (daemon), model=\(settings.whisperModel)")
-            return try await transcribeViaDaemon(audioURL: audioURL)
-        } else {
-            Logger.Transcription.info("🏠 Local mode (direct), model=\(settings.whisperModel)")
-            return try await transcribeDirectly(audioURL: audioURL)
+        case .gemini:
+            Logger.Transcription.info("☁️ Cloud mode (Gemini)")
+            return try await transcribeViaGemini(audioURL: audioURL)
+
+        case .local:
+            if useDaemon && isDaemonRunning {
+                Logger.Transcription.info("🏠 Local mode (daemon), model=\(settings.whisperModel)")
+                return try await transcribeViaDaemon(audioURL: audioURL)
+            } else {
+                Logger.Transcription.info("🏠 Local mode (direct), model=\(settings.whisperModel)")
+                return try await transcribeDirectly(audioURL: audioURL)
+            }
         }
     }
 
@@ -59,13 +66,32 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
     private func transcribeViaOpenAI(audioURL: URL) async throws -> String {
         let apiKey = settings.openaiApiKey
         guard !apiKey.isEmpty else {
-            throw MurmurixError.transcription(.failed("OpenAI API key not set"))
+            throw MurmurixError.transcription(.failed("OpenAI API key not set. Please add it in Settings."))
         }
 
         let model = settings.openaiTranscriptionModel
         Logger.Transcription.info("OpenAI mode, model=\(model), audio=\(audioURL.path)")
 
         return try await openAIService.transcribe(
+            audioURL: audioURL,
+            language: language,
+            model: model,
+            apiKey: apiKey
+        )
+    }
+
+    // MARK: - Gemini Transcription
+
+    private func transcribeViaGemini(audioURL: URL) async throws -> String {
+        let apiKey = settings.geminiApiKey
+        guard !apiKey.isEmpty else {
+            throw MurmurixError.transcription(.failed("Gemini API key not set. Please add it in Settings."))
+        }
+
+        let model = settings.geminiModel
+        Logger.Transcription.info("Gemini mode, model=\(model), audio=\(audioURL.path)")
+
+        return try await geminiService.transcribe(
             audioURL: audioURL,
             language: language,
             model: model,

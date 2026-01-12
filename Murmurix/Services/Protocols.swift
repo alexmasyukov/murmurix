@@ -31,11 +31,12 @@ protocol TranscriptionServiceProtocol: Sendable {
 protocol HotkeyManagerProtocol: AnyObject {
     var onToggleLocalRecording: (() -> Void)? { get set }
     var onToggleCloudRecording: (() -> Void)? { get set }
+    var onToggleGeminiRecording: (() -> Void)? { get set }
     var onCancelRecording: (() -> Void)? { get set }
 
     func start()
     func stop()
-    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, cancel: Hotkey)
+    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey)
 }
 
 // MARK: - Settings Storage
@@ -47,11 +48,15 @@ protocol SettingsStorageProtocol: AnyObject {
     var whisperModel: String { get set }
     var openaiApiKey: String { get set }
     var openaiTranscriptionModel: String { get set }
+    var geminiApiKey: String { get set }
+    var geminiModel: String { get set }
 
     func loadToggleLocalHotkey() -> Hotkey
     func saveToggleLocalHotkey(_ hotkey: Hotkey)
     func loadToggleCloudHotkey() -> Hotkey
     func saveToggleCloudHotkey(_ hotkey: Hotkey)
+    func loadToggleGeminiHotkey() -> Hotkey
+    func saveToggleGeminiHotkey(_ hotkey: Hotkey)
     func loadCancelHotkey() -> Hotkey
     func saveCancelHotkey(_ hotkey: Hotkey)
 }

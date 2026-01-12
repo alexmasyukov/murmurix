@@ -47,6 +47,17 @@ struct SettingsTests {
         #expect(hotkey == Hotkey.cancelDefault)
     }
 
+    @Test func defaultToggleGeminiHotkeyIsSet() {
+        let settings = createSettings()
+        let hotkey = settings.loadToggleGeminiHotkey()
+        #expect(hotkey == Hotkey.toggleGeminiDefault)
+    }
+
+    @Test func defaultGeminiModelIsFlash2() {
+        let settings = createSettings()
+        #expect(settings.geminiModel == GeminiTranscriptionModel.flash2.rawValue)
+    }
+
     // MARK: - Persistence
 
     @Test func keepDaemonRunningPersists() {
@@ -97,6 +108,26 @@ struct SettingsTests {
         let loaded = settings.loadCancelHotkey()
 
         #expect(loaded == newHotkey)
+    }
+
+    @Test func toggleGeminiHotkeyPersists() {
+        let settings = createSettings()
+        let newHotkey = Hotkey(keyCode: 4, modifiers: UInt32(cmdKey | shiftKey)) // Cmd+Shift+H
+
+        settings.saveToggleGeminiHotkey(newHotkey)
+        let loaded = settings.loadToggleGeminiHotkey()
+
+        #expect(loaded == newHotkey)
+    }
+
+    @Test func geminiModelPersists() {
+        let settings = createSettings()
+
+        settings.geminiModel = GeminiTranscriptionModel.pro.rawValue
+        #expect(settings.geminiModel == GeminiTranscriptionModel.pro.rawValue)
+
+        settings.geminiModel = GeminiTranscriptionModel.flash.rawValue
+        #expect(settings.geminiModel == GeminiTranscriptionModel.flash.rawValue)
     }
 
     // MARK: - Edge Cases

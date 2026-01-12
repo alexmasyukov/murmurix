@@ -10,7 +10,7 @@ All refactoring tasks have been completed! This document is kept for reference.
 
 ## Summary
 
-**Total tasks completed**: 10 major refactoring items
+**Total tasks completed**: 11 major refactoring items
 
 | Priority | Task | Status |
 |----------|------|--------|
@@ -18,6 +18,7 @@ All refactoring tasks have been completed! This document is kept for reference.
 | 🔴 High | Replace singletons with DI | Done |
 | 🔴 High | Remove AI post-processing | Done |
 | 🔴 High | Dual hotkey system (local/cloud) | Done |
+| 🔴 High | **Gemini transcription integration** | **Done** |
 | 🟠 Medium | HistoryService to Repository pattern | Done |
 | 🟢 Low | Consolidate color constants | Done |
 | 🟢 Low | Add ViewModel protocols | Done |
@@ -29,7 +30,25 @@ All refactoring tasks have been completed! This document is kept for reference.
 
 ## Completed Refactoring
 
-### Session 2026-01-12 (Latest)
+### Session 2026-01-12 (Latest) - Gemini Integration
+
+- **Implemented Google Gemini transcription**:
+  - Added GoogleGenerativeAI SPM package
+  - Created `GeminiTranscriptionModel.swift` with flash2, flash, pro models
+  - Created `GeminiTranscriptionService.swift` for Gemini API integration
+  - Updated `TranscriptionMode` enum: renamed `.cloud` → `.openai`, added `.gemini`
+  - Added `isCloud` computed property for compression logic
+  - Updated `TranscriptionService` with Gemini routing
+  - Added `toggleGeminiDefault` (⌃G) hotkey
+  - Updated `Settings` with `geminiApiKey`, `geminiModel`, Gemini hotkey methods
+  - Updated `GlobalHotkeyManager` with `onToggleGeminiRecording` callback
+  - Updated `MenuBarManager` with Gemini Recording menu item
+  - Updated `GeneralSettingsView` with Cloud (Gemini) settings section
+  - Updated all callback signatures to pass 4 hotkeys (local, cloud, gemini, cancel)
+  - Added `MockGeminiTranscriptionService` for testing
+  - Added 13 new tests for Gemini functionality
+
+### Session 2026-01-12 (Earlier) - Dual Hotkey System
 
 - **Implemented dual hotkey system**:
   - `toggleLocalHotkey` (Ctrl+C) — triggers local Whisper transcription
@@ -114,8 +133,8 @@ All refactoring tasks have been completed! This document is kept for reference.
 
 | Metric | Value |
 |--------|-------|
-| Swift files | 56 |
-| Lines of code | ~6,800 |
-| Unit tests | 122 |
+| Swift files | 58 |
+| Lines of code | ~7,200 |
+| Unit tests | 135+ |
 | Test coverage | Services, ViewModels, Models |
-| Protocols | 12+ |
+| Protocols | 14+ |

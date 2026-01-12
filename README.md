@@ -2,13 +2,14 @@
 
 A native macOS menubar app for local voice-to-text transcription using [faster-whisper](https://github.com/guillaumekln/faster-whisper).
 
-**Version 1.2** | 6800+ lines of Swift | 56 files | 122 tests
+**Version 1.3** | 7200+ lines of Swift | 58 files | 135 tests
 
 ## Features
 
-- **Dual Hotkeys** — Separate shortcuts for local (Whisper) and cloud (OpenAI) transcription
+- **Triple Hotkeys** — Separate shortcuts for local (Whisper), OpenAI, and Gemini transcription
 - **Local Transcription** — Use local Whisper daemon for privacy and offline use
-- **Cloud Transcription** — Use OpenAI gpt-4o-transcribe for high accuracy
+- **Cloud Transcription (OpenAI)** — Use OpenAI gpt-4o-transcribe for high accuracy
+- **Cloud Transcription (Gemini)** — Use Google Gemini 2.0 Flash for fast cloud transcription
 - **In-App Model Download** — Download Whisper models directly from Settings with progress indicator
 - **Daemon Mode** — Keep the model in memory for instant transcription (~500MB RAM)
 - **Multiple Models** — Choose from 6 Whisper models (tiny to large-v3)
@@ -78,6 +79,7 @@ The app requires:
 1. Click the waveform icon in the menubar or press a hotkey:
    - `⌃C` for local Whisper transcription
    - `⌃D` for cloud OpenAI transcription
+   - `⌃G` for cloud Gemini transcription
 2. Speak — the equalizer animates when voice is detected
 3. Press the same hotkey again or click Stop to finish
 4. Transcription appears:
@@ -91,7 +93,8 @@ The app requires:
 | Action | Default | Description |
 |--------|---------|-------------|
 | Local Recording | `⌃C` | Record with local Whisper model |
-| Cloud Recording | `⌃D` | Record with OpenAI cloud API |
+| Cloud Recording (OpenAI) | `⌃D` | Record with OpenAI cloud API |
+| Gemini Recording | `⌃G` | Record with Google Gemini API |
 | Cancel Recording | `Esc` | Cancel active recording |
 | History | `⌘H` | Open history window |
 | Settings | `⌘,` | Open settings |
@@ -143,13 +146,9 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 | Setting | Description |
 |---------|-------------|
 | Local Recording | Hotkey for local Whisper (default: `⌃C`) |
-| Cloud Recording | Hotkey for cloud OpenAI (default: `⌃D`) |
+| Cloud Recording (OpenAI) | Hotkey for cloud OpenAI (default: `⌃D`) |
+| Gemini Recording | Hotkey for cloud Gemini (default: `⌃G`) |
 | Cancel Recording | Hotkey to cancel (default: `Esc`) |
-
-### Performance
-| Setting | Description |
-|---------|-------------|
-| Keep model in memory | Faster local transcription, uses ~500MB RAM |
 
 ### Recognition
 | Setting | Description |
@@ -160,6 +159,7 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 | Setting | Description |
 |---------|-------------|
 | Model | Whisper model (tiny to large-v3) |
+| Keep model in memory | Faster transcription, uses ~500MB RAM |
 | Test | Verify local model works correctly |
 
 ### Cloud (OpenAI)
@@ -167,6 +167,13 @@ echo '{"command": "download_model", "model": "medium"}' | nc -U ~/Library/Applic
 |---------|-------------|
 | Model | GPT-4o or GPT-4o-mini transcribe |
 | API Key | OpenAI API key (stored in Keychain) |
+| Test | Verify API connection |
+
+### Cloud (Gemini)
+| Setting | Description |
+|---------|-------------|
+| Model | Gemini 2.0 Flash, 1.5 Flash, or 1.5 Pro |
+| API Key | Google Gemini API key (stored in Keychain) |
 | Test | Verify API connection |
 
 ## Data Storage
@@ -232,7 +239,7 @@ faster-whisper supports 99 languages. Currently exposed in UI:
 
 ## Testing
 
-The project includes 122 unit tests with mocks for all services:
+The project includes 135+ unit tests with mocks for all services:
 
 ```bash
 # Run tests in Xcode

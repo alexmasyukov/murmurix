@@ -118,9 +118,12 @@ final class MockSettings: SettingsStorageProtocol {
     var whisperModel: String = "small"
     var openaiApiKey: String = ""
     var openaiTranscriptionModel: String = "gpt-4o-transcribe"
+    var geminiApiKey: String = ""
+    var geminiModel: String = GeminiTranscriptionModel.flash2.rawValue
 
     private var toggleLocalHotkey: Hotkey = .toggleLocalDefault
     private var toggleCloudHotkey: Hotkey = .toggleCloudDefault
+    private var toggleGeminiHotkey: Hotkey = .toggleGeminiDefault
     private var cancelHotkey: Hotkey = .cancelDefault
 
     func loadToggleLocalHotkey() -> Hotkey {
@@ -137,6 +140,14 @@ final class MockSettings: SettingsStorageProtocol {
 
     func saveToggleCloudHotkey(_ hotkey: Hotkey) {
         toggleCloudHotkey = hotkey
+    }
+
+    func loadToggleGeminiHotkey() -> Hotkey {
+        return toggleGeminiHotkey
+    }
+
+    func saveToggleGeminiHotkey(_ hotkey: Hotkey) {
+        toggleGeminiHotkey = hotkey
     }
 
     func loadCancelHotkey() -> Hotkey {
@@ -226,6 +237,40 @@ final class MockOpenAITranscriptionService: OpenAITranscriptionServiceProtocol, 
 
     func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
         transcribeCallCount += 1
+        switch transcribeResult {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            throw error
+        }
+    }
+
+    func validateAPIKey(_ apiKey: String) async throws -> Bool {
+        validateAPIKeyCallCount += 1
+        switch validateAPIKeyResult {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            throw error
+        }
+    }
+}
+
+// MARK: - Mock Gemini Transcription Service
+
+final class MockGeminiTranscriptionService: GeminiTranscriptionServiceProtocol, @unchecked Sendable {
+    var transcribeCallCount = 0
+    var validateAPIKeyCallCount = 0
+    var lastLanguage: String?
+    var lastModel: String?
+
+    var transcribeResult: Result<String, Error> = .success("Gemini transcribed text")
+    var validateAPIKeyResult: Result<Bool, Error> = .success(true)
+
+    func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
+        transcribeCallCount += 1
+        lastLanguage = language
+        lastModel = model
         switch transcribeResult {
         case .success(let result):
             return result

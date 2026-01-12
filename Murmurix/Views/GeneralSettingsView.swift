@@ -18,24 +18,29 @@ struct GeneralSettingsView: View {
 
     @State private var toggleLocalHotkey: Hotkey
     @State private var toggleCloudHotkey: Hotkey
+    @State private var toggleGeminiHotkey: Hotkey
     @State private var cancelHotkey: Hotkey
     @State private var openaiApiKey: String = ""
+    @State private var geminiApiKey: String = ""
     @State private var isTestingOpenAI = false
     @State private var openaiTestResult: APITestResult?
+    @State private var isTestingGemini = false
+    @State private var geminiTestResult: APITestResult?
     @State private var isTestingLocal = false
     @State private var localTestResult: APITestResult?
+    @AppStorage("geminiModel") private var geminiModel = GeminiTranscriptionModel.flash2.rawValue
 
     @StateObject private var viewModel = GeneralSettingsViewModel()
     @Binding var isDaemonRunning: Bool
 
     var onDaemonToggle: ((Bool) -> Void)?
-    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
+    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
 
     init(
         isDaemonRunning: Binding<Bool>,
         onDaemonToggle: ((Bool) -> Void)? = nil,
-        onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)? = nil,
+        onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)? = nil,
         onModelChanged: (() -> Void)? = nil
     ) {
         self._isDaemonRunning = isDaemonRunning
@@ -44,8 +49,10 @@ struct GeneralSettingsView: View {
         self.onModelChanged = onModelChanged
         _toggleLocalHotkey = State(initialValue: Settings.shared.loadToggleLocalHotkey())
         _toggleCloudHotkey = State(initialValue: Settings.shared.loadToggleCloudHotkey())
+        _toggleGeminiHotkey = State(initialValue: Settings.shared.loadToggleGeminiHotkey())
         _cancelHotkey = State(initialValue: Settings.shared.loadCancelHotkey())
         _openaiApiKey = State(initialValue: Settings.shared.openaiApiKey)
+        _geminiApiKey = State(initialValue: Settings.shared.geminiApiKey)
     }
 
     var body: some View {
@@ -78,7 +85,7 @@ struct GeneralSettingsView: View {
                 )
                 .onChange(of: toggleLocalHotkey) { _, newValue in
                     Settings.shared.saveToggleLocalHotkey(newValue)
-                    onHotkeysChanged?(newValue, toggleCloudHotkey, cancelHotkey)
+                    onHotkeysChanged?(newValue, toggleCloudHotkey, toggleGeminiHotkey, cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -88,13 +95,29 @@ struct GeneralSettingsView: View {
                     .padding(.leading, Layout.Padding.standard)
 
                 HotkeyRecorderView(
-                    title: "Cloud Recording",
+                    title: "Cloud Recording (OpenAI)",
                     description: "Record with OpenAI cloud API",
                     hotkey: $toggleCloudHotkey
                 )
                 .onChange(of: toggleCloudHotkey) { _, newValue in
                     Settings.shared.saveToggleCloudHotkey(newValue)
-                    onHotkeysChanged?(toggleLocalHotkey, newValue, cancelHotkey)
+                    onHotkeysChanged?(toggleLocalHotkey, newValue, toggleGeminiHotkey, cancelHotkey)
+                }
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
+
+                Divider()
+                    .background(AppColors.divider)
+                    .padding(.leading, Layout.Padding.standard)
+
+                HotkeyRecorderView(
+                    title: "Gemini Recording",
+                    description: "Record with Google Gemini API",
+                    hotkey: $toggleGeminiHotkey
+                )
+                .onChange(of: toggleGeminiHotkey) { _, newValue in
+                    Settings.shared.saveToggleGeminiHotkey(newValue)
+                    onHotkeysChanged?(toggleLocalHotkey, toggleCloudHotkey, newValue, cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -110,7 +133,7 @@ struct GeneralSettingsView: View {
                 )
                 .onChange(of: cancelHotkey) { _, newValue in
                     Settings.shared.saveCancelHotkey(newValue)
-                    onHotkeysChanged?(toggleLocalHotkey, toggleCloudHotkey, newValue)
+                    onHotkeysChanged?(toggleLocalHotkey, toggleCloudHotkey, toggleGeminiHotkey, newValue)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -141,6 +164,9 @@ struct GeneralSettingsView: View {
 
             // Cloud OpenAI settings
             cloudSettingsSection
+
+            // Cloud Gemini settings
+            geminiSettingsSection
         }
     }
 
@@ -311,6 +337,112 @@ struct GeneralSettingsView: View {
             .background(AppColors.cardBackground)
             .cornerRadius(Layout.CornerRadius.card)
             .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
+        }
+    }
+
+    private var geminiSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: "Cloud (Gemini)")
+
+            VStack(alignment: .leading, spacing: Layout.Spacing.item) {
+                geminiModelPicker
+                geminiApiKeyField
+            }
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+        }
+    }
+
+    private var geminiModelPicker: some View {
+        HStack {
+            Text("Model")
+                .font(Typography.label)
+                .foregroundColor(.white)
+
+            Spacer()
+
+            Picker("", selection: $geminiModel) {
+                ForEach(GeminiTranscriptionModel.allCases, id: \.rawValue) { model in
+                    Text(model.displayName).tag(model.rawValue)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(width: 240)
+            .transaction { $0.animation = nil }
+        }
+    }
+
+    private var geminiApiKeyField: some View {
+        VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+            Text("API Key")
+                .font(Typography.label)
+                .foregroundColor(.white)
+
+            HStack(spacing: Layout.Spacing.item) {
+                TextField("AI...", text: $geminiApiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: .infinity)
+                    .onChange(of: geminiApiKey) { _, newValue in
+                        Settings.shared.geminiApiKey = newValue
+                        geminiTestResult = nil
+                    }
+
+                Button(action: testGeminiConnection) {
+                    if isTestingGemini {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Test")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(geminiApiKey.isEmpty || isTestingGemini)
+            }
+
+            // Test result
+            if let result = geminiTestResult {
+                HStack(spacing: 4) {
+                    switch result {
+                    case .success:
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Connection successful")
+                            .foregroundColor(.green)
+                    case .failure(let message):
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                        Text(message)
+                            .foregroundColor(.red)
+                    }
+                }
+                .font(Typography.description)
+            }
+        }
+    }
+
+    private func testGeminiConnection() {
+        isTestingGemini = true
+        geminiTestResult = nil
+
+        Task {
+            do {
+                let isValid = try await GeminiTranscriptionService.shared.validateAPIKey(geminiApiKey)
+                await MainActor.run {
+                    geminiTestResult = isValid ? .success : .failure("Invalid API key")
+                    isTestingGemini = false
+                }
+            } catch {
+                await MainActor.run {
+                    geminiTestResult = .failure(error.localizedDescription)
+                    isTestingGemini = false
+                }
+            }
         }
     }
 

@@ -9,6 +9,7 @@ import Carbon
 protocol MenuBarManagerDelegate: AnyObject {
     func menuBarDidRequestToggleLocalRecording()
     func menuBarDidRequestToggleCloudRecording()
+    func menuBarDidRequestToggleGeminiRecording()
     func menuBarDidRequestOpenHistory()
     func menuBarDidRequestOpenSettings()
     func menuBarDidRequestQuit()
@@ -20,6 +21,7 @@ final class MenuBarManager {
     private var statusItem: NSStatusItem!
     private var toggleLocalMenuItem: NSMenuItem?
     private var toggleCloudMenuItem: NSMenuItem?
+    private var toggleGeminiMenuItem: NSMenuItem?
     private let settings: SettingsStorageProtocol
 
     init(settings: SettingsStorageProtocol = Settings.shared) {
@@ -37,6 +39,9 @@ final class MenuBarManager {
         }
         if let menuItem = toggleCloudMenuItem {
             applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleCloudHotkey())
+        }
+        if let menuItem = toggleGeminiMenuItem {
+            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleGeminiHotkey())
         }
     }
 
@@ -70,6 +75,15 @@ final class MenuBarManager {
         toggleCloudMenuItem?.target = self
         applyHotkeyToMenuItem(toggleCloudMenuItem!, hotkey: settings.loadToggleCloudHotkey())
         menu.addItem(toggleCloudMenuItem!)
+
+        toggleGeminiMenuItem = NSMenuItem(
+            title: "Gemini Recording",
+            action: #selector(handleToggleGeminiRecording),
+            keyEquivalent: ""
+        )
+        toggleGeminiMenuItem?.target = self
+        applyHotkeyToMenuItem(toggleGeminiMenuItem!, hotkey: settings.loadToggleGeminiHotkey())
+        menu.addItem(toggleGeminiMenuItem!)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -123,6 +137,10 @@ final class MenuBarManager {
 
     @objc private func handleToggleCloudRecording() {
         delegate?.menuBarDidRequestToggleCloudRecording()
+    }
+
+    @objc private func handleToggleGeminiRecording() {
+        delegate?.menuBarDidRequestToggleGeminiRecording()
     }
 
     @objc private func handleOpenHistory() {

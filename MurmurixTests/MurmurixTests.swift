@@ -410,9 +410,10 @@ struct GlobalHotkeyManagerTests {
         let manager = GlobalHotkeyManager()
         let newToggleLocal = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey))
         let newToggleCloud = Hotkey(keyCode: 2, modifiers: UInt32(cmdKey))
+        let newToggleGemini = Hotkey(keyCode: 5, modifiers: UInt32(cmdKey))
         let newCancel = Hotkey(keyCode: 3, modifiers: UInt32(optionKey))
 
-        manager.updateHotkeys(toggleLocal: newToggleLocal, toggleCloud: newToggleCloud, cancel: newCancel)
+        manager.updateHotkeys(toggleLocal: newToggleLocal, toggleCloud: newToggleCloud, toggleGemini: newToggleGemini, cancel: newCancel)
 
         // Manager should accept the update without crashing
         #expect(manager.isRecording == false)
@@ -422,22 +423,27 @@ struct GlobalHotkeyManagerTests {
         let manager = GlobalHotkeyManager()
         var toggleLocalCalled = false
         var toggleCloudCalled = false
+        var toggleGeminiCalled = false
         var cancelCalled = false
 
         manager.onToggleLocalRecording = { toggleLocalCalled = true }
         manager.onToggleCloudRecording = { toggleCloudCalled = true }
+        manager.onToggleGeminiRecording = { toggleGeminiCalled = true }
         manager.onCancelRecording = { cancelCalled = true }
 
         #expect(manager.onToggleLocalRecording != nil)
         #expect(manager.onToggleCloudRecording != nil)
+        #expect(manager.onToggleGeminiRecording != nil)
         #expect(manager.onCancelRecording != nil)
 
         manager.onToggleLocalRecording?()
         manager.onToggleCloudRecording?()
+        manager.onToggleGeminiRecording?()
         manager.onCancelRecording?()
 
         #expect(toggleLocalCalled == true)
         #expect(toggleCloudCalled == true)
+        #expect(toggleGeminiCalled == true)
         #expect(cancelCalled == true)
     }
 

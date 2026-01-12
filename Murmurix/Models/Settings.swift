@@ -15,12 +15,14 @@ final class Settings: SettingsStorageProtocol {
     private enum Keys {
         static let toggleLocalHotkey = "toggleLocalHotkey"
         static let toggleCloudHotkey = "toggleCloudHotkey"
+        static let toggleGeminiHotkey = "toggleGeminiHotkey"
         static let cancelHotkey = "cancelHotkey"
         static let keepDaemonRunning = "keepDaemonRunning"
         static let language = "language"
         static let whisperModel = "whisperModel"
         static let transcriptionMode = "transcriptionMode"
         static let openaiTranscriptionModel = "openaiTranscriptionModel"
+        static let geminiModel = "geminiModel"
     }
 
     // MARK: - Init
@@ -120,6 +122,38 @@ final class Settings: SettingsStorageProtocol {
             } else {
                 KeychainService.save(key: "openaiApiKey", value: newValue)
             }
+        }
+    }
+
+    // MARK: - Gemini Settings
+
+    var geminiApiKey: String {
+        get { KeychainService.load(key: "geminiApiKey") ?? "" }
+        set {
+            if newValue.isEmpty {
+                KeychainService.delete(key: "geminiApiKey")
+            } else {
+                KeychainService.save(key: "geminiApiKey", value: newValue)
+            }
+        }
+    }
+
+    var geminiModel: String {
+        get { defaults.string(forKey: Keys.geminiModel) ?? GeminiTranscriptionModel.flash2.rawValue }
+        set { defaults.set(newValue, forKey: Keys.geminiModel) }
+    }
+
+    func loadToggleGeminiHotkey() -> Hotkey {
+        guard let data = defaults.data(forKey: Keys.toggleGeminiHotkey),
+              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
+            return .toggleGeminiDefault
+        }
+        return hotkey
+    }
+
+    func saveToggleGeminiHotkey(_ hotkey: Hotkey) {
+        if let data = try? JSONEncoder().encode(hotkey) {
+            defaults.set(data, forKey: Keys.toggleGeminiHotkey)
         }
     }
 }

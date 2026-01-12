@@ -97,7 +97,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         hotkeyManager.onToggleCloudRecording = { [weak self] in
             DispatchQueue.main.async {
-                self?.toggleRecording(mode: .cloud)
+                self?.toggleRecording(mode: .openai)
+            }
+        }
+        hotkeyManager.onToggleGeminiRecording = { [weak self] in
+            DispatchQueue.main.async {
+                self?.toggleRecording(mode: .gemini)
             }
         }
         hotkeyManager.onCancelRecording = { [weak self] in
@@ -138,7 +143,11 @@ extension AppDelegate: MenuBarManagerDelegate {
     }
 
     func menuBarDidRequestToggleCloudRecording() {
-        toggleRecording(mode: .cloud)
+        toggleRecording(mode: .openai)
+    }
+
+    func menuBarDidRequestToggleGeminiRecording() {
+        toggleRecording(mode: .gemini)
     }
 
     func menuBarDidRequestOpenHistory() {
@@ -151,8 +160,8 @@ extension AppDelegate: MenuBarManagerDelegate {
             onDaemonToggle: { [weak self] enabled in
                 self?.coordinator.setDaemonEnabled(enabled)
             },
-            onHotkeysChanged: { [weak self] toggleLocal, toggleCloud, cancel in
-                self?.hotkeyManager.updateHotkeys(toggleLocal: toggleLocal, toggleCloud: toggleCloud, cancel: cancel)
+            onHotkeysChanged: { [weak self] toggleLocal, toggleCloud, toggleGemini, cancel in
+                self?.hotkeyManager.updateHotkeys(toggleLocal: toggleLocal, toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
                 self?.menuBarManager.updateHotkeyDisplay()
             },
             onModelChanged: { [weak self] in

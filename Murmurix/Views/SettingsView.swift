@@ -9,13 +9,13 @@ struct SettingsView: View {
     @Binding var isDaemonRunning: Bool
 
     var onDaemonToggle: ((Bool) -> Void)?
-    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
+    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
 
     init(
         isDaemonRunning: Binding<Bool>,
         onDaemonToggle: ((Bool) -> Void)? = nil,
-        onHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)? = nil,
+        onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)? = nil,
         onModelChanged: (() -> Void)? = nil
     ) {
         self._isDaemonRunning = isDaemonRunning
