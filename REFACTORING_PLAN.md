@@ -904,23 +904,28 @@ actor MetricsService {
 - [x] MockHotkeyManager tests - 6 tests
 - [x] MockTranscriptionRepository tests - 8 tests
 
-### Phase 2: Improve Testability
-1. Abstract URLSession for network testing
-2. Extract UnixSocketClient from TranscriptionService/DaemonManager
-3. Remove Settings.shared from Views (use DI)
-4. Move test logic from GeneralSettingsView to ViewModel
+### Phase 2: Improve Testability (Partial) ✅ DONE
+1. Abstract URLSession for network testing ✅
+2. Extract UnixSocketClient from TranscriptionService/DaemonManager ✅
+3. Remove Settings.shared from Views (use DI) - *deferred to Phase 3*
+4. Move test logic from GeneralSettingsView to ViewModel - *deferred to Phase 3*
 
-**Tests to add after Phase 2:**
-- [ ] MockURLSession tests
-- [ ] MockSocketClient tests
-- [ ] GeneralSettingsViewModel tests (API testing logic)
+**Tests for Phase 2:** ✅ DONE
+- [x] MockURLSession tests - 6 tests
+- [x] MockSocketClient tests - 6 tests
+- [x] SocketError tests - 4 tests
+- [x] OpenAITranscriptionServiceDI tests - 3 tests
+- [x] TranscriptionServiceSocketDI tests - 1 test
 
-### Phase 3: Code Quality
-1. Split GeneralSettingsView into sections (~656 lines → ~100 each)
-2. Remove @unchecked Sendable (use actors or proper Sendable)
-3. Add Process/FileManager abstractions
+### Phase 3: Code Quality + Deferred Tasks
+1. Remove Settings.shared from Views (use DI) - *from Phase 2*
+2. Move test logic from GeneralSettingsView to ViewModel - *from Phase 2*
+3. Split GeneralSettingsView into sections (~656 lines → ~100 each)
+4. Remove @unchecked Sendable (use actors or proper Sendable)
+5. Add Process/FileManager abstractions
 
 **Tests to add after Phase 3:**
+- [ ] GeneralSettingsViewModel tests (API testing logic)
 - [ ] MockProcessRunner tests
 - [ ] MockFileManager tests
 
