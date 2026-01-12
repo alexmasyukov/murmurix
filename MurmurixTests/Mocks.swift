@@ -27,6 +27,15 @@ final class MockAudioRecorder: AudioRecorderProtocol {
         isRecording = false
         return recordingURL
     }
+
+    /// Creates a real temporary file for testing file deletion
+    func createRealTempFile() -> URL {
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("test_audio_\(UUID().uuidString).wav")
+        FileManager.default.createFile(atPath: fileURL.path, contents: Data("test".utf8))
+        recordingURL = fileURL
+        return fileURL
+    }
 }
 
 // MARK: - Mock Transcription Service

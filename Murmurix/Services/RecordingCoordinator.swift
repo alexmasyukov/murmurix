@@ -62,7 +62,8 @@ final class RecordingCoordinator {
     func cancelRecording() {
         guard state == .recording else { return }
 
-        _ = audioRecorder.stopRecording()
+        let audioURL = audioRecorder.stopRecording()
+        try? FileManager.default.removeItem(at: audioURL)
         state = .idle
         recordingStartTime = nil
     }

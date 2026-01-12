@@ -227,4 +227,81 @@ struct RecordingCoordinatorTests {
         #expect(coordinator.state == .idle)
         #expect(delegate.transcriptionDidCancelCallCount == 0)
     }
+
+    // MARK: - Audio File Cleanup Tests
+
+    @Test func successfulTranscriptionDeletesAudioFile() async throws {
+        let (coordinator, audioRecorder, _, _, _, _) = createCoordinator()
+        let audioURL = audioRecorder.createRealTempFile()
+
+        #expect(FileManager.default.fileExists(atPath: audioURL.path))
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        // Wait for async transcription
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        #expect(!FileManager.default.fileExists(atPath: audioURL.path))
+    }
+
+    @Test func failedTranscriptionDeletesAudioFile() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, _) = createCoordinator()
+        let audioURL = audioRecorder.createRealTempFile()
+
+        struct TestError: Error {}
+        transcriptionService.transcriptionResult = .failure(TestError())
+
+        #expect(FileManager.default.fileExists(atPath: audioURL.path))
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        // Wait for async transcription
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        #expect(!FileManager.default.fileExists(atPath: audioURL.path))
+    }
+
+    @Test func noVoiceActivityDeletesAudioFile() {
+        let (coordinator, audioRecorder, _, _, _, _) = createCoordinator()
+        let audioURL = audioRecorder.createRealTempFile()
+        audioRecorder.hadVoiceActivity = false
+
+        #expect(FileManager.default.fileExists(atPath: audioURL.path))
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        #expect(!FileManager.default.fileExists(atPath: audioURL.path))
+    }
+
+    @Test func cancelRecordingDeletesAudioFile() {
+        let (coordinator, audioRecorder, _, _, _, _) = createCoordinator()
+        let audioURL = audioRecorder.createRealTempFile()
+
+        #expect(FileManager.default.fileExists(atPath: audioURL.path))
+
+        coordinator.toggleRecording()
+        coordinator.cancelRecording()
+
+        #expect(!FileManager.default.fileExists(atPath: audioURL.path))
+    }
+
+    @Test func cancelTranscriptionDeletesAudioFile() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, _) = createCoordinator()
+        let audioURL = audioRecorder.createRealTempFile()
+        transcriptionService.transcriptionDelay = 1.0
+
+        #expect(FileManager.default.fileExists(atPath: audioURL.path))
+
+        coordinator.toggleRecording()
+        coordinator.toggleRecording()
+
+        #expect(coordinator.state == .transcribing)
+
+        coordinator.cancelTranscription()
+
+        #expect(!FileManager.default.fileExists(atPath: audioURL.path))
+    }
 }
