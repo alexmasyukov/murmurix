@@ -17,12 +17,6 @@ struct GeneralSettingsView: View {
     @State private var cancelHotkey: Hotkey
     @State private var openaiApiKey: String = ""
     @State private var geminiApiKey: String = ""
-    @State private var isTestingOpenAI = false
-    @State private var openaiTestResult: APITestResult?
-    @State private var isTestingGemini = false
-    @State private var geminiTestResult: APITestResult?
-    @State private var isTestingLocal = false
-    @State private var localTestResult: APITestResult?
     @AppStorage("geminiModel") private var geminiModel = GeminiTranscriptionModel.flash2.rawValue
 
     @StateObject private var viewModel = GeneralSettingsViewModel()
@@ -79,7 +73,7 @@ struct GeneralSettingsView: View {
                     hotkey: $toggleLocalHotkey
                 )
                 .onChange(of: toggleLocalHotkey) { _, newValue in
-                    Settings.shared.saveToggleLocalHotkey(newValue)
+                    viewModel.settings.saveToggleLocalHotkey(newValue)
                     onHotkeysChanged?(newValue, toggleCloudHotkey, toggleGeminiHotkey, cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
@@ -95,7 +89,7 @@ struct GeneralSettingsView: View {
                     hotkey: $toggleCloudHotkey
                 )
                 .onChange(of: toggleCloudHotkey) { _, newValue in
-                    Settings.shared.saveToggleCloudHotkey(newValue)
+                    viewModel.settings.saveToggleCloudHotkey(newValue)
                     onHotkeysChanged?(toggleLocalHotkey, newValue, toggleGeminiHotkey, cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
@@ -111,7 +105,7 @@ struct GeneralSettingsView: View {
                     hotkey: $toggleGeminiHotkey
                 )
                 .onChange(of: toggleGeminiHotkey) { _, newValue in
-                    Settings.shared.saveToggleGeminiHotkey(newValue)
+                    viewModel.settings.saveToggleGeminiHotkey(newValue)
                     onHotkeysChanged?(toggleLocalHotkey, toggleCloudHotkey, newValue, cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
@@ -127,7 +121,7 @@ struct GeneralSettingsView: View {
                     hotkey: $cancelHotkey
                 )
                 .onChange(of: cancelHotkey) { _, newValue in
-                    Settings.shared.saveCancelHotkey(newValue)
+                    viewModel.settings.saveCancelHotkey(newValue)
                     onHotkeysChanged?(toggleLocalHotkey, toggleCloudHotkey, toggleGeminiHotkey, newValue)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
@@ -218,24 +212,28 @@ struct GeneralSettingsView: View {
     private var localTestButton: some View {
         VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
             HStack {
-                Button(action: testLocalModel) {
+                Button {
+                    Task {
+                        await viewModel.testLocalModel(isDaemonRunning: isDaemonRunning)
+                    }
+                } label: {
                     HStack(spacing: 6) {
-                        if isTestingLocal {
+                        if viewModel.isTestingLocal {
                             ProgressView()
                                 .controlSize(.small)
                         }
-                        Text(isTestingLocal ? "Testing..." : "Test Local Model")
+                        Text(viewModel.isTestingLocal ? "Testing..." : "Test Local Model")
                     }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(isTestingLocal || !viewModel.isModelInstalled(whisperModel))
+                .disabled(viewModel.isTestingLocal || !viewModel.isModelInstalled(whisperModel))
 
                 Spacer()
             }
 
             // Test result
-            if let result = localTestResult {
+            if let result = viewModel.localTestResult {
                 HStack(spacing: 4) {
                     switch result {
                     case .success:
@@ -251,37 +249,6 @@ struct GeneralSettingsView: View {
                     }
                 }
                 .font(Typography.description)
-            }
-        }
-    }
-
-    private func testLocalModel() {
-        isTestingLocal = true
-        localTestResult = nil
-
-        Task {
-            do {
-                // Create a short silent audio file for testing
-                let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
-                try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
-
-                // Try to transcribe it
-                let service = TranscriptionService()
-                _ = try await service.transcribe(audioURL: tempURL, useDaemon: isDaemonRunning, mode: .local)
-
-                // Clean up
-                try? FileManager.default.removeItem(at: tempURL)
-
-                await MainActor.run {
-                    // Empty or short result from silence is expected
-                    localTestResult = .success
-                    isTestingLocal = false
-                }
-            } catch {
-                await MainActor.run {
-                    localTestResult = .failure(error.localizedDescription)
-                    isTestingLocal = false
-                }
             }
         }
     }
@@ -350,12 +317,16 @@ struct GeneralSettingsView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: .infinity)
                     .onChange(of: geminiApiKey) { _, newValue in
-                        Settings.shared.geminiApiKey = newValue
-                        geminiTestResult = nil
+                        viewModel.settings.geminiApiKey = newValue
+                        viewModel.clearTestResult(for: .gemini)
                     }
 
-                Button(action: testGeminiConnection) {
-                    if isTestingGemini {
+                Button {
+                    Task {
+                        await viewModel.testGemini(apiKey: geminiApiKey)
+                    }
+                } label: {
+                    if viewModel.isTestingGemini {
                         ProgressView()
                             .controlSize(.small)
                     } else {
@@ -364,11 +335,11 @@ struct GeneralSettingsView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(geminiApiKey.isEmpty || isTestingGemini)
+                .disabled(geminiApiKey.isEmpty || viewModel.isTestingGemini)
             }
 
             // Test result
-            if let result = geminiTestResult {
+            if let result = viewModel.geminiTestResult {
                 HStack(spacing: 4) {
                     switch result {
                     case .success:
@@ -384,26 +355,6 @@ struct GeneralSettingsView: View {
                     }
                 }
                 .font(Typography.description)
-            }
-        }
-    }
-
-    private func testGeminiConnection() {
-        isTestingGemini = true
-        geminiTestResult = nil
-
-        Task {
-            do {
-                let isValid = try await GeminiTranscriptionService.shared.validateAPIKey(geminiApiKey)
-                await MainActor.run {
-                    geminiTestResult = isValid ? .success : .failure("Invalid API key")
-                    isTestingGemini = false
-                }
-            } catch {
-                await MainActor.run {
-                    geminiTestResult = .failure(error.localizedDescription)
-                    isTestingGemini = false
-                }
             }
         }
     }
@@ -439,12 +390,16 @@ struct GeneralSettingsView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: .infinity)
                     .onChange(of: openaiApiKey) { _, newValue in
-                        Settings.shared.openaiApiKey = newValue
-                        openaiTestResult = nil
+                        viewModel.settings.openaiApiKey = newValue
+                        viewModel.clearTestResult(for: .openAI)
                     }
 
-                Button(action: testOpenAIConnection) {
-                    if isTestingOpenAI {
+                Button {
+                    Task {
+                        await viewModel.testOpenAI(apiKey: openaiApiKey)
+                    }
+                } label: {
+                    if viewModel.isTestingOpenAI {
                         ProgressView()
                             .controlSize(.small)
                     } else {
@@ -453,11 +408,11 @@ struct GeneralSettingsView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(openaiApiKey.isEmpty || isTestingOpenAI)
+                .disabled(openaiApiKey.isEmpty || viewModel.isTestingOpenAI)
             }
 
             // Test result
-            if let result = openaiTestResult {
+            if let result = viewModel.openaiTestResult {
                 HStack(spacing: 4) {
                     switch result {
                     case .success:
@@ -473,26 +428,6 @@ struct GeneralSettingsView: View {
                     }
                 }
                 .font(Typography.description)
-            }
-        }
-    }
-
-    private func testOpenAIConnection() {
-        isTestingOpenAI = true
-        openaiTestResult = nil
-
-        Task {
-            do {
-                let isValid = try await OpenAITranscriptionService.shared.validateAPIKey(openaiApiKey)
-                await MainActor.run {
-                    openaiTestResult = isValid ? .success : .failure("Invalid API key")
-                    isTestingOpenAI = false
-                }
-            } catch {
-                await MainActor.run {
-                    openaiTestResult = .failure(error.localizedDescription)
-                    isTestingOpenAI = false
-                }
             }
         }
     }

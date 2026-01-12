@@ -633,7 +633,7 @@ struct DependencyInjectionTests {
         #expect(manager.isRecording == false)
     }
 
-    @Test func generalSettingsViewModelAcceptsDownloadService() {
+    @MainActor @Test func generalSettingsViewModelAcceptsDownloadService() {
         let mockService = MockModelDownloadService()
         let viewModel = GeneralSettingsViewModel(downloadService: mockService)
 
