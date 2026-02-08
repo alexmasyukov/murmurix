@@ -54,9 +54,9 @@ struct MurmurixErrorTests {
     }
 
     @Test func modelErrorNotFound() {
-        let error = MurmurixError.model(.notFound("large-v3"))
+        let error = MurmurixError.model(.notFound("tiny"))
 
-        #expect(error.errorDescription?.contains("large-v3") == true)
+        #expect(error.errorDescription?.contains("tiny") == true)
         #expect(error.recoverySuggestion?.contains("Download") == true)
     }
 
