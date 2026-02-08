@@ -209,6 +209,30 @@ struct AppConstantsTests {
         #expect(expanded.hasPrefix("/"))
         #expect(expanded.contains("Library/Application Support/Murmurix"))
     }
+
+    // MARK: - Defaults
+
+    @Test func defaultLanguageIsRussian() {
+        #expect(Defaults.language == "ru")
+    }
+
+    // MARK: - ModelPaths
+
+    @Test func modelPathsRepoDirPointsToDocuments() {
+        let repoDir = ModelPaths.repoDir
+        #expect(repoDir.path.contains("Documents"))
+        #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+    }
+
+    @Test func modelPathsModelDirAppendsModelName() {
+        let modelDir = ModelPaths.modelDir(for: "small")
+        #expect(modelDir.lastPathComponent == "openai_whisper-small")
+        #expect(modelDir.path.contains("whisperkit-coreml"))
+    }
+
+    @Test func modelPathsRepoSubpathIsCorrect() {
+        #expect(ModelPaths.repoSubpath == "huggingface/models/argmaxinc/whisperkit-coreml")
+    }
 }
 
 // MARK: - WindowPositioner Tests
@@ -315,11 +339,11 @@ struct LoggerTests {
         #expect(true)
     }
 
-    @Test func daemonLoggerDoesNotCrash() {
-        Logger.Daemon.info("Test info message")
-        Logger.Daemon.error("Test error message")
-        Logger.Daemon.warning("Test warning message")
-        Logger.Daemon.debug("Test debug message")
+    @Test func modelLoggerDoesNotCrash() {
+        Logger.Model.info("Test info message")
+        Logger.Model.error("Test error message")
+        Logger.Model.warning("Test warning message")
+        Logger.Model.debug("Test debug message")
 
         #expect(true)
     }

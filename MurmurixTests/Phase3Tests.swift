@@ -21,6 +21,7 @@ struct GeneralSettingsViewModelAPITests {
         let viewModel = GeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
+        viewModel.installedModels = ["small"]
 
         #expect(viewModel.isTestingLocal == false)
         #expect(viewModel.localTestResult == nil)
@@ -43,6 +44,7 @@ struct GeneralSettingsViewModelAPITests {
         let viewModel = GeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
+        viewModel.installedModels = ["small"]
 
         await viewModel.testLocalModel()
 
@@ -57,6 +59,7 @@ struct GeneralSettingsViewModelAPITests {
         let viewModel = GeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
+        viewModel.installedModels = ["small"]
 
         await viewModel.testLocalModel()
 
@@ -74,12 +77,30 @@ struct GeneralSettingsViewModelAPITests {
         let viewModel = GeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
+        viewModel.installedModels = ["small"]
 
         await viewModel.testLocalModel()
         #expect(mockTranscription.transcribeCallCount == 1)
 
         await viewModel.testLocalModel()
         #expect(mockTranscription.transcribeCallCount == 2)
+    }
+
+    @Test func testLocalModelFailsWhenNotInstalled() async {
+        let mockTranscription = MockTranscriptionService()
+        let viewModel = GeneralSettingsViewModel(
+            transcriptionServiceFactory: { mockTranscription }
+        )
+        // installedModels is empty — model not installed
+
+        await viewModel.testLocalModel()
+
+        #expect(mockTranscription.transcribeCallCount == 0)
+        if case .failure(let msg) = viewModel.localTestResult {
+            #expect(msg.contains("not installed"))
+        } else {
+            #expect(Bool(false), "Expected failure result for uninstalled model")
+        }
     }
 
     // MARK: - OpenAI Testing
