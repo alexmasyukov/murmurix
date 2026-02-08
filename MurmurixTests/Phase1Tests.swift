@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import Carbon
 @testable import Murmurix
 
 // MARK: - AudioTestUtility Tests
@@ -324,7 +325,7 @@ struct MockHotkeyManagerTests {
 
     @Test func updateLocalModelHotkeysStoresValues() {
         let mock = MockHotkeyManager()
-        let hotkey = Hotkey.toggleLocalDefault
+        let hotkey = Hotkey(keyCode: 8, modifiers: UInt32(controlKey))
         let localHotkeys = ["small": hotkey]
 
         mock.updateLocalModelHotkeys(localHotkeys)
@@ -335,9 +336,9 @@ struct MockHotkeyManagerTests {
 
     @Test func updateCloudHotkeysStoresValues() {
         let mock = MockHotkeyManager()
-        let cloud = Hotkey.toggleCloudDefault
-        let gemini = Hotkey.toggleGeminiDefault
-        let cancel = Hotkey.cancelDefault
+        let cloud = Hotkey(keyCode: 2, modifiers: UInt32(controlKey))
+        let gemini = Hotkey(keyCode: 5, modifiers: UInt32(controlKey))
+        let cancel = Hotkey(keyCode: 53, modifiers: 0)
 
         mock.updateCloudHotkeys(toggleCloud: cloud, toggleGemini: gemini, cancel: cancel)
 

@@ -308,12 +308,12 @@ struct HotkeyTests {
         #expect(parts.contains("C"))
     }
 
-    @Test func displayPartsShowsNotSetWhenEmpty() {
+    @Test func displayPartsIsEmptyForInvalidKeyCode() {
         let hotkey = Hotkey(keyCode: 999, modifiers: 0) // Invalid keyCode, no modifiers
 
         let parts = hotkey.displayParts
 
-        #expect(parts == ["Not set"])
+        #expect(parts.isEmpty)
     }
 
     @Test func keyCodeToNameMapsCorrectly() {
@@ -324,14 +324,10 @@ struct HotkeyTests {
         #expect(Hotkey.keyCodeToName(999) == nil)
     }
 
-    @Test func defaultHotkeysAreValid() {
-        let toggleLocal = Hotkey.toggleLocalDefault
-        let toggleCloud = Hotkey.toggleCloudDefault
-        let cancel = Hotkey.cancelDefault
-
-        #expect(Hotkey.keyCodeToName(toggleLocal.keyCode) != nil)
-        #expect(Hotkey.keyCodeToName(toggleCloud.keyCode) != nil)
-        #expect(Hotkey.keyCodeToName(cancel.keyCode) != nil)
+    @Test func hotkeyKeyCodeToNameWorks() {
+        #expect(Hotkey.keyCodeToName(8) == "C")
+        #expect(Hotkey.keyCodeToName(2) == "D")
+        #expect(Hotkey.keyCodeToName(53) == "esc")
     }
 
     @Test func hotkeyIsCodable() throws {

@@ -37,7 +37,7 @@ protocol HotkeyManagerProtocol: AnyObject {
     func start()
     func stop()
     func updateLocalModelHotkeys(_ hotkeys: [String: Hotkey])
-    func updateCloudHotkeys(toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey)
+    func updateCloudHotkeys(toggleCloud: Hotkey?, toggleGemini: Hotkey?, cancel: Hotkey?)
 }
 
 // MARK: - Network
@@ -60,10 +60,10 @@ protocol SettingsStorageProtocol: AnyObject {
 
     func loadWhisperModelSettings() -> [String: WhisperModelSettings]
     func saveWhisperModelSettings(_ settings: [String: WhisperModelSettings])
-    func loadToggleCloudHotkey() -> Hotkey
-    func saveToggleCloudHotkey(_ hotkey: Hotkey)
-    func loadToggleGeminiHotkey() -> Hotkey
-    func saveToggleGeminiHotkey(_ hotkey: Hotkey)
-    func loadCancelHotkey() -> Hotkey
-    func saveCancelHotkey(_ hotkey: Hotkey)
+    func loadToggleCloudHotkey() -> Hotkey?
+    func saveToggleCloudHotkey(_ hotkey: Hotkey?)
+    func loadToggleGeminiHotkey() -> Hotkey?
+    func saveToggleGeminiHotkey(_ hotkey: Hotkey?)
+    func loadCancelHotkey() -> Hotkey?
+    func saveCancelHotkey(_ hotkey: Hotkey?)
 }

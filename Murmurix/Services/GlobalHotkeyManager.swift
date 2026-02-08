@@ -26,9 +26,9 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private var runLoopSource: CFRunLoopSource?
 
     private var localModelHotkeys: [String: Hotkey] = [:]
-    private var toggleCloudHotkey: Hotkey
-    private var toggleGeminiHotkey: Hotkey
-    private var cancelHotkey: Hotkey
+    private var toggleCloudHotkey: Hotkey?
+    private var toggleGeminiHotkey: Hotkey?
+    private var cancelHotkey: Hotkey?
     private let settings: SettingsStorageProtocol
 
     init(settings: SettingsStorageProtocol = Settings.shared) {
@@ -50,7 +50,7 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
         localModelHotkeys = hotkeys
     }
 
-    func updateCloudHotkeys(toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey) {
+    func updateCloudHotkeys(toggleCloud: Hotkey?, toggleGemini: Hotkey?, cancel: Hotkey?) {
         toggleCloudHotkey = toggleCloud
         toggleGeminiHotkey = toggleGemini
         cancelHotkey = cancel
@@ -133,19 +133,19 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
             }
 
             // Check toggle cloud (OpenAI) hotkey
-            if keyCode == toggleCloudHotkey.keyCode && carbonModifiers == toggleCloudHotkey.modifiers {
+            if let hk = toggleCloudHotkey, keyCode == hk.keyCode && carbonModifiers == hk.modifiers {
                 onToggleCloudRecording?()
                 return nil
             }
 
             // Check toggle Gemini hotkey
-            if keyCode == toggleGeminiHotkey.keyCode && carbonModifiers == toggleGeminiHotkey.modifiers {
+            if let hk = toggleGeminiHotkey, keyCode == hk.keyCode && carbonModifiers == hk.modifiers {
                 onToggleGeminiRecording?()
                 return nil
             }
 
             // Check cancel hotkey - only when recording
-            if isRecording && keyCode == cancelHotkey.keyCode && carbonModifiers == cancelHotkey.modifiers {
+            if let hk = cancelHotkey, isRecording && keyCode == hk.keyCode && carbonModifiers == hk.modifiers {
                 onCancelRecording?()
                 return nil
             }

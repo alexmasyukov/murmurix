@@ -13,7 +13,7 @@ class ModelStatusModel: ObservableObject {
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onModelToggle: ((String, Bool) -> Void)?
     var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?
-    var onCloudHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
+    var onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)?
     var onWindowOpen: (() -> Void)?
     var onWindowClose: (() -> Void)?
 
@@ -23,7 +23,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
-        onCloudHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey) -> Void,
+        onCloudHotkeysChanged: @escaping (Hotkey?, Hotkey?, Hotkey?) -> Void,
         onWindowOpen: @escaping () -> Void = {},
         onWindowClose: @escaping () -> Void = {}
     ) {

@@ -70,8 +70,6 @@ final class Settings: SettingsStorageProtocol {
         if let data = defaults.data(forKey: Keys.legacyToggleLocalHotkey),
            let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) {
             oldHotkey = hotkey
-        } else {
-            oldHotkey = .toggleLocalDefault
         }
 
         let modelSettings = WhisperModelSettings(hotkey: oldHotkey, keepLoaded: oldKeepLoaded)
@@ -117,33 +115,35 @@ final class Settings: SettingsStorageProtocol {
 
     // MARK: - Hotkey Settings
 
-    private func loadHotkey(key: String, defaultHotkey: Hotkey) -> Hotkey {
+    private func loadHotkey(key: String) -> Hotkey? {
         guard let data = defaults.data(forKey: key),
               let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
-            return defaultHotkey
+            return nil
         }
         return hotkey
     }
 
-    private func saveHotkey(key: String, hotkey: Hotkey) {
-        if let data = try? JSONEncoder().encode(hotkey) {
+    private func saveHotkey(key: String, hotkey: Hotkey?) {
+        if let hotkey, let data = try? JSONEncoder().encode(hotkey) {
             defaults.set(data, forKey: key)
+        } else {
+            defaults.removeObject(forKey: key)
         }
     }
 
-    func loadToggleCloudHotkey() -> Hotkey {
-        loadHotkey(key: Keys.toggleCloudHotkey, defaultHotkey: .toggleCloudDefault)
+    func loadToggleCloudHotkey() -> Hotkey? {
+        loadHotkey(key: Keys.toggleCloudHotkey)
     }
 
-    func saveToggleCloudHotkey(_ hotkey: Hotkey) {
+    func saveToggleCloudHotkey(_ hotkey: Hotkey?) {
         saveHotkey(key: Keys.toggleCloudHotkey, hotkey: hotkey)
     }
 
-    func loadCancelHotkey() -> Hotkey {
-        loadHotkey(key: Keys.cancelHotkey, defaultHotkey: .cancelDefault)
+    func loadCancelHotkey() -> Hotkey? {
+        loadHotkey(key: Keys.cancelHotkey) ?? .cancelDefault
     }
 
-    func saveCancelHotkey(_ hotkey: Hotkey) {
+    func saveCancelHotkey(_ hotkey: Hotkey?) {
         saveHotkey(key: Keys.cancelHotkey, hotkey: hotkey)
     }
 
@@ -181,11 +181,11 @@ final class Settings: SettingsStorageProtocol {
         set { defaults.set(newValue, forKey: Keys.geminiModel) }
     }
 
-    func loadToggleGeminiHotkey() -> Hotkey {
-        loadHotkey(key: Keys.toggleGeminiHotkey, defaultHotkey: .toggleGeminiDefault)
+    func loadToggleGeminiHotkey() -> Hotkey? {
+        loadHotkey(key: Keys.toggleGeminiHotkey)
     }
 
-    func saveToggleGeminiHotkey(_ hotkey: Hotkey) {
+    func saveToggleGeminiHotkey(_ hotkey: Hotkey?) {
         saveHotkey(key: Keys.toggleGeminiHotkey, hotkey: hotkey)
     }
 }

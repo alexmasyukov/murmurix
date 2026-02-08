@@ -65,7 +65,7 @@ final class WindowManager {
         loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
-        onCloudHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey) -> Void,
+        onCloudHotkeysChanged: @escaping (Hotkey?, Hotkey?, Hotkey?) -> Void,
         onWindowOpen: @escaping () -> Void,
         onWindowClose: @escaping () -> Void
     ) {

@@ -9,7 +9,7 @@ import Carbon
 struct HotkeyRecorderView: View {
     let title: String
     let description: String
-    @Binding var hotkey: Hotkey
+    @Binding var hotkey: Hotkey?
     @State private var isRecording = false
     @State private var localMonitor: Any?
     @State private var globalMonitor: Any?
@@ -28,30 +28,45 @@ struct HotkeyRecorderView: View {
 
             Spacer()
 
-            Button(action: { toggleRecording() }) {
-                HStack(spacing: 4) {
-                    if isRecording {
-                        Text(L10n.pressKeys)
-                            .font(Typography.monospaced)
-                            .foregroundColor(.gray)
-                    } else {
-                        ForEach(hotkey.displayParts, id: \.self) { part in
-                            KeyCapView(text: part)
+            HStack(spacing: 4) {
+                Button(action: { toggleRecording() }) {
+                    HStack(spacing: 4) {
+                        if isRecording {
+                            Text(L10n.pressKeys)
+                                .font(Typography.monospaced)
+                                .foregroundColor(.gray)
+                        } else if let hotkey {
+                            ForEach(hotkey.displayParts, id: \.self) { part in
+                                KeyCapView(text: part)
+                            }
+                        } else {
+                            Text(L10n.notSet)
+                                .font(Typography.monospaced)
+                                .foregroundColor(.gray)
                         }
                     }
+                    .padding(.horizontal, Layout.Spacing.item)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: Layout.CornerRadius.button)
+                            .fill(isRecording ? Color.accentColor.opacity(0.3) : AppColors.divider)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Layout.CornerRadius.button)
+                            .stroke(isRecording ? Color.accentColor : AppColors.subtleBorder, lineWidth: 1)
+                    )
                 }
-                .padding(.horizontal, Layout.Spacing.item)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: Layout.CornerRadius.button)
-                        .fill(isRecording ? Color.accentColor.opacity(0.3) : AppColors.divider)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Layout.CornerRadius.button)
-                        .stroke(isRecording ? Color.accentColor : AppColors.subtleBorder, lineWidth: 1)
-                )
+                .buttonStyle(.plain)
+
+                if hotkey != nil {
+                    Button(action: { hotkey = nil }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 14))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
     }
@@ -138,21 +153,15 @@ struct KeyCapView: View {
 #Preview {
     VStack(spacing: 20) {
         HotkeyRecorderView(
-            title: "Local Recording",
-            description: "Record with local Whisper",
-            hotkey: .constant(Hotkey.toggleLocalDefault)
-        )
-
-        HotkeyRecorderView(
             title: "Cloud Recording",
             description: "Record with OpenAI cloud",
-            hotkey: .constant(Hotkey.toggleCloudDefault)
+            hotkey: .constant(Hotkey(keyCode: 2, modifiers: UInt32(controlKey)))
         )
 
         HotkeyRecorderView(
             title: "Cancel Recording",
             description: "Discards the active recording",
-            hotkey: .constant(Hotkey.cancelDefault)
+            hotkey: .constant(nil)
         )
     }
     .padding()

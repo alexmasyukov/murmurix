@@ -2,7 +2,7 @@
 
 ## Overview
 
-Murmurix is a native macOS menubar application for voice-to-text transcription with local (WhisperKit/CoreML) or cloud (OpenAI/Gemini) processing. Pure Swift, no external runtimes.
+Murmurix is a native macOS menubar application for voice-to-text transcription with local (WhisperKit/CoreML) or cloud (OpenAI/Gemini) processing. Pure Swift, no external runtimes. Multilingual interface (EN/RU/ES).
 
 ```
 +---------------------------------------------------------------+
@@ -56,6 +56,8 @@ Murmurix/
 |   +-- OpenAITranscriptionModel.swift
 |   +-- GeminiTranscriptionModel.swift
 |   +-- APITestResult.swift      # API test result enum
+|   +-- AppLanguage.swift        # App language enum (EN/RU/ES)
+|   +-- L10n.swift               # Localization strings
 |
 +-- ViewModels/                   # Presentation logic
 |   +-- HistoryViewModel.swift   # History list logic
@@ -83,6 +85,7 @@ Murmurix/
 |   |   +-- TestResultBadge.swift
 |   |   +-- SectionHeader.swift
 |   |   +-- SettingsStyles.swift
+|   |   +-- WhisperModelCardView.swift
 |   +-- *WindowController.swift  # NSWindowController wrappers
 |
 +-- Services/                     # Business logic
@@ -105,7 +108,15 @@ Murmurix/
     +-- MIMETypeResolver.swift   # Audio MIME types
 ```
 
-**54 Swift files, ~5500 lines of production code**
+**57 Swift files, ~6000 lines of production code**
+
+## Localization
+
+Enum-based `L10n.swift` with `tr(en, ru, es)` helper. No .lproj/.strings files.
+
+- SwiftUI views re-render via `@AppStorage("appLanguage")`
+- AppKit menus/windows update via `NotificationCenter` → `.appLanguageDidChange`
+- Language switch is instant, no restart required
 
 ## Key Services
 
@@ -151,10 +162,12 @@ idle --> recording --> transcribing --> idle
 ### GlobalHotkeyManager
 System-wide keyboard shortcuts via CGEvent tap:
 
-- `onToggleLocalRecording` — ^C
-- `onToggleCloudRecording` — ^D
-- `onToggleGeminiRecording` — ^G
-- `onCancelRecording` — Esc
+- Per-model local hotkeys (configurable per Whisper model)
+- Cloud OpenAI hotkey (configurable, no default)
+- Cloud Gemini hotkey (configurable, no default)
+- Cancel hotkey (default: Esc)
+
+All hotkeys are optional — only Cancel has a default (Escape).
 
 ## Error Hierarchy
 
@@ -180,7 +193,7 @@ All errors provide `errorDescription` and `recoverySuggestion`.
 ## Data Flow
 
 ```
-User presses hotkey (^C / ^D / ^G)
+User presses assigned hotkey
         |
 GlobalHotkeyManager.onToggle[Local|Cloud|Gemini]Recording
         |
@@ -244,6 +257,6 @@ Centralized via `os.log` with categories:
 
 ## Testing
 
-305 tests (12 test files) using Swift Testing framework (`@Test`, `#expect`).
+298 tests (12 test files) using Swift Testing framework (`@Test`, `#expect`).
 
 Coverage: services, ViewModels, models, settings, error hierarchy, constants, DI, recording state machine, file cleanup, transcription modes, model management, settings migration.

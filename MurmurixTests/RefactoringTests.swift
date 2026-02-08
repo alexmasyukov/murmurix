@@ -381,7 +381,7 @@ struct WhisperModelTests {
 
     @Test func displayNamesAreNotEmpty() {
         for model in WhisperModel.allCases {
-            #expect(!model.displayName.isEmpty)
+            #expect(!model.shortName.isEmpty)
         }
     }
 

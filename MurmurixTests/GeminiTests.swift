@@ -110,21 +110,20 @@ struct MockGeminiTranscriptionServiceTests {
 
 struct HotkeyDefaultsTests {
 
-    @Test func toggleGeminiDefaultIsControlG() {
-        let hotkey = Hotkey.toggleGeminiDefault
+    @Test func hotkeyDisplayPartsShowsKeys() {
+        let hotkey = Hotkey(keyCode: 5, modifiers: UInt32(controlKey))
         #expect(hotkey.keyCode == 5) // G key
         #expect(hotkey.modifiers == UInt32(controlKey))
+        #expect(hotkey.displayParts.contains("⌃"))
+        #expect(hotkey.displayParts.contains("G"))
     }
 
-    @Test func allDefaultHotkeysAreDifferent() {
-        let local = Hotkey.toggleLocalDefault
-        let cloud = Hotkey.toggleCloudDefault
-        let gemini = Hotkey.toggleGeminiDefault
-        let cancel = Hotkey.cancelDefault
+    @Test func hotkeyEqualityWorks() {
+        let a = Hotkey(keyCode: 5, modifiers: UInt32(controlKey))
+        let b = Hotkey(keyCode: 5, modifiers: UInt32(controlKey))
+        let c = Hotkey(keyCode: 8, modifiers: UInt32(controlKey))
 
-        // All should have different key codes
-        let keyCodes = [local.keyCode, cloud.keyCode, gemini.keyCode, cancel.keyCode]
-        let uniqueKeyCodes = Set(keyCodes)
-        #expect(uniqueKeyCodes.count == 4, "All default hotkeys should have unique key codes")
+        #expect(a == b)
+        #expect(a != c)
     }
 }

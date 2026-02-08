@@ -10,10 +10,8 @@ struct Hotkey: Equatable, Codable {
     var keyCode: UInt32
     var modifiers: UInt32
 
-    static let toggleLocalDefault = Hotkey(keyCode: 8, modifiers: UInt32(controlKey))  // Control+C (local Whisper)
-    static let toggleCloudDefault = Hotkey(keyCode: 2, modifiers: UInt32(controlKey))  // Control+D (cloud OpenAI)
-    static let toggleGeminiDefault = Hotkey(keyCode: 5, modifiers: UInt32(controlKey)) // Control+G (cloud Gemini)
     static let cancelDefault = Hotkey(keyCode: 53, modifiers: 0)  // Escape
+
 
     var displayParts: [String] {
         var parts: [String] = []
@@ -27,7 +25,7 @@ struct Hotkey: Equatable, Codable {
             parts.append(keyName)
         }
 
-        return parts.isEmpty ? ["Not set"] : parts
+        return parts
     }
 
     static func keyCodeToName(_ code: UInt32) -> String? {

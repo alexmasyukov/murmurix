@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import Carbon
 @testable import Murmurix
 
 // MARK: - DownloadStatus Tests
@@ -434,7 +435,7 @@ struct SettingsMigrationTests {
         // Simulate old settings
         defaults.set("tiny", forKey: "whisperModel")
         defaults.set(true, forKey: "keepModelLoaded")
-        let oldHotkey = Hotkey.toggleLocalDefault
+        let oldHotkey = Hotkey(keyCode: 8, modifiers: UInt32(controlKey))
         if let data = try? JSONEncoder().encode(oldHotkey) {
             defaults.set(data, forKey: "toggleLocalHotkey")
         }
@@ -461,7 +462,7 @@ struct SettingsMigrationTests {
         let map = settings.loadWhisperModelSettings()
         #expect(map["small"] != nil)
         #expect(map["small"]?.keepLoaded == true)
-        #expect(map["small"]?.hotkey == .toggleLocalDefault)
+        #expect(map["small"]?.hotkey == nil)
     }
 
     @Test func doesNotMigrateWhenAlreadyMigrated() {

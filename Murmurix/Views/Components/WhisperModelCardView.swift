@@ -31,7 +31,7 @@ struct WhisperModelCardView: View {
 
             Divider()
                 .background(AppColors.divider)
-                .padding(.leading, Layout.Padding.standard)
+                .padding(.horizontal, Layout.Padding.standard)
 
             keepLoadedRow
                 .padding(.horizontal, Layout.Padding.standard)
@@ -39,7 +39,7 @@ struct WhisperModelCardView: View {
 
             Divider()
                 .background(AppColors.divider)
-                .padding(.leading, Layout.Padding.standard)
+                .padding(.horizontal, Layout.Padding.standard)
 
             modelFileRow
                 .padding(.horizontal, Layout.Padding.standard)
@@ -53,7 +53,7 @@ struct WhisperModelCardView: View {
 
             Divider()
                 .background(AppColors.divider)
-                .padding(.leading, Layout.Padding.standard)
+                .padding(.horizontal, Layout.Padding.standard)
 
             hotkeyRow
                 .padding(.horizontal, Layout.Padding.standard)

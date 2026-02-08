@@ -2,27 +2,28 @@
 
 A native macOS menubar app for voice-to-text transcription using local WhisperKit (CoreML), OpenAI, or Google Gemini.
 
-**Version 2.0** | 54 production files | 305 tests | Pure Swift, no Python
+**Version 2.0** | 57 production files | 298 tests | Pure Swift, no Python
 
 ## Features
 
 - **Local Transcription (WhisperKit)** — Native CoreML inference on Apple Silicon, fully offline
 - **Cloud Transcription (OpenAI)** — gpt-4o-transcribe / gpt-4o-mini-transcribe
 - **Cloud Transcription (Gemini)** — Gemini 2.0 Flash / 1.5 Flash / 1.5 Pro
-- **Triple Hotkeys** — Separate shortcuts for each transcription mode
+- **Per-Model Hotkeys** — Assign individual hotkeys to each local model and cloud mode
 - **In-App Model Management** — Download, test, and delete Whisper models from Settings
 - **Keep Model Loaded** — Instant transcription by keeping WhisperKit in memory
 - **Voice Activity Detection** — Skips transcription if no voice detected
 - **Smart Text Insertion** — Pastes directly into focused text fields
 - **Animated UI** — Lottie cat animation during transcription, voice-reactive equalizer
 - **Transcription History** — SQLite database with statistics
+- **Multilingual Interface** — English, Russian, Spanish (switchable in Settings)
 - **Dark Theme** — Native macOS dark appearance
 
 ## Requirements
 
 - macOS 14.5+ (Sonoma)
 - Apple Silicon (for WhisperKit CoreML inference)
-- ~75MB to ~3GB disk space depending on Whisper model
+- ~70MB to ~2.5GB disk space depending on Whisper model
 
 ## Whisper Models
 
@@ -30,12 +31,12 @@ Models are downloaded via WhisperKit from Hugging Face and stored in `~/Document
 
 | Model | Size | Speed | Quality |
 |-------|------|-------|---------|
-| tiny | ~75MB | Fastest | Basic |
+| tiny | ~70MB | Fastest | Basic |
 | base | ~140MB | Fast | Good |
-| small | ~460MB | Medium | Better |
-| medium | ~1.5GB | Slow | High |
-| large-v2 | ~3GB | Slowest | Very High |
-| large-v3 | ~3GB | Slowest | Best |
+| small | ~290MB | Medium | Better |
+| medium | ~800MB | Slow | High |
+| large-v2 | ~2.5GB | Slowest | Very High |
+| large-v3 | ~2.5GB | Slowest | Best |
 
 > **Recommendation:** Start with `small` for a good balance of speed and quality.
 
@@ -46,13 +47,11 @@ Open **Settings** (Cmd+,) to:
 - Test local model to verify it works
 - Delete individual models or all models
 - Toggle "Keep model loaded" for instant transcription
+- Assign a hotkey to each model
 
 ## Usage
 
-1. Click the waveform icon in the menubar or press a hotkey:
-   - `^C` for local WhisperKit transcription
-   - `^D` for cloud OpenAI transcription
-   - `^G` for cloud Gemini transcription
+1. Click the waveform icon in the menubar or press an assigned hotkey
 2. Speak — the equalizer animates when voice is detected
 3. Press the same hotkey again or click Stop to finish
 4. Transcription appears:
@@ -63,14 +62,14 @@ Open **Settings** (Cmd+,) to:
 
 ### Keyboard Shortcuts
 
+All hotkeys are configurable in **Settings** (Cmd+,). No hotkeys are assigned by default except Cancel (Esc).
+
 | Action | Default | Description |
 |--------|---------|-------------|
-| Local Recording | `^C` | Record with local WhisperKit model |
-| Cloud Recording (OpenAI) | `^D` | Record with OpenAI cloud API |
-| Gemini Recording | `^G` | Record with Google Gemini API |
+| Local Recording | Not set | Assign per-model in Settings |
+| Cloud Recording (OpenAI) | Not set | Record with OpenAI cloud API |
+| Gemini Recording | Not set | Record with Google Gemini API |
 | Cancel Recording | `Esc` | Cancel active recording |
-
-Customize hotkeys in **Settings** (Cmd+,).
 
 ## Permissions
 
@@ -80,20 +79,20 @@ The app requires:
 
 ## Settings
 
+### Language
+| Setting | Description |
+|---------|-------------|
+| App Language | English, Russian, or Spanish |
+| Recognition Language | Russian, English, or Auto-detect |
+
 ### Keyboard Shortcuts
-Separate hotkey recorders for Local, OpenAI, Gemini, and Cancel.
+Hotkey recorders for OpenAI, Gemini, and Cancel. Local model hotkeys are configured per-model in the Local Models section.
 
-### Recognition
-| Setting | Description |
-|---------|-------------|
-| Language | Russian, English, or Auto-detect |
+### Local Models
+Per-model cards with download, test, delete, keep loaded toggle, and individual hotkey assignment.
 
-### Local (WhisperKit)
-| Setting | Description |
-|---------|-------------|
-| Model | Whisper model (tiny to large-v3) |
-| Keep model loaded | Faster transcription, keeps CoreML model in memory |
-| Test | Verify local model works correctly |
+### Model Management
+Delete all downloaded models at once.
 
 ### Cloud (OpenAI)
 | Setting | Description |
@@ -138,7 +137,7 @@ CREATE TABLE transcriptions (
 
 ## Testing
 
-305 tests using Apple's Swift Testing framework:
+298 tests using Apple's Swift Testing framework:
 
 ```bash
 xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=macOS' test

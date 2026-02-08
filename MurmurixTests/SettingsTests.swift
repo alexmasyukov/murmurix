@@ -22,10 +22,10 @@ struct SettingsTests {
     @Test func defaultWhisperModelSettingsHasMigratedDefault() {
         let settings = createSettings()
         let map = settings.loadWhisperModelSettings()
-        // Fresh install migrates with small model + default hotkey + keepLoaded=true
+        // Fresh install migrates with small model + no hotkey + keepLoaded=true
         #expect(map["small"] != nil)
         #expect(map["small"]?.keepLoaded == true)
-        #expect(map["small"]?.hotkey == .toggleLocalDefault)
+        #expect(map["small"]?.hotkey == nil)
     }
 
     @Test func defaultLanguageIsRussian() {
@@ -33,10 +33,10 @@ struct SettingsTests {
         #expect(settings.language == "ru")
     }
 
-    @Test func defaultToggleCloudHotkeyIsSet() {
+    @Test func defaultToggleCloudHotkeyIsNil() {
         let settings = createSettings()
         let hotkey = settings.loadToggleCloudHotkey()
-        #expect(hotkey == Hotkey.toggleCloudDefault)
+        #expect(hotkey == nil)
     }
 
     @Test func defaultCancelHotkeyIsEscape() {
@@ -45,10 +45,10 @@ struct SettingsTests {
         #expect(hotkey == Hotkey.cancelDefault)
     }
 
-    @Test func defaultToggleGeminiHotkeyIsSet() {
+    @Test func defaultToggleGeminiHotkeyIsNil() {
         let settings = createSettings()
         let hotkey = settings.loadToggleGeminiHotkey()
-        #expect(hotkey == Hotkey.toggleGeminiDefault)
+        #expect(hotkey == nil)
     }
 
     @Test func defaultGeminiModelIsFlash2() {
@@ -123,7 +123,7 @@ struct SettingsTests {
 
     // MARK: - Edge Cases
 
-    @Test func loadCloudHotkeyReturnsDefaultWhenCorrupted() {
+    @Test func loadCloudHotkeyReturnsNilWhenCorrupted() {
         let suiteName = "com.murmurix.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
 
@@ -133,6 +133,6 @@ struct SettingsTests {
         let settings = Settings(defaults: defaults)
         let hotkey = settings.loadToggleCloudHotkey()
 
-        #expect(hotkey == Hotkey.toggleCloudDefault)
+        #expect(hotkey == nil)
     }
 }

@@ -8,11 +8,13 @@ import Foundation
 enum AppLanguage: String, CaseIterable {
     case en
     case ru
+    case es
 
     var displayName: String {
         switch self {
         case .en: return "English"
         case .ru: return "Русский"
+        case .es: return "Español"
         }
     }
 

@@ -40,11 +40,11 @@ final class MenuBarManager {
     }
 
     func updateHotkeyDisplay() {
-        if let menuItem = toggleCloudMenuItem {
-            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleCloudHotkey())
+        if let menuItem = toggleCloudMenuItem, let hotkey = settings.loadToggleCloudHotkey() {
+            applyHotkeyToMenuItem(menuItem, hotkey: hotkey)
         }
-        if let menuItem = toggleGeminiMenuItem {
-            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleGeminiHotkey())
+        if let menuItem = toggleGeminiMenuItem, let hotkey = settings.loadToggleGeminiHotkey() {
+            applyHotkeyToMenuItem(menuItem, hotkey: hotkey)
         }
     }
 
@@ -110,7 +110,9 @@ final class MenuBarManager {
             keyEquivalent: ""
         )
         toggleCloudMenuItem?.target = self
-        applyHotkeyToMenuItem(toggleCloudMenuItem!, hotkey: settings.loadToggleCloudHotkey())
+        if let hotkey = settings.loadToggleCloudHotkey() {
+            applyHotkeyToMenuItem(toggleCloudMenuItem!, hotkey: hotkey)
+        }
         menu.addItem(toggleCloudMenuItem!)
 
         toggleGeminiMenuItem = NSMenuItem(
@@ -119,7 +121,9 @@ final class MenuBarManager {
             keyEquivalent: ""
         )
         toggleGeminiMenuItem?.target = self
-        applyHotkeyToMenuItem(toggleGeminiMenuItem!, hotkey: settings.loadToggleGeminiHotkey())
+        if let hotkey = settings.loadToggleGeminiHotkey() {
+            applyHotkeyToMenuItem(toggleGeminiMenuItem!, hotkey: hotkey)
+        }
         menu.addItem(toggleGeminiMenuItem!)
 
         menu.addItem(NSMenuItem.separator())

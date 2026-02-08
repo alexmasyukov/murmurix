@@ -10,9 +10,9 @@ struct GeneralSettingsView: View {
     @AppStorage("openaiTranscriptionModel") private var openaiTranscriptionModel = OpenAITranscriptionModel.gpt4oTranscribe.rawValue
     @AppStorage("appLanguage") private var appLanguage = "en"
 
-    @State private var toggleCloudHotkey: Hotkey
-    @State private var toggleGeminiHotkey: Hotkey
-    @State private var cancelHotkey: Hotkey
+    @State private var toggleCloudHotkey: Hotkey?
+    @State private var toggleGeminiHotkey: Hotkey?
+    @State private var cancelHotkey: Hotkey?
     @State private var openaiApiKey: String = ""
     @State private var geminiApiKey: String = ""
     @AppStorage("geminiModel") private var geminiModel = GeminiTranscriptionModel.flash2.rawValue
@@ -23,13 +23,13 @@ struct GeneralSettingsView: View {
 
     var onModelToggle: ((String, Bool) -> Void)?
     var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?
-    var onCloudHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
+    var onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)?
 
     init(
         loadedModels: Binding<Set<String>>,
         onModelToggle: ((String, Bool) -> Void)? = nil,
         onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
-        onCloudHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)? = nil
+        onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)? = nil
     ) {
         self._loadedModels = loadedModels
         self.onModelToggle = onModelToggle
@@ -75,7 +75,7 @@ struct GeneralSettingsView: View {
 
                 Divider()
                     .background(AppColors.divider)
-                    .padding(.leading, Layout.Padding.standard)
+                    .padding(.horizontal, Layout.Padding.standard)
 
                 languagePicker
                     .padding(.horizontal, Layout.Padding.standard)
@@ -109,7 +109,7 @@ struct GeneralSettingsView: View {
 
                 Divider()
                     .background(AppColors.divider)
-                    .padding(.leading, Layout.Padding.standard)
+                    .padding(.horizontal, Layout.Padding.standard)
 
                 HotkeyRecorderView(
                     title: L10n.geminiRecording,
@@ -125,7 +125,7 @@ struct GeneralSettingsView: View {
 
                 Divider()
                     .background(AppColors.divider)
-                    .padding(.leading, Layout.Padding.standard)
+                    .padding(.horizontal, Layout.Padding.standard)
 
                 HotkeyRecorderView(
                     title: L10n.cancelRecording,

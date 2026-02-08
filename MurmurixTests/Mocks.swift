@@ -130,9 +130,9 @@ final class MockSettings: SettingsStorageProtocol {
     var geminiModel: String = GeminiTranscriptionModel.flash2.rawValue
 
     private var whisperModelSettingsMap: [String: WhisperModelSettings] = [:]
-    private var toggleCloudHotkey: Hotkey = .toggleCloudDefault
-    private var toggleGeminiHotkey: Hotkey = .toggleGeminiDefault
-    private var cancelHotkey: Hotkey = .cancelDefault
+    private var toggleCloudHotkey: Hotkey?
+    private var toggleGeminiHotkey: Hotkey?
+    private var cancelHotkey: Hotkey?
 
     func loadWhisperModelSettings() -> [String: WhisperModelSettings] {
         return whisperModelSettingsMap
@@ -142,27 +142,27 @@ final class MockSettings: SettingsStorageProtocol {
         whisperModelSettingsMap = settings
     }
 
-    func loadToggleCloudHotkey() -> Hotkey {
+    func loadToggleCloudHotkey() -> Hotkey? {
         return toggleCloudHotkey
     }
 
-    func saveToggleCloudHotkey(_ hotkey: Hotkey) {
+    func saveToggleCloudHotkey(_ hotkey: Hotkey?) {
         toggleCloudHotkey = hotkey
     }
 
-    func loadToggleGeminiHotkey() -> Hotkey {
+    func loadToggleGeminiHotkey() -> Hotkey? {
         return toggleGeminiHotkey
     }
 
-    func saveToggleGeminiHotkey(_ hotkey: Hotkey) {
+    func saveToggleGeminiHotkey(_ hotkey: Hotkey?) {
         toggleGeminiHotkey = hotkey
     }
 
-    func loadCancelHotkey() -> Hotkey {
+    func loadCancelHotkey() -> Hotkey? {
         return cancelHotkey
     }
 
-    func saveCancelHotkey(_ hotkey: Hotkey) {
+    func saveCancelHotkey(_ hotkey: Hotkey?) {
         cancelHotkey = hotkey
     }
 }
@@ -344,7 +344,7 @@ final class MockHotkeyManager: HotkeyManagerProtocol {
     var updateLocalModelHotkeysCallCount = 0
     var updateCloudHotkeysCallCount = 0
     var lastLocalModelHotkeys: [String: Hotkey]?
-    var lastCloudHotkeys: (cloud: Hotkey, gemini: Hotkey, cancel: Hotkey)?
+    var lastCloudHotkeys: (cloud: Hotkey?, gemini: Hotkey?, cancel: Hotkey?)?
     var isPaused = false
 
     func start() {
@@ -360,7 +360,7 @@ final class MockHotkeyManager: HotkeyManagerProtocol {
         lastLocalModelHotkeys = hotkeys
     }
 
-    func updateCloudHotkeys(toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey) {
+    func updateCloudHotkeys(toggleCloud: Hotkey?, toggleGemini: Hotkey?, cancel: Hotkey?) {
         updateCloudHotkeysCallCount += 1
         lastCloudHotkeys = (toggleCloud, toggleGemini, cancel)
     }

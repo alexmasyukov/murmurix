@@ -10,13 +10,13 @@ struct SettingsView: View {
 
     var onModelToggle: ((String, Bool) -> Void)?
     var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?
-    var onCloudHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
+    var onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)?
 
     init(
         loadedModels: Binding<Set<String>>,
         onModelToggle: ((String, Bool) -> Void)? = nil,
         onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
-        onCloudHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)? = nil
+        onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)? = nil
     ) {
         self._loadedModels = loadedModels
         self.onModelToggle = onModelToggle
