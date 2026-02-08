@@ -40,12 +40,9 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
             throw MurmurixError.model(.notFound(name))
         }
 
-        Logger.Daemon.info("Loading WhisperKit model: \(name)")
+        Logger.Model.info("Loading WhisperKit model: \(name)")
 
-        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let modelFolder = documentsDir
-            .appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml/openai_whisper-\(name)")
-            .path
+        let modelFolder = ModelPaths.modelDir(for: name).path
 
         let config = WhisperKitConfig(
             modelFolder: modelFolder,
@@ -61,7 +58,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         currentModelName = name
         lock.unlock()
 
-        Logger.Daemon.info("WhisperKit model loaded: \(name)")
+        Logger.Model.info("WhisperKit model loaded: \(name)")
     }
 
     func unloadModel() async {
@@ -73,7 +70,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
 
         if let pipe = pipe {
             await pipe.unloadModels()
-            Logger.Daemon.info("WhisperKit model unloaded")
+            Logger.Model.info("WhisperKit model unloaded")
         }
     }
 
@@ -104,7 +101,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     }
 
     func downloadModel(_ name: String, progress: @escaping @Sendable (Double) -> Void) async throws {
-        Logger.Daemon.info("Downloading WhisperKit model: \(name)")
+        Logger.Model.info("Downloading WhisperKit model: \(name)")
 
         _ = try await WhisperKit.download(
             variant: "openai_whisper-\(name)",
@@ -114,6 +111,6 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
             }
         )
 
-        Logger.Daemon.info("WhisperKit model downloaded: \(name)")
+        Logger.Model.info("WhisperKit model downloaded: \(name)")
     }
 }

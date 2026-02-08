@@ -91,3 +91,24 @@ enum AppPaths {
         NSHomeDirectory() + "/Library/Application Support/Murmurix"
     }
 }
+
+// MARK: - Defaults
+
+enum Defaults {
+    static let language = "ru"
+}
+
+// MARK: - Model Paths
+
+enum ModelPaths {
+    static let repoSubpath = "huggingface/models/argmaxinc/whisperkit-coreml"
+
+    static var repoDir: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            .appendingPathComponent(repoSubpath)
+    }
+
+    static func modelDir(for name: String) -> URL {
+        repoDir.appendingPathComponent("openai_whisper-\(name)")
+    }
+}

@@ -6,16 +6,6 @@
 import Foundation
 import SQLite3
 
-// MARK: - Repository Protocol
-
-protocol Repository<T> {
-    associatedtype T
-    func save(_ item: T)
-    func fetchAll() -> [T]
-    func delete(id: UUID)
-    func deleteAll()
-}
-
 // MARK: - Transcription Repository Protocol
 
 /// Specific protocol for TranscriptionRecord repository, easier to mock
@@ -98,9 +88,7 @@ final class SQLiteDatabase {
 
 // MARK: - Transcription Repository
 
-final class SQLiteTranscriptionRepository: Repository, TranscriptionRepositoryProtocol {
-    typealias T = TranscriptionRecord
-
+final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
     private let database: SQLiteDatabase
 
     init(database: SQLiteDatabase) {

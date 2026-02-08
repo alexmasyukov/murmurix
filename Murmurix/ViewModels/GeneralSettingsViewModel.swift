@@ -142,8 +142,7 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
             await whisperKitService.unloadModel()
         }
         let fm = FileManager.default
-        let documentsDir = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let modelDir = documentsDir.appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml/openai_whisper-\(modelName)")
+        let modelDir = ModelPaths.modelDir(for: modelName)
         try? fm.removeItem(at: modelDir)
         loadInstalledModels()
     }
@@ -153,8 +152,7 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
             await whisperKitService.unloadModel()
         }
         let fm = FileManager.default
-        let documentsDir = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let repoDir = documentsDir.appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml")
+        let repoDir = ModelPaths.repoDir
         if let contents = try? fm.contentsOfDirectory(atPath: repoDir.path) {
             for item in contents where item.hasPrefix("openai_whisper-") {
                 try? fm.removeItem(at: repoDir.appendingPathComponent(item))

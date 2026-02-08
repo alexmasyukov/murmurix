@@ -11,7 +11,7 @@ protocol GeminiTranscriptionServiceProtocol: Sendable {
     func validateAPIKey(_ apiKey: String) async throws -> Bool
 }
 
-final class GeminiTranscriptionService: @unchecked Sendable, GeminiTranscriptionServiceProtocol {
+final class GeminiTranscriptionService: GeminiTranscriptionServiceProtocol, Sendable {
     static let shared = GeminiTranscriptionService()
 
     private init() {}

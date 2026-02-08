@@ -5,7 +5,7 @@
 
 import Foundation
 
-final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProtocol {
+final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
     private let whisperKitService: WhisperKitServiceProtocol
     private let settings: SettingsStorageProtocol
     private let openAIService: OpenAITranscriptionServiceProtocol
@@ -17,7 +17,7 @@ final class TranscriptionService: @unchecked Sendable, TranscriptionServiceProto
         settings: SettingsStorageProtocol = Settings.shared,
         openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
         geminiService: GeminiTranscriptionServiceProtocol = GeminiTranscriptionService.shared,
-        language: String = "ru"
+        language: String = Defaults.language
     ) {
         self.whisperKitService = whisperKitService
         self.settings = settings

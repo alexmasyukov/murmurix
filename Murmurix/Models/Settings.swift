@@ -17,7 +17,7 @@ final class Settings: SettingsStorageProtocol {
         static let toggleCloudHotkey = "toggleCloudHotkey"
         static let toggleGeminiHotkey = "toggleGeminiHotkey"
         static let cancelHotkey = "cancelHotkey"
-        static let keepDaemonRunning = "keepDaemonRunning"
+        static let keepModelLoaded = "keepModelLoaded"
         static let language = "language"
         static let whisperModel = "whisperModel"
         static let transcriptionMode = "transcriptionMode"
@@ -33,23 +33,30 @@ final class Settings: SettingsStorageProtocol {
     }
 
     private func registerDefaults() {
-        if defaults.object(forKey: Keys.keepDaemonRunning) == nil {
-            defaults.set(true, forKey: Keys.keepDaemonRunning)
+        // Migrate old key name
+        if defaults.object(forKey: "keepModelLoaded") == nil,
+           let oldValue = defaults.object(forKey: "keepDaemonRunning") as? Bool {
+            defaults.set(oldValue, forKey: "keepModelLoaded")
+            defaults.removeObject(forKey: "keepDaemonRunning")
+        }
+
+        if defaults.object(forKey: Keys.keepModelLoaded) == nil {
+            defaults.set(true, forKey: Keys.keepModelLoaded)
         }
         if defaults.string(forKey: Keys.language) == nil {
-            defaults.set("ru", forKey: Keys.language)
+            defaults.set(Defaults.language, forKey: Keys.language)
         }
     }
 
     // MARK: - Core Settings
 
     var keepModelLoaded: Bool {
-        get { defaults.bool(forKey: Keys.keepDaemonRunning) }
-        set { defaults.set(newValue, forKey: Keys.keepDaemonRunning) }
+        get { defaults.bool(forKey: Keys.keepModelLoaded) }
+        set { defaults.set(newValue, forKey: Keys.keepModelLoaded) }
     }
 
     var language: String {
-        get { defaults.string(forKey: Keys.language) ?? "ru" }
+        get { defaults.string(forKey: Keys.language) ?? Defaults.language }
         set { defaults.set(newValue, forKey: Keys.language) }
     }
 

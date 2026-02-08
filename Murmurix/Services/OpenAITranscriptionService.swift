@@ -10,7 +10,7 @@ protocol OpenAITranscriptionServiceProtocol: Sendable {
     func validateAPIKey(_ apiKey: String) async throws -> Bool
 }
 
-final class OpenAITranscriptionService: @unchecked Sendable, OpenAITranscriptionServiceProtocol {
+final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Sendable {
     static let shared = OpenAITranscriptionService()
 
     private let baseURL = "https://api.openai.com/v1/audio/transcriptions"

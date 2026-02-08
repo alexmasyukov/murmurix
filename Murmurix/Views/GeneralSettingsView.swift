@@ -6,8 +6,8 @@
 import SwiftUI
 
 struct GeneralSettingsView: View {
-    @AppStorage("keepDaemonRunning") private var keepModelLoaded = true
-    @AppStorage("language") private var language = "ru"
+    @AppStorage("keepModelLoaded") private var keepModelLoaded = true
+    @AppStorage("language") private var language = Defaults.language
     @AppStorage("whisperModel") private var whisperModel = WhisperModel.small.rawValue
     @AppStorage("openaiTranscriptionModel") private var openaiTranscriptionModel = OpenAITranscriptionModel.gpt4oTranscribe.rawValue
 
@@ -211,50 +211,6 @@ struct GeneralSettingsView: View {
         }
     }
 
-    private var localTestButton: some View {
-        VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
-            HStack {
-                Button {
-                    Task {
-                        await viewModel.testLocalModel()
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        if viewModel.isTestingLocal {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
-                        Text(viewModel.isTestingLocal ? "Testing..." : "Test Local Model")
-                    }
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(viewModel.isTestingLocal || !viewModel.isModelInstalled(whisperModel))
-
-                Spacer()
-            }
-
-            // Test result
-            if let result = viewModel.localTestResult {
-                HStack(spacing: 4) {
-                    switch result {
-                    case .success:
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Model works correctly")
-                            .foregroundColor(.green)
-                    case .failure(let message):
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.red)
-                        Text(message)
-                            .foregroundColor(.red)
-                    }
-                }
-                .font(Typography.description)
-            }
-        }
-    }
-
     @ViewBuilder
     private var modelManagement: some View {
         if !viewModel.installedModels.isEmpty {
@@ -340,56 +296,21 @@ struct GeneralSettingsView: View {
     }
 
     private var geminiApiKeyField: some View {
-        VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
-            Text("API Key")
-                .font(Typography.label)
-                .foregroundColor(.white)
-
-            HStack(spacing: Layout.Spacing.item) {
-                TextField("AI...", text: $geminiApiKey)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: .infinity)
-                    .onChange(of: geminiApiKey) { _, newValue in
-                        viewModel.settings.geminiApiKey = newValue
-                        viewModel.clearTestResult(for: .gemini)
-                    }
-
-                Button {
-                    Task {
-                        await viewModel.testGemini(apiKey: geminiApiKey)
-                    }
-                } label: {
-                    if viewModel.isTestingGemini {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Text("Test")
-                    }
+        ApiKeyField(
+            placeholder: "AI...",
+            apiKey: $geminiApiKey,
+            isTesting: viewModel.isTestingGemini,
+            testResult: viewModel.geminiTestResult,
+            onKeyChanged: { newValue in
+                viewModel.settings.geminiApiKey = newValue
+                viewModel.clearTestResult(for: .gemini)
+            },
+            onTest: {
+                Task {
+                    await viewModel.testGemini(apiKey: geminiApiKey)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(geminiApiKey.isEmpty || viewModel.isTestingGemini)
             }
-
-            // Test result
-            if let result = viewModel.geminiTestResult {
-                HStack(spacing: 4) {
-                    switch result {
-                    case .success:
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Connection successful")
-                            .foregroundColor(.green)
-                    case .failure(let message):
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.red)
-                        Text(message)
-                            .foregroundColor(.red)
-                    }
-                }
-                .font(Typography.description)
-            }
-        }
+        )
     }
 
     private var openaiModelPicker: some View {
@@ -413,56 +334,21 @@ struct GeneralSettingsView: View {
     }
 
     private var openaiApiKeyField: some View {
-        VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
-            Text("API Key")
-                .font(Typography.label)
-                .foregroundColor(.white)
-
-            HStack(spacing: Layout.Spacing.item) {
-                TextField("sk-...", text: $openaiApiKey)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: .infinity)
-                    .onChange(of: openaiApiKey) { _, newValue in
-                        viewModel.settings.openaiApiKey = newValue
-                        viewModel.clearTestResult(for: .openAI)
-                    }
-
-                Button {
-                    Task {
-                        await viewModel.testOpenAI(apiKey: openaiApiKey)
-                    }
-                } label: {
-                    if viewModel.isTestingOpenAI {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Text("Test")
-                    }
+        ApiKeyField(
+            placeholder: "sk-...",
+            apiKey: $openaiApiKey,
+            isTesting: viewModel.isTestingOpenAI,
+            testResult: viewModel.openaiTestResult,
+            onKeyChanged: { newValue in
+                viewModel.settings.openaiApiKey = newValue
+                viewModel.clearTestResult(for: .openAI)
+            },
+            onTest: {
+                Task {
+                    await viewModel.testOpenAI(apiKey: openaiApiKey)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(openaiApiKey.isEmpty || viewModel.isTestingOpenAI)
             }
-
-            // Test result
-            if let result = viewModel.openaiTestResult {
-                HStack(spacing: 4) {
-                    switch result {
-                    case .success:
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Connection successful")
-                            .foregroundColor(.green)
-                    case .failure(let message):
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.red)
-                        Text(message)
-                            .foregroundColor(.red)
-                    }
-                }
-                .font(Typography.description)
-            }
-        }
+        )
     }
 
     private var languagePicker: some View {
@@ -558,21 +444,7 @@ struct GeneralSettingsView: View {
                 }
 
                 if let result = viewModel.localTestResult {
-                    HStack(spacing: 4) {
-                        switch result {
-                        case .success:
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("Model works correctly")
-                                .foregroundColor(.green)
-                        case .failure(let message):
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.red)
-                            Text(message)
-                                .foregroundColor(.red)
-                        }
-                    }
-                    .font(Typography.description)
+                    TestResultBadge(result: result, successText: "Model works correctly")
                 }
             }
         }

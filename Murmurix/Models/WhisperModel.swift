@@ -26,9 +26,7 @@ enum WhisperModel: String, CaseIterable {
 
     var isInstalled: Bool {
         let fm = FileManager.default
-        let documentsDir = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let modelDir = documentsDir
-            .appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml/openai_whisper-\(rawValue)")
+        let modelDir = ModelPaths.modelDir(for: rawValue)
 
         var isDirectory: ObjCBool = false
         guard fm.fileExists(atPath: modelDir.path, isDirectory: &isDirectory),
