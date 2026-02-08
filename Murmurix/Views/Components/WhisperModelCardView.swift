@@ -26,42 +26,49 @@ struct WhisperModelCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerRow
-                .padding(.bottom, Layout.Spacing.item)
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
 
             Divider()
                 .background(AppColors.divider)
                 .padding(.leading, Layout.Padding.standard)
 
             hotkeyRow
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
 
             Divider()
                 .background(AppColors.divider)
                 .padding(.leading, Layout.Padding.standard)
 
             keepLoadedRow
-                .padding(.bottom, Layout.Spacing.item)
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
 
             if isInstalled {
                 Divider()
                     .background(AppColors.divider)
                     .padding(.leading, Layout.Padding.standard)
-                    .padding(.bottom, Layout.Spacing.item)
 
                 actionButtons
+                    .padding(.horizontal, Layout.Padding.standard)
+                    .padding(.vertical, Layout.Padding.vertical)
+
                 if let result = testResult {
                     TestResultBadge(result: result, successText: L10n.modelWorksCorrectly)
+                        .padding(.horizontal, Layout.Padding.standard)
+                        .padding(.bottom, Layout.Padding.vertical)
                 }
             } else {
                 Divider()
                     .background(AppColors.divider)
                     .padding(.leading, Layout.Padding.standard)
-                    .padding(.bottom, Layout.Spacing.item)
 
                 downloadSection
+                    .padding(.horizontal, Layout.Padding.standard)
+                    .padding(.vertical, Layout.Padding.vertical)
             }
         }
-        .padding(.horizontal, Layout.Padding.standard)
-        .padding(.vertical, Layout.Padding.vertical)
         .background(AppColors.cardBackground)
         .cornerRadius(Layout.CornerRadius.card)
         .padding(.horizontal, Layout.Padding.standard)
