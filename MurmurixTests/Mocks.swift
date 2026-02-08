@@ -41,26 +41,36 @@ final class MockAudioRecorder: AudioRecorderProtocol {
 // MARK: - Mock Transcription Service
 
 final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked Sendable {
-    var isModelLoaded: Bool = false
+    var loadedModels: Set<String> = []
 
     var loadModelCallCount = 0
     var unloadModelCallCount = 0
+    var unloadAllModelsCallCount = 0
     var transcribeCallCount = 0
 
     var transcriptionResult: Result<String, Error> = .success("Test transcription")
     var transcriptionDelay: TimeInterval = 0
 
-    func loadModel() async throws {
+    func isModelLoaded(name: String) -> Bool {
+        loadedModels.contains(name)
+    }
+
+    func loadModel(name: String) async throws {
         loadModelCallCount += 1
-        isModelLoaded = true
+        loadedModels.insert(name)
     }
 
-    func unloadModel() async {
+    func unloadModel(name: String) async {
         unloadModelCallCount += 1
-        isModelLoaded = false
+        loadedModels.remove(name)
     }
 
-    func transcribe(audioURL: URL, mode: TranscriptionMode = .local) async throws -> String {
+    func unloadAllModels() async {
+        unloadAllModelsCallCount += 1
+        loadedModels.removeAll()
+    }
+
+    func transcribe(audioURL: URL, mode: TranscriptionMode = .local(model: "small")) async throws -> String {
         transcribeCallCount += 1
 
         if transcriptionDelay > 0 {
@@ -112,26 +122,24 @@ final class MockHistoryService: HistoryServiceProtocol {
 // MARK: - Mock Settings
 
 final class MockSettings: SettingsStorageProtocol {
-    var keepModelLoaded: Bool = true
     var language: String = "ru"
-    var transcriptionMode: String = "local"
-    var whisperModel: String = "small"
+    var appLanguage: String = "en"
     var openaiApiKey: String = ""
     var openaiTranscriptionModel: String = "gpt-4o-transcribe"
     var geminiApiKey: String = ""
     var geminiModel: String = GeminiTranscriptionModel.flash2.rawValue
 
-    private var toggleLocalHotkey: Hotkey = .toggleLocalDefault
+    private var whisperModelSettingsMap: [String: WhisperModelSettings] = [:]
     private var toggleCloudHotkey: Hotkey = .toggleCloudDefault
     private var toggleGeminiHotkey: Hotkey = .toggleGeminiDefault
     private var cancelHotkey: Hotkey = .cancelDefault
 
-    func loadToggleLocalHotkey() -> Hotkey {
-        return toggleLocalHotkey
+    func loadWhisperModelSettings() -> [String: WhisperModelSettings] {
+        return whisperModelSettingsMap
     }
 
-    func saveToggleLocalHotkey(_ hotkey: Hotkey) {
-        toggleLocalHotkey = hotkey
+    func saveWhisperModelSettings(_ settings: [String: WhisperModelSettings]) {
+        whisperModelSettingsMap = settings
     }
 
     func loadToggleCloudHotkey() -> Hotkey {
@@ -211,26 +219,40 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
 // MARK: - Mock WhisperKit Service
 
 final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
-    var isModelLoaded: Bool = false
+    var loadedModelNames: Set<String> = []
     var loadModelCallCount = 0
     var unloadModelCallCount = 0
+    var unloadAllModelsCallCount = 0
     var transcribeCallCount = 0
     var downloadModelCallCount = 0
     var lastModelName: String?
     var transcribeResult: Result<String, Error> = .success("Transcribed text")
 
+    func isModelLoaded(name: String) -> Bool {
+        loadedModelNames.contains(name)
+    }
+
+    var loadedModels: [String] {
+        Array(loadedModelNames)
+    }
+
     func loadModel(name: String) async throws {
         loadModelCallCount += 1
         lastModelName = name
-        isModelLoaded = true
+        loadedModelNames.insert(name)
     }
 
-    func unloadModel() async {
+    func unloadModel(name: String) async {
         unloadModelCallCount += 1
-        isModelLoaded = false
+        loadedModelNames.remove(name)
     }
 
-    func transcribe(audioURL: URL, language: String) async throws -> String {
+    func unloadAllModels() async {
+        unloadAllModelsCallCount += 1
+        loadedModelNames.removeAll()
+    }
+
+    func transcribe(audioURL: URL, language: String, model: String) async throws -> String {
         transcribeCallCount += 1
         switch transcribeResult {
         case .success(let text): return text
@@ -312,15 +334,17 @@ final class MockGeminiTranscriptionService: GeminiTranscriptionServiceProtocol, 
 // MARK: - Mock Hotkey Manager
 
 final class MockHotkeyManager: HotkeyManagerProtocol {
-    var onToggleLocalRecording: (() -> Void)?
+    var onToggleLocalRecording: ((String) -> Void)?
     var onToggleCloudRecording: (() -> Void)?
     var onToggleGeminiRecording: (() -> Void)?
     var onCancelRecording: (() -> Void)?
 
     var startCallCount = 0
     var stopCallCount = 0
-    var updateHotkeysCallCount = 0
-    var lastHotkeys: (local: Hotkey, cloud: Hotkey, gemini: Hotkey, cancel: Hotkey)?
+    var updateLocalModelHotkeysCallCount = 0
+    var updateCloudHotkeysCallCount = 0
+    var lastLocalModelHotkeys: [String: Hotkey]?
+    var lastCloudHotkeys: (cloud: Hotkey, gemini: Hotkey, cancel: Hotkey)?
     var isPaused = false
 
     func start() {
@@ -331,9 +355,14 @@ final class MockHotkeyManager: HotkeyManagerProtocol {
         stopCallCount += 1
     }
 
-    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey) {
-        updateHotkeysCallCount += 1
-        lastHotkeys = (toggleLocal, toggleCloud, toggleGemini, cancel)
+    func updateLocalModelHotkeys(_ hotkeys: [String: Hotkey]) {
+        updateLocalModelHotkeysCallCount += 1
+        lastLocalModelHotkeys = hotkeys
+    }
+
+    func updateCloudHotkeys(toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey) {
+        updateCloudHotkeysCallCount += 1
+        lastCloudHotkeys = (toggleCloud, toggleGemini, cancel)
     }
 }
 

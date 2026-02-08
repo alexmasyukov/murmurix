@@ -62,24 +62,24 @@ final class WindowManager {
     // MARK: - Settings Window
 
     func showSettingsWindow(
-        isModelLoaded: Bool,
-        onModelToggle: @escaping (Bool) -> Void,
-        onHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey, Hotkey) -> Void,
-        onModelChanged: @escaping () -> Void,
+        loadedModels: Set<String>,
+        onModelToggle: @escaping (String, Bool) -> Void,
+        onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
+        onCloudHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey) -> Void,
         onWindowOpen: @escaping () -> Void,
         onWindowClose: @escaping () -> Void
     ) {
         if settingsController == nil {
             settingsController = SettingsWindowController(
-                isModelLoaded: isModelLoaded,
+                loadedModels: loadedModels,
                 onModelToggle: onModelToggle,
-                onHotkeysChanged: onHotkeysChanged,
-                onModelChanged: onModelChanged,
+                onLocalHotkeysChanged: onLocalHotkeysChanged,
+                onCloudHotkeysChanged: onCloudHotkeysChanged,
                 onWindowOpen: onWindowOpen,
                 onWindowClose: onWindowClose
             )
         } else {
-            settingsController?.updateModelStatus(isModelLoaded)
+            settingsController?.updateLoadedModels(loadedModels)
             onWindowOpen()
         }
         settingsController?.showWindow(nil)

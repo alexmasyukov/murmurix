@@ -19,20 +19,18 @@ struct SettingsTests {
 
     // MARK: - Default Values
 
-    @Test func defaultKeepModelLoadedIsTrue() {
+    @Test func defaultWhisperModelSettingsHasMigratedDefault() {
         let settings = createSettings()
-        #expect(settings.keepModelLoaded == true)
+        let map = settings.loadWhisperModelSettings()
+        // Fresh install migrates with small model + default hotkey + keepLoaded=true
+        #expect(map["small"] != nil)
+        #expect(map["small"]?.keepLoaded == true)
+        #expect(map["small"]?.hotkey == .toggleLocalDefault)
     }
 
     @Test func defaultLanguageIsRussian() {
         let settings = createSettings()
         #expect(settings.language == "ru")
-    }
-
-    @Test func defaultToggleLocalHotkeyIsSet() {
-        let settings = createSettings()
-        let hotkey = settings.loadToggleLocalHotkey()
-        #expect(hotkey == Hotkey.toggleLocalDefault)
     }
 
     @Test func defaultToggleCloudHotkeyIsSet() {
@@ -60,14 +58,17 @@ struct SettingsTests {
 
     // MARK: - Persistence
 
-    @Test func keepModelLoadedPersists() {
+    @Test func whisperModelSettingsPersist() {
         let settings = createSettings()
 
-        settings.keepModelLoaded = false
-        #expect(settings.keepModelLoaded == false)
+        var map = settings.loadWhisperModelSettings()
+        let hotkey = Hotkey(keyCode: 0, modifiers: UInt32(cmdKey))
+        map["tiny"] = WhisperModelSettings(hotkey: hotkey, keepLoaded: true)
+        settings.saveWhisperModelSettings(map)
 
-        settings.keepModelLoaded = true
-        #expect(settings.keepModelLoaded == true)
+        let loaded = settings.loadWhisperModelSettings()
+        #expect(loaded["tiny"]?.hotkey == hotkey)
+        #expect(loaded["tiny"]?.keepLoaded == true)
     }
 
     @Test func languagePersists() {
@@ -78,16 +79,6 @@ struct SettingsTests {
 
         settings.language = "auto"
         #expect(settings.language == "auto")
-    }
-
-    @Test func toggleLocalHotkeyPersists() {
-        let settings = createSettings()
-        let newHotkey = Hotkey(keyCode: 0, modifiers: UInt32(cmdKey | shiftKey)) // Cmd+Shift+A
-
-        settings.saveToggleLocalHotkey(newHotkey)
-        let loaded = settings.loadToggleLocalHotkey()
-
-        #expect(loaded == newHotkey)
     }
 
     @Test func toggleCloudHotkeyPersists() {
@@ -132,16 +123,16 @@ struct SettingsTests {
 
     // MARK: - Edge Cases
 
-    @Test func loadToggleLocalHotkeyReturnsDefaultWhenCorrupted() {
+    @Test func loadCloudHotkeyReturnsDefaultWhenCorrupted() {
         let suiteName = "com.murmurix.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
 
         // Write corrupted data
-        defaults.set(Data([0x00, 0x01, 0x02]), forKey: "toggleLocalHotkey")
+        defaults.set(Data([0x00, 0x01, 0x02]), forKey: "toggleCloudHotkey")
 
         let settings = Settings(defaults: defaults)
-        let hotkey = settings.loadToggleLocalHotkey()
+        let hotkey = settings.loadToggleCloudHotkey()
 
-        #expect(hotkey == Hotkey.toggleLocalDefault)
+        #expect(hotkey == Hotkey.toggleCloudDefault)
     }
 }

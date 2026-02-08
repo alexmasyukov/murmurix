@@ -596,8 +596,6 @@ struct DependencyInjectionTests {
 
     @Test func transcriptionServiceAcceptsDependencies() {
         let mockSettings = MockSettings()
-        mockSettings.transcriptionMode = "local"
-        mockSettings.whisperModel = "tiny"
 
         let mockWhisperKit = MockWhisperKitService()
         let service = TranscriptionService(whisperKitService: mockWhisperKit, settings: mockSettings)

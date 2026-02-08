@@ -5,6 +5,13 @@
 
 import Foundation
 
+struct WhisperModelSettings: Codable, Equatable {
+    var hotkey: Hotkey?
+    var keepLoaded: Bool
+
+    static let `default` = WhisperModelSettings(hotkey: nil, keepLoaded: false)
+}
+
 final class Settings: SettingsStorageProtocol {
     static let shared = Settings()
 
@@ -13,16 +20,19 @@ final class Settings: SettingsStorageProtocol {
     // MARK: - Keys
 
     private enum Keys {
-        static let toggleLocalHotkey = "toggleLocalHotkey"
         static let toggleCloudHotkey = "toggleCloudHotkey"
         static let toggleGeminiHotkey = "toggleGeminiHotkey"
         static let cancelHotkey = "cancelHotkey"
-        static let keepModelLoaded = "keepModelLoaded"
+        static let appLanguage = "appLanguage"
         static let language = "language"
-        static let whisperModel = "whisperModel"
-        static let transcriptionMode = "transcriptionMode"
         static let openaiTranscriptionModel = "openaiTranscriptionModel"
         static let geminiModel = "geminiModel"
+        static let whisperModelSettings = "whisperModelSettings"
+        // Legacy keys (for migration)
+        static let legacyToggleLocalHotkey = "toggleLocalHotkey"
+        static let legacyKeepModelLoaded = "keepModelLoaded"
+        static let legacyWhisperModel = "whisperModel"
+        static let legacyTranscriptionMode = "transcriptionMode"
     }
 
     // MARK: - Init
@@ -33,41 +43,80 @@ final class Settings: SettingsStorageProtocol {
     }
 
     private func registerDefaults() {
-        // Migrate old key name
-        if defaults.object(forKey: "keepModelLoaded") == nil,
+        // Migrate old "keepDaemonRunning" → "keepModelLoaded"
+        if defaults.object(forKey: Keys.legacyKeepModelLoaded) == nil,
            let oldValue = defaults.object(forKey: "keepDaemonRunning") as? Bool {
-            defaults.set(oldValue, forKey: "keepModelLoaded")
+            defaults.set(oldValue, forKey: Keys.legacyKeepModelLoaded)
             defaults.removeObject(forKey: "keepDaemonRunning")
         }
 
-        if defaults.object(forKey: Keys.keepModelLoaded) == nil {
-            defaults.set(true, forKey: Keys.keepModelLoaded)
-        }
         if defaults.string(forKey: Keys.language) == nil {
             defaults.set(Defaults.language, forKey: Keys.language)
         }
+
+        // Migrate single-model settings → per-model WhisperModelSettings
+        migrateToPerModelSettings()
+    }
+
+    private func migrateToPerModelSettings() {
+        // Skip if already migrated
+        guard defaults.data(forKey: Keys.whisperModelSettings) == nil else { return }
+
+        let oldModel = defaults.string(forKey: Keys.legacyWhisperModel) ?? WhisperModel.small.rawValue
+        let oldKeepLoaded = defaults.object(forKey: Keys.legacyKeepModelLoaded) as? Bool ?? true
+
+        // Migrate old local hotkey
+        var oldHotkey: Hotkey? = nil
+        if let data = defaults.data(forKey: Keys.legacyToggleLocalHotkey),
+           let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) {
+            oldHotkey = hotkey
+        } else {
+            oldHotkey = .toggleLocalDefault
+        }
+
+        let modelSettings = WhisperModelSettings(hotkey: oldHotkey, keepLoaded: oldKeepLoaded)
+        var settingsMap: [String: WhisperModelSettings] = [:]
+        settingsMap[oldModel] = modelSettings
+
+        saveWhisperModelSettings(settingsMap)
+
+        // Clean up legacy keys
+        defaults.removeObject(forKey: Keys.legacyToggleLocalHotkey)
+        defaults.removeObject(forKey: Keys.legacyKeepModelLoaded)
+        defaults.removeObject(forKey: Keys.legacyWhisperModel)
+        defaults.removeObject(forKey: Keys.legacyTranscriptionMode)
     }
 
     // MARK: - Core Settings
-
-    var keepModelLoaded: Bool {
-        get { defaults.bool(forKey: Keys.keepModelLoaded) }
-        set { defaults.set(newValue, forKey: Keys.keepModelLoaded) }
-    }
 
     var language: String {
         get { defaults.string(forKey: Keys.language) ?? Defaults.language }
         set { defaults.set(newValue, forKey: Keys.language) }
     }
 
-    var whisperModel: String {
-        get { defaults.string(forKey: Keys.whisperModel) ?? WhisperModel.small.rawValue }
-        set { defaults.set(newValue, forKey: Keys.whisperModel) }
+    var appLanguage: String {
+        get { defaults.string(forKey: Keys.appLanguage) ?? "en" }
+        set { defaults.set(newValue, forKey: Keys.appLanguage) }
+    }
+
+    // MARK: - Per-Model WhisperKit Settings
+
+    func loadWhisperModelSettings() -> [String: WhisperModelSettings] {
+        guard let data = defaults.data(forKey: Keys.whisperModelSettings),
+              let map = try? JSONDecoder().decode([String: WhisperModelSettings].self, from: data) else {
+            return [:]
+        }
+        return map
+    }
+
+    func saveWhisperModelSettings(_ settings: [String: WhisperModelSettings]) {
+        if let data = try? JSONEncoder().encode(settings) {
+            defaults.set(data, forKey: Keys.whisperModelSettings)
+        }
     }
 
     // MARK: - Hotkey Settings
 
-    // Private helpers for DRY
     private func loadHotkey(key: String, defaultHotkey: Hotkey) -> Hotkey {
         guard let data = defaults.data(forKey: key),
               let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
@@ -80,14 +129,6 @@ final class Settings: SettingsStorageProtocol {
         if let data = try? JSONEncoder().encode(hotkey) {
             defaults.set(data, forKey: key)
         }
-    }
-
-    func loadToggleLocalHotkey() -> Hotkey {
-        loadHotkey(key: Keys.toggleLocalHotkey, defaultHotkey: .toggleLocalDefault)
-    }
-
-    func saveToggleLocalHotkey(_ hotkey: Hotkey) {
-        saveHotkey(key: Keys.toggleLocalHotkey, hotkey: hotkey)
     }
 
     func loadToggleCloudHotkey() -> Hotkey {
@@ -104,13 +145,6 @@ final class Settings: SettingsStorageProtocol {
 
     func saveCancelHotkey(_ hotkey: Hotkey) {
         saveHotkey(key: Keys.cancelHotkey, hotkey: hotkey)
-    }
-
-    // MARK: - Transcription Mode Settings
-
-    var transcriptionMode: String {
-        get { defaults.string(forKey: Keys.transcriptionMode) ?? "local" }
-        set { defaults.set(newValue, forKey: Keys.transcriptionMode) }
     }
 
     var openaiTranscriptionModel: String {

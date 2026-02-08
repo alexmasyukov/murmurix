@@ -17,7 +17,7 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "Transcription History"
+        window.title = L10n.historyTitle
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.minSize = NSSize(width: 500, height: 300)
@@ -25,6 +25,12 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
 
         self.init(window: window)
         window.delegate = self
+
+        NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange, object: nil, queue: .main
+        ) { [weak window] _ in
+            window?.title = L10n.historyTitle
+        }
 
         let contentView = HistoryView(viewModel: historyViewModel)
         window.contentView = NSHostingView(rootView: contentView)

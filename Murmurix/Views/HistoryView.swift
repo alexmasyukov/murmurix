@@ -8,6 +8,7 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var viewModel: HistoryViewModel
     @State private var showingClearConfirmation = false
+    @AppStorage("appLanguage") private var appLanguage = "en"
 
     init(viewModel: HistoryViewModel = HistoryViewModel()) {
         self.viewModel = viewModel
@@ -23,13 +24,13 @@ struct HistoryView: View {
         .onAppear {
             viewModel.loadRecords()
         }
-        .alert("Clear History", isPresented: $showingClearConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Clear All", role: .destructive) {
+        .alert(L10n.clearHistory, isPresented: $showingClearConfirmation) {
+            Button(L10n.cancel, role: .cancel) { }
+            Button(L10n.clearAll, role: .destructive) {
                 viewModel.clearHistory()
             }
         } message: {
-            Text("Are you sure you want to delete all \(viewModel.records.count) recordings? This cannot be undone.")
+            Text(L10n.clearHistoryMessage(count: viewModel.records.count))
         }
     }
 
@@ -49,7 +50,7 @@ struct HistoryView: View {
                         Button(role: .destructive) {
                             viewModel.deleteRecord(record)
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            Label(L10n.delete, systemImage: "trash")
                         }
                     }
             }
@@ -70,7 +71,7 @@ struct HistoryView: View {
 
             Spacer()
 
-            Text("\(viewModel.records.count) items")
+            Text(L10n.itemsCount(viewModel.records.count))
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -96,7 +97,7 @@ struct HistoryView: View {
             Image(systemName: "text.alignleft")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
-            Text("Select a transcription")
+            Text(L10n.selectTranscription)
                 .font(.headline)
                 .foregroundColor(.secondary)
         }

@@ -48,7 +48,7 @@ struct RecordingCoordinatorTests {
     @Test func toggleRecordingFromIdleStartsRecording() {
         let (coordinator, audioRecorder, _, _, _, delegate) = createCoordinator()
 
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         #expect(coordinator.state == .recording)
         #expect(audioRecorder.startRecordingCallCount == 1)
@@ -59,11 +59,11 @@ struct RecordingCoordinatorTests {
         let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
 
         // Start recording
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
         #expect(coordinator.state == .recording)
 
         // Stop recording
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         #expect(audioRecorder.stopRecordingCallCount == 1)
         #expect(delegate.recordingDidStopCallCount == 1)
@@ -83,13 +83,13 @@ struct RecordingCoordinatorTests {
         transcriptionService.transcriptionDelay = 0.5
 
         // Start and stop recording to begin transcription
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         #expect(coordinator.state == .transcribing)
 
         // Try to toggle again while transcribing
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         // Should still be transcribing, not start new recording
         #expect(coordinator.state == .transcribing)
@@ -101,7 +101,7 @@ struct RecordingCoordinatorTests {
     @Test func cancelRecordingStopsWithoutTranscription() {
         let (coordinator, audioRecorder, transcriptionService, _, _, _) = createCoordinator()
 
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
         #expect(coordinator.state == .recording)
 
         coordinator.cancelRecording()
@@ -127,8 +127,8 @@ struct RecordingCoordinatorTests {
         transcriptionService.transcriptionResult = .success("Hello world")
         settings.language = "en"
 
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         // Wait for async transcription
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -146,8 +146,8 @@ struct RecordingCoordinatorTests {
         struct TestError: Error {}
         transcriptionService.transcriptionResult = .failure(TestError())
 
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         // Wait for async transcription
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -160,23 +160,27 @@ struct RecordingCoordinatorTests {
 
     // MARK: - Model Control
 
-    @Test func loadModelIfNeededLoadsWhenEnabled() async throws {
+    @Test func loadModelsIfNeededLoadsWhenEnabled() async throws {
         let (coordinator, _, transcriptionService, _, settings, _) = createCoordinator()
-        settings.keepModelLoaded = true
+        var settingsMap: [String: WhisperModelSettings] = [:]
+        settingsMap["small"] = WhisperModelSettings(hotkey: nil, keepLoaded: true)
+        settings.saveWhisperModelSettings(settingsMap)
 
-        coordinator.loadModelIfNeeded()
+        coordinator.loadModelsIfNeeded()
 
-        // loadModelIfNeeded runs in a Task, give it time to execute
+        // loadModelsIfNeeded runs in a Task, give it time to execute
         try await Task.sleep(nanoseconds: 50_000_000)
 
         #expect(transcriptionService.loadModelCallCount == 1)
     }
 
-    @Test func loadModelIfNeededDoesNothingWhenDisabled() async throws {
+    @Test func loadModelsIfNeededDoesNothingWhenDisabled() async throws {
         let (coordinator, _, transcriptionService, _, settings, _) = createCoordinator()
-        settings.keepModelLoaded = false
+        var settingsMap: [String: WhisperModelSettings] = [:]
+        settingsMap["small"] = WhisperModelSettings(hotkey: nil, keepLoaded: false)
+        settings.saveWhisperModelSettings(settingsMap)
 
-        coordinator.loadModelIfNeeded()
+        coordinator.loadModelsIfNeeded()
 
         // Give time for any potential Task to execute
         try await Task.sleep(nanoseconds: 50_000_000)
@@ -187,14 +191,14 @@ struct RecordingCoordinatorTests {
     @Test func setModelLoadedLoadsOrUnloadsModel() async throws {
         let (coordinator, _, transcriptionService, _, _, _) = createCoordinator()
 
-        coordinator.setModelLoaded(true)
+        coordinator.setModelLoaded(true, model: "small")
 
         // setModelLoaded runs in a Task, give it time to execute
         try await Task.sleep(nanoseconds: 50_000_000)
 
         #expect(transcriptionService.loadModelCallCount == 1)
 
-        coordinator.setModelLoaded(false)
+        coordinator.setModelLoaded(false, model: "small")
 
         // Give time for the Task to execute
         try await Task.sleep(nanoseconds: 50_000_000)
@@ -208,8 +212,8 @@ struct RecordingCoordinatorTests {
         let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
         audioRecorder.hadVoiceActivity = false
 
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         #expect(coordinator.state == .idle)
         #expect(transcriptionService.transcribeCallCount == 0)
@@ -222,8 +226,8 @@ struct RecordingCoordinatorTests {
         let (coordinator, _, transcriptionService, _, _, delegate) = createCoordinator()
         transcriptionService.transcriptionDelay = 1.0 // Long delay
 
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         #expect(coordinator.state == .transcribing)
 
@@ -250,8 +254,8 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         // Wait for async transcription
         try await Task.sleep(nanoseconds: 200_000_000)
@@ -268,8 +272,8 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         // Wait for async transcription
         try await Task.sleep(nanoseconds: 200_000_000)
@@ -284,8 +288,8 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         #expect(!FileManager.default.fileExists(atPath: audioURL.path))
     }
@@ -296,7 +300,7 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
         coordinator.cancelRecording()
 
         #expect(!FileManager.default.fileExists(atPath: audioURL.path))
@@ -309,8 +313,8 @@ struct RecordingCoordinatorTests {
 
         #expect(FileManager.default.fileExists(atPath: audioURL.path))
 
-        coordinator.toggleRecording(mode: .local)
-        coordinator.toggleRecording(mode: .local)
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
 
         #expect(coordinator.state == .transcribing)
 
@@ -356,13 +360,13 @@ struct RecordingCoordinatorTests {
     }
 
     @Test func transcriptionModeIsCloudReturnsCorrectValue() {
-        #expect(TranscriptionMode.local.isCloud == false)
+        #expect(TranscriptionMode.local(model: "small").isCloud == false)
         #expect(TranscriptionMode.openai.isCloud == true)
         #expect(TranscriptionMode.gemini.isCloud == true)
     }
 
     @Test func transcriptionModeDisplayName() {
-        #expect(TranscriptionMode.local.displayName == "Local (Whisper)")
+        #expect(TranscriptionMode.local(model: "small").displayName == "Local (small)")
         #expect(TranscriptionMode.openai.displayName == "Cloud (OpenAI)")
         #expect(TranscriptionMode.gemini.displayName == "Cloud (Gemini)")
     }

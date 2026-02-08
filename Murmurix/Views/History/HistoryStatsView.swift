@@ -7,13 +7,14 @@ import SwiftUI
 
 struct HistoryStatsView: View {
     @ObservedObject var viewModel: HistoryViewModel
+    @AppStorage("appLanguage") private var appLanguage = "en"
 
     var body: some View {
         HStack(spacing: 0) {
             StatItemView(
                 icon: "waveform",
                 value: "\(viewModel.records.count)",
-                label: "recordings"
+                label: L10n.recordings
             )
 
             StatDivider()
@@ -21,7 +22,7 @@ struct HistoryStatsView: View {
             StatItemView(
                 icon: "clock",
                 value: viewModel.formattedTotalDuration,
-                label: "total time"
+                label: L10n.totalTime
             )
 
             StatDivider()
@@ -29,7 +30,7 @@ struct HistoryStatsView: View {
             StatItemView(
                 icon: "text.word.spacing",
                 value: "\(viewModel.totalWords)",
-                label: "words"
+                label: L10n.words
             )
         }
         .frame(maxWidth: .infinity)

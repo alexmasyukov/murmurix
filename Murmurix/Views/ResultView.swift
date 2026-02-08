@@ -11,6 +11,7 @@ struct ResultView: View {
     let duration: TimeInterval
     let onDelete: () -> Void
     let onClose: () -> Void
+    @AppStorage("appLanguage") private var appLanguage = "en"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -70,7 +71,7 @@ struct ResultView: View {
                     HStack(spacing: 5) {
                         Image(systemName: "doc.on.doc")
                             .font(Typography.description)
-                        Text("Copy")
+                        Text(L10n.copy)
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundColor(.white)

@@ -6,30 +6,30 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Binding var isModelLoaded: Bool
+    @Binding var loadedModels: Set<String>
 
-    var onModelToggle: ((Bool) -> Void)?
-    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)?
-    var onModelChanged: (() -> Void)?
+    var onModelToggle: ((String, Bool) -> Void)?
+    var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?
+    var onCloudHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
 
     init(
-        isModelLoaded: Binding<Bool>,
-        onModelToggle: ((Bool) -> Void)? = nil,
-        onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)? = nil,
-        onModelChanged: (() -> Void)? = nil
+        loadedModels: Binding<Set<String>>,
+        onModelToggle: ((String, Bool) -> Void)? = nil,
+        onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
+        onCloudHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)? = nil
     ) {
-        self._isModelLoaded = isModelLoaded
+        self._loadedModels = loadedModels
         self.onModelToggle = onModelToggle
-        self.onHotkeysChanged = onHotkeysChanged
-        self.onModelChanged = onModelChanged
+        self.onLocalHotkeysChanged = onLocalHotkeysChanged
+        self.onCloudHotkeysChanged = onCloudHotkeysChanged
     }
 
     var body: some View {
         GeneralSettingsView(
-            isModelLoaded: $isModelLoaded,
+            loadedModels: $loadedModels,
             onModelToggle: onModelToggle,
-            onHotkeysChanged: onHotkeysChanged,
-            onModelChanged: onModelChanged
+            onLocalHotkeysChanged: onLocalHotkeysChanged,
+            onCloudHotkeysChanged: onCloudHotkeysChanged
         )
         .frame(minWidth: 480, minHeight: 380)
         .preferredColorScheme(.dark)
@@ -37,5 +37,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(isModelLoaded: .constant(true))
+    SettingsView(loadedModels: .constant([]))
 }

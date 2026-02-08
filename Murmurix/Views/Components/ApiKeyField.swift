@@ -12,10 +12,11 @@ struct ApiKeyField: View {
     let testResult: APITestResult?
     let onKeyChanged: (String) -> Void
     let onTest: () -> Void
+    @AppStorage("appLanguage") private var appLanguage = "en"
 
     var body: some View {
         VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
-            Text("API Key")
+            Text(L10n.apiKey)
                 .font(Typography.label)
                 .foregroundColor(.white)
 
@@ -34,7 +35,7 @@ struct ApiKeyField: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text("Test")
+                        Text(L10n.test)
                     }
                 }
                 .buttonStyle(.bordered)

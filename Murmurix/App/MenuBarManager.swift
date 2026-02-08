@@ -7,7 +7,7 @@ import AppKit
 import Carbon
 
 protocol MenuBarManagerDelegate: AnyObject {
-    func menuBarDidRequestToggleLocalRecording()
+    func menuBarDidRequestToggleLocalRecording(model: String)
     func menuBarDidRequestToggleCloudRecording()
     func menuBarDidRequestToggleGeminiRecording()
     func menuBarDidRequestOpenHistory()
@@ -19,7 +19,9 @@ final class MenuBarManager {
     weak var delegate: MenuBarManagerDelegate?
 
     private var statusItem: NSStatusItem!
-    private var toggleLocalMenuItem: NSMenuItem?
+    private var menu: NSMenu!
+    private var localModelMenuItems: [String: NSMenuItem] = [:]
+    private var localSeparatorIndex: Int = 0
     private var toggleCloudMenuItem: NSMenuItem?
     private var toggleGeminiMenuItem: NSMenuItem?
     private let settings: SettingsStorageProtocol
@@ -33,15 +35,41 @@ final class MenuBarManager {
         setupMenu()
     }
 
+    func rebuildMenu() {
+        setupMenu()
+    }
+
     func updateHotkeyDisplay() {
-        if let menuItem = toggleLocalMenuItem {
-            applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleLocalHotkey())
-        }
         if let menuItem = toggleCloudMenuItem {
             applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleCloudHotkey())
         }
         if let menuItem = toggleGeminiMenuItem {
             applyHotkeyToMenuItem(menuItem, hotkey: settings.loadToggleGeminiHotkey())
+        }
+    }
+
+    func updateLocalModelMenuItems(hotkeys: [String: Hotkey]) {
+        // Remove existing local model items
+        for (_, item) in localModelMenuItems {
+            menu.removeItem(item)
+        }
+        localModelMenuItems.removeAll()
+
+        // Insert new local model items at the beginning
+        var insertIndex = 0
+        for model in WhisperModel.allCases {
+            guard let hotkey = hotkeys[model.rawValue] else { continue }
+            let item = NSMenuItem(
+                title: L10n.localModel(model.rawValue),
+                action: #selector(handleToggleLocalRecording(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = model.rawValue
+            applyHotkeyToMenuItem(item, hotkey: hotkey)
+            menu.insertItem(item, at: insertIndex)
+            localModelMenuItems[model.rawValue] = item
+            insertIndex += 1
         }
     }
 
@@ -56,19 +84,28 @@ final class MenuBarManager {
     }
 
     private func setupMenu() {
-        let menu = NSMenu()
+        menu = NSMenu()
 
-        toggleLocalMenuItem = NSMenuItem(
-            title: "Local Recording (Whisper)",
-            action: #selector(handleToggleLocalRecording),
-            keyEquivalent: ""
-        )
-        toggleLocalMenuItem?.target = self
-        applyHotkeyToMenuItem(toggleLocalMenuItem!, hotkey: settings.loadToggleLocalHotkey())
-        menu.addItem(toggleLocalMenuItem!)
+        // Add local model items from settings
+        let modelSettings = settings.loadWhisperModelSettings()
+        for model in WhisperModel.allCases {
+            guard let ms = modelSettings[model.rawValue], ms.hotkey != nil else { continue }
+            let item = NSMenuItem(
+                title: L10n.localModel(model.rawValue),
+                action: #selector(handleToggleLocalRecording(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = model.rawValue
+            if let hotkey = ms.hotkey {
+                applyHotkeyToMenuItem(item, hotkey: hotkey)
+            }
+            menu.addItem(item)
+            localModelMenuItems[model.rawValue] = item
+        }
 
         toggleCloudMenuItem = NSMenuItem(
-            title: "Cloud Recording (OpenAI)",
+            title: L10n.cloudRecordingOpenAI,
             action: #selector(handleToggleCloudRecording),
             keyEquivalent: ""
         )
@@ -77,7 +114,7 @@ final class MenuBarManager {
         menu.addItem(toggleCloudMenuItem!)
 
         toggleGeminiMenuItem = NSMenuItem(
-            title: "Gemini Recording",
+            title: L10n.geminiRecording,
             action: #selector(handleToggleGeminiRecording),
             keyEquivalent: ""
         )
@@ -88,7 +125,7 @@ final class MenuBarManager {
         menu.addItem(NSMenuItem.separator())
 
         let historyItem = NSMenuItem(
-            title: "History...",
+            title: L10n.history,
             action: #selector(handleOpenHistory),
             keyEquivalent: "h"
         )
@@ -96,7 +133,7 @@ final class MenuBarManager {
         menu.addItem(historyItem)
 
         let settingsItem = NSMenuItem(
-            title: "Settings...",
+            title: L10n.settings,
             action: #selector(handleOpenSettings),
             keyEquivalent: ","
         )
@@ -106,7 +143,7 @@ final class MenuBarManager {
         menu.addItem(NSMenuItem.separator())
 
         let quitItem = NSMenuItem(
-            title: "Quit",
+            title: L10n.quit,
             action: #selector(handleQuit),
             keyEquivalent: "q"
         )
@@ -131,8 +168,9 @@ final class MenuBarManager {
 
     // MARK: - Actions
 
-    @objc private func handleToggleLocalRecording() {
-        delegate?.menuBarDidRequestToggleLocalRecording()
+    @objc private func handleToggleLocalRecording(_ sender: NSMenuItem) {
+        guard let modelName = sender.representedObject as? String else { return }
+        delegate?.menuBarDidRequestToggleLocalRecording(model: modelName)
     }
 
     @objc private func handleToggleCloudRecording() {

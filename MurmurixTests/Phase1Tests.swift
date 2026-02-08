@@ -302,7 +302,8 @@ struct MockHotkeyManagerTests {
         let mock = MockHotkeyManager()
         #expect(mock.startCallCount == 0)
         #expect(mock.stopCallCount == 0)
-        #expect(mock.updateHotkeysCallCount == 0)
+        #expect(mock.updateLocalModelHotkeysCallCount == 0)
+        #expect(mock.updateCloudHotkeysCallCount == 0)
     }
 
     @Test func startIncreasesCallCount() {
@@ -321,20 +322,29 @@ struct MockHotkeyManagerTests {
         #expect(mock.stopCallCount == 2)
     }
 
-    @Test func updateHotkeysStoresValues() {
+    @Test func updateLocalModelHotkeysStoresValues() {
         let mock = MockHotkeyManager()
-        let local = Hotkey.toggleLocalDefault
+        let hotkey = Hotkey.toggleLocalDefault
+        let localHotkeys = ["small": hotkey]
+
+        mock.updateLocalModelHotkeys(localHotkeys)
+
+        #expect(mock.updateLocalModelHotkeysCallCount == 1)
+        #expect(mock.lastLocalModelHotkeys?["small"] == hotkey)
+    }
+
+    @Test func updateCloudHotkeysStoresValues() {
+        let mock = MockHotkeyManager()
         let cloud = Hotkey.toggleCloudDefault
         let gemini = Hotkey.toggleGeminiDefault
         let cancel = Hotkey.cancelDefault
 
-        mock.updateHotkeys(toggleLocal: local, toggleCloud: cloud, toggleGemini: gemini, cancel: cancel)
+        mock.updateCloudHotkeys(toggleCloud: cloud, toggleGemini: gemini, cancel: cancel)
 
-        #expect(mock.updateHotkeysCallCount == 1)
-        #expect(mock.lastHotkeys?.local == local)
-        #expect(mock.lastHotkeys?.cloud == cloud)
-        #expect(mock.lastHotkeys?.gemini == gemini)
-        #expect(mock.lastHotkeys?.cancel == cancel)
+        #expect(mock.updateCloudHotkeysCallCount == 1)
+        #expect(mock.lastCloudHotkeys?.cloud == cloud)
+        #expect(mock.lastCloudHotkeys?.gemini == gemini)
+        #expect(mock.lastCloudHotkeys?.cancel == cancel)
     }
 
     @Test func callbacksCanBeSet() {
@@ -344,12 +354,12 @@ struct MockHotkeyManagerTests {
         var geminiCalled = false
         var cancelCalled = false
 
-        mock.onToggleLocalRecording = { localCalled = true }
+        mock.onToggleLocalRecording = { _ in localCalled = true }
         mock.onToggleCloudRecording = { cloudCalled = true }
         mock.onToggleGeminiRecording = { geminiCalled = true }
         mock.onCancelRecording = { cancelCalled = true }
 
-        mock.onToggleLocalRecording?()
+        mock.onToggleLocalRecording?("small")
         mock.onToggleCloudRecording?()
         mock.onToggleGeminiRecording?()
         mock.onCancelRecording?()

@@ -23,11 +23,11 @@ struct GeneralSettingsViewModelAPITests {
         )
         viewModel.installedModels = ["small"]
 
-        #expect(viewModel.isTestingLocal == false)
-        #expect(viewModel.localTestResult == nil)
+        #expect(viewModel.testingModels.contains("small") == false)
+        #expect(viewModel.localTestResults["small"] == nil)
 
         let testTask = Task {
-            await viewModel.testLocalModel()
+            await viewModel.testModel("small")
         }
 
         // Give a moment for the state to be set
@@ -35,7 +35,7 @@ struct GeneralSettingsViewModelAPITests {
 
         await testTask.value
 
-        #expect(viewModel.isTestingLocal == false)
+        #expect(viewModel.testingModels.contains("small") == false)
     }
 
     @Test func testLocalModelSuccess() async {
@@ -46,11 +46,11 @@ struct GeneralSettingsViewModelAPITests {
         )
         viewModel.installedModels = ["small"]
 
-        await viewModel.testLocalModel()
+        await viewModel.testModel("small")
 
         #expect(mockTranscription.transcribeCallCount == 1)
-        #expect(viewModel.localTestResult == .success)
-        #expect(viewModel.isTestingLocal == false)
+        #expect(viewModel.localTestResults["small"] == .success)
+        #expect(viewModel.testingModels.contains("small") == false)
     }
 
     @Test func testLocalModelFailure() async {
@@ -61,15 +61,15 @@ struct GeneralSettingsViewModelAPITests {
         )
         viewModel.installedModels = ["small"]
 
-        await viewModel.testLocalModel()
+        await viewModel.testModel("small")
 
         #expect(mockTranscription.transcribeCallCount == 1)
-        if case .failure = viewModel.localTestResult {
+        if case .failure = viewModel.localTestResults["small"] {
             // Expected
         } else {
             #expect(Bool(false), "Expected failure result")
         }
-        #expect(viewModel.isTestingLocal == false)
+        #expect(viewModel.testingModels.contains("small") == false)
     }
 
     @Test func testLocalModelCallsService() async {
@@ -79,10 +79,10 @@ struct GeneralSettingsViewModelAPITests {
         )
         viewModel.installedModels = ["small"]
 
-        await viewModel.testLocalModel()
+        await viewModel.testModel("small")
         #expect(mockTranscription.transcribeCallCount == 1)
 
-        await viewModel.testLocalModel()
+        await viewModel.testModel("small")
         #expect(mockTranscription.transcribeCallCount == 2)
     }
 
@@ -93,10 +93,10 @@ struct GeneralSettingsViewModelAPITests {
         )
         // installedModels is empty — model not installed
 
-        await viewModel.testLocalModel()
+        await viewModel.testModel("small")
 
         #expect(mockTranscription.transcribeCallCount == 0)
-        if case .failure(let msg) = viewModel.localTestResult {
+        if case .failure(let msg) = viewModel.localTestResults["small"] {
             #expect(msg.contains("not installed"))
         } else {
             #expect(Bool(false), "Expected failure result for uninstalled model")
@@ -235,11 +235,11 @@ struct GeneralSettingsViewModelAPITests {
             transcriptionServiceFactory: { mockTranscription }
         )
 
-        await viewModel.testLocalModel()
-        #expect(viewModel.localTestResult != nil)
+        await viewModel.testModel("small")
+        #expect(viewModel.localTestResults["small"] != nil)
 
-        viewModel.clearTestResult(for: .local)
-        #expect(viewModel.localTestResult == nil)
+        viewModel.clearTestResult(for: .local("small"))
+        #expect(viewModel.localTestResults["small"] == nil)
     }
 
     @Test func clearTestResultClearsOpenAIResult() async {
@@ -290,14 +290,21 @@ struct GeneralSettingsViewModelSettingsDITests {
 struct TestServiceEnumTests {
 
     @Test func testServiceHasAllCases() {
-        // Verify all cases exist
-        let local = TestService.local
+        // Verify all cases exist and can be constructed
+        let local = TestService.local("small")
         let openAI = TestService.openAI
         let gemini = TestService.gemini
 
-        #expect(local != openAI)
-        #expect(openAI != gemini)
-        #expect(local != gemini)
+        // Verify they are distinct cases via pattern matching
+        if case .local = local {} else {
+            #expect(Bool(false), "Expected .local case")
+        }
+        if case .openAI = openAI {} else {
+            #expect(Bool(false), "Expected .openAI case")
+        }
+        if case .gemini = gemini {} else {
+            #expect(Bool(false), "Expected .gemini case")
+        }
     }
 }
 

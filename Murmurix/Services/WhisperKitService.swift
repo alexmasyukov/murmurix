@@ -7,35 +7,36 @@ import Foundation
 import WhisperKit
 
 protocol WhisperKitServiceProtocol: AnyObject, Sendable {
-    var isModelLoaded: Bool { get }
+    func isModelLoaded(name: String) -> Bool
+    var loadedModels: [String] { get }
     func loadModel(name: String) async throws
-    func unloadModel() async
-    func transcribe(audioURL: URL, language: String) async throws -> String
+    func unloadModel(name: String) async
+    func unloadAllModels() async
+    func transcribe(audioURL: URL, language: String, model: String) async throws -> String
     func downloadModel(_ name: String, progress: @escaping @Sendable (Double) -> Void) async throws
 }
 
 final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     static let shared = WhisperKitService()
 
-    private var whisperKit: WhisperKit?
-    private var currentModelName: String?
+    private var pipelines: [String: WhisperKit] = [:]
     private let lock = NSLock()
 
-    var isModelLoaded: Bool {
+    func isModelLoaded(name: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        return whisperKit != nil
+        return pipelines[name] != nil
+    }
+
+    var loadedModels: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return Array(pipelines.keys)
     }
 
     func loadModel(name: String) async throws {
-        // Unload previous model if different
-        if currentModelName != name {
-            await unloadModel()
-        }
+        guard !isModelLoaded(name: name) else { return }
 
-        guard !isModelLoaded else { return }
-
-        // Verify model is downloaded before loading
         guard WhisperModel(rawValue: name)?.isInstalled == true else {
             throw MurmurixError.model(.notFound(name))
         }
@@ -54,29 +55,38 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         let pipe = try await WhisperKit(config)
 
         lock.lock()
-        whisperKit = pipe
-        currentModelName = name
+        pipelines[name] = pipe
         lock.unlock()
 
         Logger.Model.info("WhisperKit model loaded: \(name)")
     }
 
-    func unloadModel() async {
+    func unloadModel(name: String) async {
         lock.lock()
-        let pipe = whisperKit
-        whisperKit = nil
-        currentModelName = nil
+        let pipe = pipelines.removeValue(forKey: name)
         lock.unlock()
 
         if let pipe = pipe {
             await pipe.unloadModels()
-            Logger.Model.info("WhisperKit model unloaded")
+            Logger.Model.info("WhisperKit model unloaded: \(name)")
         }
     }
 
-    func transcribe(audioURL: URL, language: String) async throws -> String {
+    func unloadAllModels() async {
         lock.lock()
-        let pipe = whisperKit
+        let allPipelines = pipelines
+        pipelines.removeAll()
+        lock.unlock()
+
+        for (name, pipe) in allPipelines {
+            await pipe.unloadModels()
+            Logger.Model.info("WhisperKit model unloaded: \(name)")
+        }
+    }
+
+    func transcribe(audioURL: URL, language: String, model: String) async throws -> String {
+        lock.lock()
+        let pipe = pipelines[model]
         lock.unlock()
 
         guard let pipe = pipe else {

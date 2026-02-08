@@ -13,6 +13,7 @@ struct HotkeyRecorderView: View {
     @State private var isRecording = false
     @State private var localMonitor: Any?
     @State private var globalMonitor: Any?
+    @AppStorage("appLanguage") private var appLanguage = "en"
 
     var body: some View {
         HStack {
@@ -30,7 +31,7 @@ struct HotkeyRecorderView: View {
             Button(action: { toggleRecording() }) {
                 HStack(spacing: 4) {
                     if isRecording {
-                        Text("Press keys...")
+                        Text(L10n.pressKeys)
                             .font(Typography.monospaced)
                             .foregroundColor(.gray)
                     } else {

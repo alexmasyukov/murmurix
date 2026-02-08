@@ -29,11 +29,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupManagers()
         setupHotkeys()
 
-        coordinator.loadModelIfNeeded()
+        coordinator.loadModelsIfNeeded()
+
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleLanguageChange),
+            name: .appLanguageDidChange, object: nil
+        )
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        coordinator.unloadModel()
+        coordinator.unloadAllModels()
         hotkeyManager.stop()
     }
 
@@ -45,20 +50,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Application menu
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(NSMenuItem(title: "Quit Murmurix", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        appMenu.addItem(NSMenuItem(title: L10n.quitMurmurix, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
 
         // Edit menu (for Copy/Paste/Undo support in text fields)
         let editMenuItem = NSMenuItem()
-        let editMenu = NSMenu(title: "Edit")
-        editMenu.addItem(NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z"))
-        editMenu.addItem(NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "Z"))
+        let editMenu = NSMenu(title: L10n.edit)
+        editMenu.addItem(NSMenuItem(title: L10n.undo, action: Selector(("undo:")), keyEquivalent: "z"))
+        editMenu.addItem(NSMenuItem(title: L10n.redo, action: Selector(("redo:")), keyEquivalent: "Z"))
         editMenu.addItem(NSMenuItem.separator())
-        editMenu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
-        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
-        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
-        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenu.addItem(NSMenuItem(title: L10n.cut, action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: L10n.copy, action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: L10n.paste, action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(title: L10n.selectAll, action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
         editMenuItem.submenu = editMenu
         mainMenu.addItem(editMenuItem)
 
@@ -86,13 +91,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         windowManager = WindowManager()
     }
 
-    private var currentRecordingMode: TranscriptionMode = .local
+    private var currentRecordingMode: TranscriptionMode = .local(model: "small")
 
     private func setupHotkeys() {
         hotkeyManager = GlobalHotkeyManager()
-        hotkeyManager.onToggleLocalRecording = { [weak self] in
+        hotkeyManager.onToggleLocalRecording = { [weak self] modelName in
             DispatchQueue.main.async {
-                self?.toggleRecording(mode: .local)
+                self?.toggleRecording(mode: .local(model: modelName))
             }
         }
         hotkeyManager.onToggleCloudRecording = { [weak self] in
@@ -111,6 +116,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         hotkeyManager.start()
+    }
+
+    @objc private func handleLanguageChange() {
+        setupMainMenu()
+        menuBarManager.rebuildMenu()
     }
 
     // MARK: - Recording Actions
@@ -138,8 +148,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - MenuBarManagerDelegate
 
 extension AppDelegate: MenuBarManagerDelegate {
-    func menuBarDidRequestToggleLocalRecording() {
-        toggleRecording(mode: .local)
+    func menuBarDidRequestToggleLocalRecording(model: String) {
+        toggleRecording(mode: .local(model: model))
     }
 
     func menuBarDidRequestToggleCloudRecording() {
@@ -156,16 +166,17 @@ extension AppDelegate: MenuBarManagerDelegate {
 
     func menuBarDidRequestOpenSettings() {
         windowManager.showSettingsWindow(
-            isModelLoaded: transcriptionService.isModelLoaded,
-            onModelToggle: { [weak self] enabled in
-                self?.coordinator.setModelLoaded(enabled)
+            loadedModels: Set(WhisperKitService.shared.loadedModels),
+            onModelToggle: { [weak self] model, enabled in
+                self?.coordinator.setModelLoaded(enabled, model: model)
             },
-            onHotkeysChanged: { [weak self] toggleLocal, toggleCloud, toggleGemini, cancel in
-                self?.hotkeyManager.updateHotkeys(toggleLocal: toggleLocal, toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
+            onLocalHotkeysChanged: { [weak self] hotkeys in
+                self?.hotkeyManager.updateLocalModelHotkeys(hotkeys)
+                self?.menuBarManager.updateLocalModelMenuItems(hotkeys: hotkeys)
+            },
+            onCloudHotkeysChanged: { [weak self] toggleCloud, toggleGemini, cancel in
+                self?.hotkeyManager.updateCloudHotkeys(toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
                 self?.menuBarManager.updateHotkeyDisplay()
-            },
-            onModelChanged: { [weak self] in
-                self?.coordinator.reloadModel()
             },
             onWindowOpen: { [weak self] in
                 self?.hotkeyManager.pause()
@@ -233,7 +244,7 @@ extension AppDelegate: RecordingCoordinatorDelegate {
     func transcriptionDidFail(error: Error) {
         dismissRecordingUI()
         windowManager.showResultWindow(
-            text: "Error: \(error.localizedDescription)",
+            text: L10n.error(error.localizedDescription),
             duration: 0,
             onDelete: {}
         )

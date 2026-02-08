@@ -249,73 +249,15 @@ struct GeneralSettingsViewModelModelTests {
         #expect(viewModel.isModelInstalled("small") == false)
     }
 
-    // MARK: - handleModelChange
-
-    @Test func handleModelChangeResetsDownloadStatus() {
-        let viewModel = GeneralSettingsViewModel()
-        viewModel.downloadStatus = .downloading(progress: 0.5)
-
-        viewModel.handleModelChange("small")
-
-        if case .idle = viewModel.downloadStatus {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected idle status after model change")
-        }
-    }
-
-    @Test func handleModelChangeCallsOnModelChangedForInstalledModel() {
-        let viewModel = GeneralSettingsViewModel()
-
-        // Create a temporary directory with .mlmodelc to simulate an installed model
-        let modelDir = ModelPaths.modelDir(for: "small")
-        let dummyModel = modelDir.appendingPathComponent("dummy.mlmodelc")
-        try? FileManager.default.createDirectory(at: dummyModel, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: modelDir) }
-
-        var callbackCalled = false
-        viewModel.onModelChanged = { callbackCalled = true }
-
-        viewModel.handleModelChange("small")
-
-        #expect(callbackCalled)
-    }
-
-    @Test func handleModelChangeDoesNotCallbackForUninstalledModel() {
-        let viewModel = GeneralSettingsViewModel()
-
-        // Ensure model directory does not exist
-        let modelDir = ModelPaths.modelDir(for: "tiny")
-        try? FileManager.default.removeItem(at: modelDir)
-
-        var callbackCalled = false
-        viewModel.onModelChanged = { callbackCalled = true }
-
-        viewModel.handleModelChange("tiny")
-
-        #expect(!callbackCalled)
-    }
-
-    @Test func handleModelChangeDoesNotCallbackForInvalidModel() {
-        let viewModel = GeneralSettingsViewModel()
-
-        var callbackCalled = false
-        viewModel.onModelChanged = { callbackCalled = true }
-
-        viewModel.handleModelChange("nonexistent-model")
-
-        #expect(!callbackCalled)
-    }
-
     // MARK: - cancelDownload
 
     @Test func cancelDownloadResetsToIdle() {
         let viewModel = GeneralSettingsViewModel()
-        viewModel.downloadStatus = .downloading(progress: 0.75)
+        viewModel.downloadStatuses["small"] = .downloading(progress: 0.75)
 
-        viewModel.cancelDownload()
+        viewModel.cancelDownload(for: "small")
 
-        if case .idle = viewModel.downloadStatus {
+        if case .idle = viewModel.downloadStatus(for: "small") {
             #expect(true)
         } else {
             #expect(Bool(false), "Expected idle status after cancel")
@@ -324,11 +266,11 @@ struct GeneralSettingsViewModelModelTests {
 
     @Test func cancelDownloadFromCompiling() {
         let viewModel = GeneralSettingsViewModel()
-        viewModel.downloadStatus = .compiling
+        viewModel.downloadStatuses["small"] = .compiling
 
-        viewModel.cancelDownload()
+        viewModel.cancelDownload(for: "small")
 
-        if case .idle = viewModel.downloadStatus {
+        if case .idle = viewModel.downloadStatus(for: "small") {
             #expect(true)
         } else {
             #expect(Bool(false), "Expected idle status after cancel")
@@ -343,7 +285,7 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.startDownload(for: "small")
 
-        if case .downloading = viewModel.downloadStatus {
+        if case .downloading = viewModel.downloadStatus(for: "small") {
             #expect(true)
         } else {
             #expect(Bool(false), "Expected downloading status")
@@ -353,7 +295,6 @@ struct GeneralSettingsViewModelModelTests {
     @Test func startDownloadCallsWhisperKitService() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        mockSettings.keepModelLoaded = false
         let viewModel = GeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
@@ -369,10 +310,10 @@ struct GeneralSettingsViewModelModelTests {
         #expect(mockWhisperKit.loadModelCallCount == 1)
     }
 
-    @Test func startDownloadUnloadsModelWhenKeepModelLoadedIsFalse() async throws {
+    @Test func startDownloadUnloadsModelWhenKeepLoadedIsFalse() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        mockSettings.keepModelLoaded = false
+        // keepLoaded defaults to false in WhisperModelSettings.default
         let viewModel = GeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
@@ -388,11 +329,13 @@ struct GeneralSettingsViewModelModelTests {
     @Test func startDownloadKeepsModelLoadedWhenEnabled() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        mockSettings.keepModelLoaded = true
+        // Set keepLoaded=true for tiny
+        mockSettings.saveWhisperModelSettings(["tiny": WhisperModelSettings(hotkey: nil, keepLoaded: true)])
         let viewModel = GeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
+        viewModel.loadInstalledModels()
 
         viewModel.startDownload(for: "tiny")
 
@@ -401,23 +344,19 @@ struct GeneralSettingsViewModelModelTests {
         #expect(mockWhisperKit.unloadModelCallCount == 0)
     }
 
-    @Test func startDownloadCallsOnModelChanged() async throws {
+    @Test func startDownloadCompletesSuccessfully() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        mockSettings.keepModelLoaded = false
         let viewModel = GeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
 
-        var callbackCalled = false
-        viewModel.onModelChanged = { callbackCalled = true }
-
         viewModel.startDownload(for: "small")
 
         try await Task.sleep(nanoseconds: 200_000_000)
 
-        #expect(callbackCalled)
+        #expect(mockWhisperKit.downloadModelCallCount == 1)
     }
 
     // MARK: - deleteModel (with temp filesystem)
@@ -434,7 +373,7 @@ struct GeneralSettingsViewModelModelTests {
 
         // We can't easily test with real ModelPaths, but we can test that
         // unloadModel is called when model is loaded
-        mockWhisperKit.isModelLoaded = true
+        mockWhisperKit.loadedModelNames.insert("small")
         await viewModel.deleteModel("small")
 
         #expect(mockWhisperKit.unloadModelCallCount == 1)
@@ -445,7 +384,7 @@ struct GeneralSettingsViewModelModelTests {
 
     @Test func deleteModelUnloadsModelWhenLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
-        mockWhisperKit.isModelLoaded = true
+        mockWhisperKit.loadedModelNames.insert("small")
         let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
 
         await viewModel.deleteModel("small")
@@ -455,7 +394,6 @@ struct GeneralSettingsViewModelModelTests {
 
     @Test func deleteModelSkipsUnloadWhenNotLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
-        mockWhisperKit.isModelLoaded = false
         let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
 
         await viewModel.deleteModel("small")
@@ -465,24 +403,23 @@ struct GeneralSettingsViewModelModelTests {
 
     // MARK: - deleteAllModels
 
-    @Test func deleteAllModelsUnloadsModelWhenLoaded() async {
+    @Test func deleteAllModelsUnloadsAllModels() async {
         let mockWhisperKit = MockWhisperKitService()
-        mockWhisperKit.isModelLoaded = true
+        mockWhisperKit.loadedModelNames.insert("small")
         let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
 
         await viewModel.deleteAllModels()
 
-        #expect(mockWhisperKit.unloadModelCallCount == 1)
+        #expect(mockWhisperKit.unloadAllModelsCallCount == 1)
     }
 
-    @Test func deleteAllModelsSkipsUnloadWhenNotLoaded() async {
+    @Test func deleteAllModelsWorksWhenNoneLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
-        mockWhisperKit.isModelLoaded = false
         let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
 
         await viewModel.deleteAllModels()
 
-        #expect(mockWhisperKit.unloadModelCallCount == 0)
+        #expect(mockWhisperKit.unloadAllModelsCallCount == 1)
     }
 }
 
@@ -490,55 +427,59 @@ struct GeneralSettingsViewModelModelTests {
 
 struct SettingsMigrationTests {
 
-    @Test func migratesKeepDaemonRunningToKeepModelLoaded() {
+    @Test func migratesOldSingleModelToPerModelSettings() {
         let suiteName = "com.murmurix.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
 
-        // Simulate old setting
-        defaults.set(false, forKey: "keepDaemonRunning")
+        // Simulate old settings
+        defaults.set("tiny", forKey: "whisperModel")
+        defaults.set(true, forKey: "keepModelLoaded")
+        let oldHotkey = Hotkey.toggleLocalDefault
+        if let data = try? JSONEncoder().encode(oldHotkey) {
+            defaults.set(data, forKey: "toggleLocalHotkey")
+        }
 
         let settings = Settings(defaults: defaults)
 
-        // Old value should be migrated
-        #expect(settings.keepModelLoaded == false)
+        let map = settings.loadWhisperModelSettings()
+        #expect(map["tiny"] != nil)
+        #expect(map["tiny"]?.keepLoaded == true)
+        #expect(map["tiny"]?.hotkey == oldHotkey)
 
-        // Old key should be removed
-        #expect(defaults.object(forKey: "keepDaemonRunning") == nil)
+        // Legacy keys should be cleaned up
+        #expect(defaults.object(forKey: "whisperModel") == nil)
+        #expect(defaults.object(forKey: "keepModelLoaded") == nil)
+        #expect(defaults.object(forKey: "toggleLocalHotkey") == nil)
     }
 
-    @Test func migratesKeepDaemonRunningTrueValue() {
+    @Test func migrationDefaultsToSmallWhenNoOldModelSet() {
         let suiteName = "com.murmurix.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
 
-        defaults.set(true, forKey: "keepDaemonRunning")
-
         let settings = Settings(defaults: defaults)
 
-        #expect(settings.keepModelLoaded == true)
-        #expect(defaults.object(forKey: "keepDaemonRunning") == nil)
+        let map = settings.loadWhisperModelSettings()
+        #expect(map["small"] != nil)
+        #expect(map["small"]?.keepLoaded == true)
+        #expect(map["small"]?.hotkey == .toggleLocalDefault)
     }
 
-    @Test func doesNotMigrateWhenNewKeyAlreadyExists() {
+    @Test func doesNotMigrateWhenAlreadyMigrated() {
         let suiteName = "com.murmurix.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
 
-        // Both old and new keys exist — new key takes priority
-        defaults.set(true, forKey: "keepDaemonRunning")
-        defaults.set(false, forKey: "keepModelLoaded")
+        // Pre-set the new format
+        let existingSettings: [String: WhisperModelSettings] = ["base": WhisperModelSettings(hotkey: nil, keepLoaded: false)]
+        if let data = try? JSONEncoder().encode(existingSettings) {
+            defaults.set(data, forKey: "whisperModelSettings")
+        }
 
         let settings = Settings(defaults: defaults)
 
-        // New key value preserved, old key NOT removed (migration skipped)
-        #expect(settings.keepModelLoaded == false)
-    }
-
-    @Test func defaultsToTrueWhenNoKeysExist() {
-        let suiteName = "com.murmurix.test.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-
-        let settings = Settings(defaults: defaults)
-
-        #expect(settings.keepModelLoaded == true)
+        let map = settings.loadWhisperModelSettings()
+        #expect(map["base"] != nil)
+        #expect(map["base"]?.keepLoaded == false)
+        #expect(map["small"] == nil) // Should not have migrated defaults
     }
 
     @Test func defaultLanguageUsesConstant() {
@@ -578,9 +519,9 @@ struct RecordingCoordinatorModelControlTests {
 
     @Test func reloadModelUnloadsAndReloads() async throws {
         let (coordinator, transcriptionService, settings) = createCoordinator()
-        settings.keepModelLoaded = true
+        settings.saveWhisperModelSettings(["small": WhisperModelSettings(hotkey: nil, keepLoaded: true)])
 
-        coordinator.reloadModel()
+        coordinator.reloadModel(name: "small")
 
         try await Task.sleep(nanoseconds: 100_000_000)
 
@@ -588,11 +529,11 @@ struct RecordingCoordinatorModelControlTests {
         #expect(transcriptionService.loadModelCallCount == 1)
     }
 
-    @Test func reloadModelOnlyUnloadsWhenKeepModelLoadedIsFalse() async throws {
+    @Test func reloadModelOnlyUnloadsWhenKeepLoadedIsFalse() async throws {
         let (coordinator, transcriptionService, settings) = createCoordinator()
-        settings.keepModelLoaded = false
+        settings.saveWhisperModelSettings(["small": WhisperModelSettings(hotkey: nil, keepLoaded: false)])
 
-        coordinator.reloadModel()
+        coordinator.reloadModel(name: "small")
 
         try await Task.sleep(nanoseconds: 100_000_000)
 
@@ -600,14 +541,14 @@ struct RecordingCoordinatorModelControlTests {
         #expect(transcriptionService.loadModelCallCount == 0)
     }
 
-    @Test func unloadModelCallsService() async throws {
+    @Test func unloadAllModelsCallsService() async throws {
         let (coordinator, transcriptionService, _) = createCoordinator()
 
-        coordinator.unloadModel()
+        coordinator.unloadAllModels()
 
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        #expect(transcriptionService.unloadModelCallCount == 1)
+        #expect(transcriptionService.unloadAllModelsCallCount == 1)
     }
 }
 
@@ -651,18 +592,14 @@ struct GeminiModelEnumTests {
 
 struct TranscriptionModeTests {
 
-    @Test func allCasesHasThreeModes() {
-        #expect(TranscriptionMode.allCases.count == 3)
-    }
-
-    @Test func rawValuesAreCorrect() {
-        #expect(TranscriptionMode.local.rawValue == "local")
-        #expect(TranscriptionMode.openai.rawValue == "openai")
-        #expect(TranscriptionMode.gemini.rawValue == "gemini")
+    @Test func logNameReturnsCorrectValue() {
+        #expect(TranscriptionMode.local(model: "tiny").logName == "local:tiny")
+        #expect(TranscriptionMode.openai.logName == "openai")
+        #expect(TranscriptionMode.gemini.logName == "gemini")
     }
 
     @Test func isCloudForLocalIsFalse() {
-        #expect(TranscriptionMode.local.isCloud == false)
+        #expect(TranscriptionMode.local(model: "small").isCloud == false)
     }
 
     @Test func isCloudForCloudModesIsTrue() {
@@ -671,16 +608,18 @@ struct TranscriptionModeTests {
     }
 
     @Test func displayNamesAreNotEmpty() {
-        for mode in TranscriptionMode.allCases {
+        let modes: [TranscriptionMode] = [.local(model: "small"), .openai, .gemini]
+        for mode in modes {
             #expect(!mode.displayName.isEmpty)
         }
     }
 
-    @Test func initFromRawValue() {
-        #expect(TranscriptionMode(rawValue: "local") == .local)
-        #expect(TranscriptionMode(rawValue: "openai") == .openai)
-        #expect(TranscriptionMode(rawValue: "gemini") == .gemini)
-        #expect(TranscriptionMode(rawValue: "invalid") == nil)
+    @Test func equatable() {
+        #expect(TranscriptionMode.local(model: "small") == .local(model: "small"))
+        #expect(TranscriptionMode.local(model: "small") != .local(model: "tiny"))
+        #expect(TranscriptionMode.openai == .openai)
+        #expect(TranscriptionMode.gemini == .gemini)
+        #expect(TranscriptionMode.openai != .gemini)
     }
 }
 

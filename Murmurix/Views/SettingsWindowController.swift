@@ -7,23 +7,23 @@ import Cocoa
 import SwiftUI
 
 class ModelStatusModel: ObservableObject {
-    @Published var isLoaded: Bool = false
+    @Published var loadedModels: Set<String> = []
 }
 
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
-    var onModelToggle: ((Bool) -> Void)?
-    var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)?
-    var onModelChanged: (() -> Void)?
+    var onModelToggle: ((String, Bool) -> Void)?
+    var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?
+    var onCloudHotkeysChanged: ((Hotkey, Hotkey, Hotkey) -> Void)?
     var onWindowOpen: (() -> Void)?
     var onWindowClose: (() -> Void)?
 
     private let modelStatus = ModelStatusModel()
 
     convenience init(
-        isModelLoaded: Bool,
-        onModelToggle: @escaping (Bool) -> Void,
-        onHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey, Hotkey) -> Void,
-        onModelChanged: @escaping () -> Void = {},
+        loadedModels: Set<String>,
+        onModelToggle: @escaping (String, Bool) -> Void,
+        onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
+        onCloudHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey) -> Void,
         onWindowOpen: @escaping () -> Void = {},
         onWindowClose: @escaping () -> Void = {}
     ) {
@@ -34,36 +34,46 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
             defer: false
         )
         window.minSize = NSSize(width: 480, height: 380)
-        window.title = "Settings"
+        window.title = L10n.settingsTitle
 
         self.init(window: window)
         self.onModelToggle = onModelToggle
-        self.onHotkeysChanged = onHotkeysChanged
-        self.onModelChanged = onModelChanged
+        self.onLocalHotkeysChanged = onLocalHotkeysChanged
+        self.onCloudHotkeysChanged = onCloudHotkeysChanged
         self.onWindowOpen = onWindowOpen
         self.onWindowClose = onWindowClose
-        self.modelStatus.isLoaded = isModelLoaded
+        self.modelStatus.loadedModels = loadedModels
         window.delegate = self
 
+        NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange, object: nil, queue: .main
+        ) { [weak window] _ in
+            window?.title = L10n.settingsTitle
+        }
+
         let settingsView = SettingsView(
-            isModelLoaded: Binding(
-                get: { [weak self] in self?.modelStatus.isLoaded ?? false },
-                set: { [weak self] in self?.modelStatus.isLoaded = $0 }
+            loadedModels: Binding(
+                get: { [weak self] in self?.modelStatus.loadedModels ?? [] },
+                set: { [weak self] in self?.modelStatus.loadedModels = $0 }
             ),
-            onModelToggle: { [weak self] enabled in
-                onModelToggle(enabled)
+            onModelToggle: { [weak self] model, enabled in
+                onModelToggle(model, enabled)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    self?.modelStatus.isLoaded = enabled
+                    if enabled {
+                        self?.modelStatus.loadedModels.insert(model)
+                    } else {
+                        self?.modelStatus.loadedModels.remove(model)
+                    }
                 }
             },
-            onHotkeysChanged: onHotkeysChanged,
-            onModelChanged: onModelChanged
+            onLocalHotkeysChanged: onLocalHotkeysChanged,
+            onCloudHotkeysChanged: onCloudHotkeysChanged
         )
         window.contentView = NSHostingView(rootView: settingsView)
     }
 
-    func updateModelStatus(_ isLoaded: Bool) {
-        modelStatus.isLoaded = isLoaded
+    func updateLoadedModels(_ models: Set<String>) {
+        modelStatus.loadedModels = models
     }
 
     override func showWindow(_ sender: Any?) {

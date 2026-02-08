@@ -6,32 +6,6 @@
 import Foundation
 import Combine
 
-protocol GeneralSettingsViewModelProtocol: ObservableObject {
-    var installedModels: Set<String> { get }
-    var downloadStatus: DownloadStatus { get }
-    var onModelChanged: (() -> Void)? { get set }
-
-    // Test state
-    var isTestingLocal: Bool { get }
-    var isTestingOpenAI: Bool { get }
-    var isTestingGemini: Bool { get }
-    var localTestResult: APITestResult? { get }
-    var openaiTestResult: APITestResult? { get }
-    var geminiTestResult: APITestResult? { get }
-
-    func loadInstalledModels()
-    func isModelInstalled(_ modelName: String) -> Bool
-    func handleModelChange(_ newModel: String)
-    func startDownload(for modelName: String)
-    func cancelDownload()
-
-    // Test functions
-    func testLocalModel() async
-    func testOpenAI(apiKey: String) async
-    func testGemini(apiKey: String) async
-    func clearTestResult(for service: TestService)
-}
-
 enum DownloadStatus {
     case idle
     case downloading(progress: Double)
@@ -41,25 +15,27 @@ enum DownloadStatus {
 }
 
 enum TestService {
-    case local
+    case local(String)
     case openAI
     case gemini
 }
 
 @MainActor
-final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModelProtocol {
+final class GeneralSettingsViewModel: ObservableObject {
     @Published var installedModels: Set<String> = []
-    @Published var downloadStatus: DownloadStatus = .idle
+    @Published var downloadStatuses: [String: DownloadStatus] = [:]
 
     // Test state
-    @Published var isTestingLocal = false
     @Published var isTestingOpenAI = false
     @Published var isTestingGemini = false
-    @Published var localTestResult: APITestResult?
+    @Published var localTestResults: [String: APITestResult] = [:]
+    @Published var testingModels: Set<String> = []
     @Published var openaiTestResult: APITestResult?
     @Published var geminiTestResult: APITestResult?
 
-    var onModelChanged: (() -> Void)?
+    @Published var modelSettingsMap: [String: WhisperModelSettings] = [:]
+
+    var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?
 
     private let whisperKitService: WhisperKitServiceProtocol
     private let openAIService: OpenAITranscriptionServiceProtocol
@@ -83,54 +59,64 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
 
     func loadInstalledModels() {
         installedModels = Set(WhisperModel.allCases.filter { $0.isInstalled }.map { $0.rawValue })
+        modelSettingsMap = settings.loadWhisperModelSettings()
     }
 
     func isModelInstalled(_ modelName: String) -> Bool {
         installedModels.contains(modelName)
     }
 
-    func handleModelChange(_ newModel: String) {
-        downloadStatus = .idle
-        if let model = WhisperModel(rawValue: newModel), model.isInstalled {
-            onModelChanged?()
-        }
+    func modelSettings(for modelName: String) -> WhisperModelSettings {
+        modelSettingsMap[modelName] ?? .default
+    }
+
+    func updateModelSettings(for modelName: String, _ update: (inout WhisperModelSettings) -> Void) {
+        var ms = modelSettingsMap[modelName] ?? .default
+        update(&ms)
+        modelSettingsMap[modelName] = ms
+        settings.saveWhisperModelSettings(modelSettingsMap)
+        notifyHotkeysChanged()
+    }
+
+    func downloadStatus(for modelName: String) -> DownloadStatus {
+        downloadStatuses[modelName] ?? .idle
     }
 
     func startDownload(for modelName: String) {
-        downloadStatus = .downloading(progress: 0)
+        downloadStatuses[modelName] = .downloading(progress: 0)
 
         Task { [weak self] in
             guard let self = self else { return }
             do {
                 try await self.whisperKitService.downloadModel(modelName) { progress in
                     Task { @MainActor [weak self] in
-                        self?.downloadStatus = .downloading(progress: progress)
+                        self?.downloadStatuses[modelName] = .downloading(progress: progress)
                     }
                 }
-                self.downloadStatus = .compiling
+                self.downloadStatuses[modelName] = .compiling
                 try await self.whisperKitService.loadModel(name: modelName)
-                if !self.settings.keepModelLoaded {
-                    await self.whisperKitService.unloadModel()
+                let ms = self.modelSettings(for: modelName)
+                if !ms.keepLoaded {
+                    await self.whisperKitService.unloadModel(name: modelName)
                 }
-                self.downloadStatus = .completed
+                self.downloadStatuses[modelName] = .completed
                 self.loadInstalledModels()
-                self.onModelChanged?()
-                self.scheduleStatusReset()
+                self.scheduleStatusReset(for: modelName)
             } catch {
-                self.downloadStatus = .error(error.localizedDescription)
+                self.downloadStatuses[modelName] = .error(error.localizedDescription)
             }
         }
     }
 
-    func cancelDownload() {
-        downloadStatus = .idle
+    func cancelDownload(for modelName: String) {
+        downloadStatuses[modelName] = .idle
     }
 
-    private func scheduleStatusReset() {
+    private func scheduleStatusReset(for modelName: String) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             guard let self = self else { return }
-            if case .completed = self.downloadStatus {
-                self.downloadStatus = .idle
+            if case .completed = self.downloadStatuses[modelName] {
+                self.downloadStatuses[modelName] = .idle
             }
         }
     }
@@ -138,8 +124,8 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
     // MARK: - Model Deletion
 
     func deleteModel(_ modelName: String) async {
-        if whisperKitService.isModelLoaded {
-            await whisperKitService.unloadModel()
+        if whisperKitService.isModelLoaded(name: modelName) {
+            await whisperKitService.unloadModel(name: modelName)
         }
         let fm = FileManager.default
         let modelDir = ModelPaths.modelDir(for: modelName)
@@ -148,9 +134,7 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
     }
 
     func deleteAllModels() async {
-        if whisperKitService.isModelLoaded {
-            await whisperKitService.unloadModel()
-        }
+        await whisperKitService.unloadAllModels()
         let fm = FileManager.default
         let repoDir = ModelPaths.repoDir
         if let contents = try? fm.contentsOfDirectory(atPath: repoDir.path) {
@@ -163,34 +147,33 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
 
     // MARK: - API Testing
 
-    func testLocalModel() async {
-        isTestingLocal = true
-        localTestResult = nil
+    func testModel(_ modelName: String) async {
+        testingModels.insert(modelName)
+        localTestResults[modelName] = nil
 
-        let modelName = settings.whisperModel
         guard isModelInstalled(modelName) else {
-            localTestResult = .failure("Model not installed. Download it first.")
-            isTestingLocal = false
+            localTestResults[modelName] = .failure("Model not installed. Download it first.")
+            testingModels.remove(modelName)
             return
         }
 
         do {
             let service = transcriptionServiceFactory()
-            if !service.isModelLoaded {
-                try await service.loadModel()
+            if !service.isModelLoaded(name: modelName) {
+                try await service.loadModel(name: modelName)
             }
 
             let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
             try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
             defer { try? FileManager.default.removeItem(at: tempURL) }
 
-            _ = try await service.transcribe(audioURL: tempURL, mode: .local)
+            _ = try await service.transcribe(audioURL: tempURL, mode: .local(model: modelName))
 
-            localTestResult = .success
+            localTestResults[modelName] = .success
         } catch {
-            localTestResult = .failure(error.localizedDescription)
+            localTestResults[modelName] = .failure(error.localizedDescription)
         }
-        isTestingLocal = false
+        testingModels.remove(modelName)
     }
 
     func testOpenAI(apiKey: String) async {
@@ -221,12 +204,24 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
 
     func clearTestResult(for service: TestService) {
         switch service {
-        case .local:
-            localTestResult = nil
+        case .local(let name):
+            localTestResults[name] = nil
         case .openAI:
             openaiTestResult = nil
         case .gemini:
             geminiTestResult = nil
         }
+    }
+
+    // MARK: - Hotkey Notification
+
+    private func notifyHotkeysChanged() {
+        var hotkeys: [String: Hotkey] = [:]
+        for (modelName, ms) in modelSettingsMap {
+            if let hotkey = ms.hotkey {
+                hotkeys[modelName] = hotkey
+            }
+        }
+        onLocalHotkeysChanged?(hotkeys)
     }
 }

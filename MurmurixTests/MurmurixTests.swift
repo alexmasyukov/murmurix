@@ -413,7 +413,8 @@ struct GlobalHotkeyManagerTests {
         let newToggleGemini = Hotkey(keyCode: 5, modifiers: UInt32(cmdKey))
         let newCancel = Hotkey(keyCode: 3, modifiers: UInt32(optionKey))
 
-        manager.updateHotkeys(toggleLocal: newToggleLocal, toggleCloud: newToggleCloud, toggleGemini: newToggleGemini, cancel: newCancel)
+        manager.updateLocalModelHotkeys(["small": newToggleLocal])
+        manager.updateCloudHotkeys(toggleCloud: newToggleCloud, toggleGemini: newToggleGemini, cancel: newCancel)
 
         // Manager should accept the update without crashing
         #expect(manager.isRecording == false)
@@ -426,7 +427,7 @@ struct GlobalHotkeyManagerTests {
         var toggleGeminiCalled = false
         var cancelCalled = false
 
-        manager.onToggleLocalRecording = { toggleLocalCalled = true }
+        manager.onToggleLocalRecording = { _ in toggleLocalCalled = true }
         manager.onToggleCloudRecording = { toggleCloudCalled = true }
         manager.onToggleGeminiRecording = { toggleGeminiCalled = true }
         manager.onCancelRecording = { cancelCalled = true }
@@ -436,7 +437,7 @@ struct GlobalHotkeyManagerTests {
         #expect(manager.onToggleGeminiRecording != nil)
         #expect(manager.onCancelRecording != nil)
 
-        manager.onToggleLocalRecording?()
+        manager.onToggleLocalRecording?("small")
         manager.onToggleCloudRecording?()
         manager.onToggleGeminiRecording?()
         manager.onCancelRecording?()

@@ -7,7 +7,8 @@ import SwiftUI
 
 struct TestResultBadge: View {
     let result: APITestResult
-    var successText = "Connection successful"
+    var successText: String? = nil
+    @AppStorage("appLanguage") private var appLanguage = "en"
 
     var body: some View {
         HStack(spacing: 4) {
@@ -15,7 +16,7 @@ struct TestResultBadge: View {
             case .success:
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
-                Text(successText)
+                Text(successText ?? L10n.connectionSuccessful)
                     .foregroundColor(.green)
             case .failure(let message):
                 Image(systemName: "xmark.circle.fill")

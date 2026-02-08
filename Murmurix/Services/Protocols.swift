@@ -19,24 +19,25 @@ protocol AudioRecorderProtocol: AnyObject {
 // MARK: - Transcription
 
 protocol TranscriptionServiceProtocol: Sendable {
-    var isModelLoaded: Bool { get }
-
-    func loadModel() async throws
-    func unloadModel() async
+    func isModelLoaded(name: String) -> Bool
+    func loadModel(name: String) async throws
+    func unloadModel(name: String) async
+    func unloadAllModels() async
     func transcribe(audioURL: URL, mode: TranscriptionMode) async throws -> String
 }
 
 // MARK: - Hotkey Management
 
 protocol HotkeyManagerProtocol: AnyObject {
-    var onToggleLocalRecording: (() -> Void)? { get set }
+    var onToggleLocalRecording: ((String) -> Void)? { get set }
     var onToggleCloudRecording: (() -> Void)? { get set }
     var onToggleGeminiRecording: (() -> Void)? { get set }
     var onCancelRecording: (() -> Void)? { get set }
 
     func start()
     func stop()
-    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey)
+    func updateLocalModelHotkeys(_ hotkeys: [String: Hotkey])
+    func updateCloudHotkeys(toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey)
 }
 
 // MARK: - Network
@@ -50,17 +51,15 @@ extension URLSession: URLSessionProtocol {}
 // MARK: - Settings Storage
 
 protocol SettingsStorageProtocol: AnyObject {
-    var keepModelLoaded: Bool { get set }
     var language: String { get set }
-    var transcriptionMode: String { get set }
-    var whisperModel: String { get set }
+    var appLanguage: String { get set }
     var openaiApiKey: String { get set }
     var openaiTranscriptionModel: String { get set }
     var geminiApiKey: String { get set }
     var geminiModel: String { get set }
 
-    func loadToggleLocalHotkey() -> Hotkey
-    func saveToggleLocalHotkey(_ hotkey: Hotkey)
+    func loadWhisperModelSettings() -> [String: WhisperModelSettings]
+    func saveWhisperModelSettings(_ settings: [String: WhisperModelSettings])
     func loadToggleCloudHotkey() -> Hotkey
     func saveToggleCloudHotkey(_ hotkey: Hotkey)
     func loadToggleGeminiHotkey() -> Hotkey

@@ -11,22 +11,32 @@ enum RecordingState: Equatable {
     case transcribing
 }
 
-enum TranscriptionMode: String, CaseIterable {
-    case local   // Whisper (local)
-    case openai  // OpenAI Cloud API (renamed from cloud)
-    case gemini  // Google Gemini API (new)
+enum TranscriptionMode: Equatable {
+    case local(model: String)
+    case openai
+    case gemini
 
     var displayName: String {
         switch self {
-        case .local: return "Local (Whisper)"
+        case .local(let model): return "Local (\(model))"
         case .openai: return "Cloud (OpenAI)"
         case .gemini: return "Cloud (Gemini)"
         }
     }
 
-    /// Is cloud mode (requires audio compression)
     var isCloud: Bool {
-        self != .local
+        switch self {
+        case .local: return false
+        case .openai, .gemini: return true
+        }
+    }
+
+    var logName: String {
+        switch self {
+        case .local(let model): return "local:\(model)"
+        case .openai: return "openai"
+        case .gemini: return "gemini"
+        }
     }
 }
 
@@ -47,7 +57,7 @@ final class RecordingCoordinator {
     private var recordingStartTime: Date?
     private var transcriptionTask: Task<Void, Never>?
     private var currentAudioURL: URL?
-    private var currentTranscriptionMode: TranscriptionMode = .local
+    private var currentTranscriptionMode: TranscriptionMode = .local(model: "small")
 
     private let audioRecorder: AudioRecorderProtocol
     private let transcriptionService: TranscriptionServiceProtocol
@@ -109,7 +119,7 @@ final class RecordingCoordinator {
         state = .recording
         recordingStartTime = Date()
         audioRecorder.startRecording()
-        Logger.Transcription.info("Recording started, mode: \(currentTranscriptionMode.rawValue)")
+        Logger.Transcription.info("Recording started, mode: \(currentTranscriptionMode.logName)")
         delegate?.recordingDidStart()
     }
 
@@ -143,7 +153,7 @@ final class RecordingCoordinator {
         let language = settings.language
         let mode = currentTranscriptionMode
 
-        Logger.Transcription.info("Starting transcription, mode: \(mode.rawValue), language: \(language), duration: \(String(format: "%.1f", duration))s")
+        Logger.Transcription.info("Starting transcription, mode: \(mode.logName), language: \(language), duration: \(String(format: "%.1f", duration))s")
 
         transcriptionTask = Task.detached { [weak self] in
             guard let self = self else { return }
@@ -157,7 +167,7 @@ final class RecordingCoordinator {
                     compressedURL = try? await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
                     if let compressed = compressedURL {
                         transcriptionURL = compressed
-                        Logger.Transcription.info("Using M4A for cloud transcription (\(mode.rawValue))")
+                        Logger.Transcription.info("Using M4A for cloud transcription (\(mode.logName))")
                     } else {
                         transcriptionURL = audioURL
                     }
@@ -211,29 +221,31 @@ final class RecordingCoordinator {
 
     // MARK: - Model Control
 
-    func loadModelIfNeeded() {
-        if settings.keepModelLoaded {
-            Task { try? await transcriptionService.loadModel() }
+    func loadModelsIfNeeded() {
+        let modelSettings = settings.loadWhisperModelSettings()
+        for (modelName, ms) in modelSettings where ms.keepLoaded {
+            Task { try? await transcriptionService.loadModel(name: modelName) }
         }
     }
 
-    func unloadModel() {
-        Task { await transcriptionService.unloadModel() }
+    func unloadAllModels() {
+        Task { await transcriptionService.unloadAllModels() }
     }
 
-    func setModelLoaded(_ enabled: Bool) {
+    func setModelLoaded(_ enabled: Bool, model: String) {
         if enabled {
-            Task { try? await transcriptionService.loadModel() }
+            Task { try? await transcriptionService.loadModel(name: model) }
         } else {
-            Task { await transcriptionService.unloadModel() }
+            Task { await transcriptionService.unloadModel(name: model) }
         }
     }
 
-    func reloadModel() {
+    func reloadModel(name: String) {
         Task {
-            await transcriptionService.unloadModel()
-            if settings.keepModelLoaded {
-                try? await transcriptionService.loadModel()
+            await transcriptionService.unloadModel(name: name)
+            let modelSettings = settings.loadWhisperModelSettings()
+            if modelSettings[name]?.keepLoaded == true {
+                try? await transcriptionService.loadModel(name: name)
             }
         }
     }

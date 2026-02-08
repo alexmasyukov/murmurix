@@ -17,7 +17,6 @@ struct TranscriptionServiceIntegrationTests {
         let mockWhisperKit = MockWhisperKitService()
         mockWhisperKit.transcribeResult = .success("Hello from WhisperKit")
         let mockSettings = MockSettings()
-        mockSettings.whisperModel = "small"
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
@@ -25,7 +24,7 @@ struct TranscriptionServiceIntegrationTests {
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
-        let result = try await service.transcribe(audioURL: audioURL, mode: .local)
+        let result = try await service.transcribe(audioURL: audioURL, mode: .local(model: "small"))
 
         #expect(result == "Hello from WhisperKit")
         #expect(mockWhisperKit.transcribeCallCount == 1)
@@ -44,7 +43,7 @@ struct TranscriptionServiceIntegrationTests {
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
 
         await #expect(throws: Error.self) {
-            try await service.transcribe(audioURL: audioURL, mode: .local)
+            try await service.transcribe(audioURL: audioURL, mode: .local(model: "small"))
         }
     }
 
@@ -135,23 +134,22 @@ struct TranscriptionServiceIntegrationTests {
     @Test func loadModelDelegatesToWhisperKit() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        mockSettings.whisperModel = "tiny"
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
 
-        try await service.loadModel()
+        try await service.loadModel(name: "tiny")
 
         #expect(mockWhisperKit.loadModelCallCount == 1)
         #expect(mockWhisperKit.lastModelName == "tiny")
-        #expect(service.isModelLoaded == true)
+        #expect(service.isModelLoaded(name: "tiny") == true)
     }
 
     @Test func unloadModelDelegatesToWhisperKit() async {
         let mockWhisperKit = MockWhisperKitService()
-        mockWhisperKit.isModelLoaded = true
+        mockWhisperKit.loadedModelNames.insert("tiny")
         let mockSettings = MockSettings()
 
         let service = TranscriptionService(
@@ -159,28 +157,27 @@ struct TranscriptionServiceIntegrationTests {
             settings: mockSettings
         )
 
-        await service.unloadModel()
+        await service.unloadModel(name: "tiny")
 
         #expect(mockWhisperKit.unloadModelCallCount == 1)
-        #expect(service.isModelLoaded == false)
+        #expect(service.isModelLoaded(name: "tiny") == false)
     }
 
     @Test func isModelLoadedReflectsWhisperKitState() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        mockSettings.whisperModel = "base"
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
 
-        #expect(service.isModelLoaded == false)
+        #expect(service.isModelLoaded(name: "base") == false)
 
-        try await service.loadModel()
-        #expect(service.isModelLoaded == true)
+        try await service.loadModel(name: "base")
+        #expect(service.isModelLoaded(name: "base") == true)
 
-        await service.unloadModel()
-        #expect(service.isModelLoaded == false)
+        await service.unloadModel(name: "base")
+        #expect(service.isModelLoaded(name: "base") == false)
     }
 }

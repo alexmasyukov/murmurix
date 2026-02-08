@@ -11,6 +11,7 @@ struct HistoryDetailView: View {
     let onDelete: () -> Void
 
     @State private var copied = false
+    @AppStorage("appLanguage") private var appLanguage = "en"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -44,7 +45,7 @@ struct HistoryDetailView: View {
             Button(action: copyText) {
                 HStack {
                     Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                    Text(copied ? "Copied!" : "Copy")
+                    Text(copied ? L10n.copied : L10n.copy)
                 }
             }
             .buttonStyle(.borderedProminent)

@@ -28,16 +28,20 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
 
     // MARK: - TranscriptionServiceProtocol
 
-    var isModelLoaded: Bool {
-        whisperKitService.isModelLoaded
+    func isModelLoaded(name: String) -> Bool {
+        whisperKitService.isModelLoaded(name: name)
     }
 
-    func loadModel() async throws {
-        try await whisperKitService.loadModel(name: settings.whisperModel)
+    func loadModel(name: String) async throws {
+        try await whisperKitService.loadModel(name: name)
     }
 
-    func unloadModel() async {
-        await whisperKitService.unloadModel()
+    func unloadModel(name: String) async {
+        await whisperKitService.unloadModel(name: name)
+    }
+
+    func unloadAllModels() async {
+        await whisperKitService.unloadAllModels()
     }
 
     func transcribe(audioURL: URL, mode: TranscriptionMode) async throws -> String {
@@ -50,19 +54,19 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
             Logger.Transcription.info("Cloud mode (Gemini)")
             return try await transcribeViaGemini(audioURL: audioURL)
 
-        case .local:
-            Logger.Transcription.info("Local mode (WhisperKit), model=\(settings.whisperModel)")
-            return try await transcribeViaWhisperKit(audioURL: audioURL)
+        case .local(let model):
+            Logger.Transcription.info("Local mode (WhisperKit), model=\(model)")
+            return try await transcribeViaWhisperKit(audioURL: audioURL, model: model)
         }
     }
 
     // MARK: - WhisperKit Transcription
 
-    private func transcribeViaWhisperKit(audioURL: URL) async throws -> String {
-        if !whisperKitService.isModelLoaded {
-            try await whisperKitService.loadModel(name: settings.whisperModel)
+    private func transcribeViaWhisperKit(audioURL: URL, model: String) async throws -> String {
+        if !whisperKitService.isModelLoaded(name: model) {
+            try await whisperKitService.loadModel(name: model)
         }
-        return try await whisperKitService.transcribe(audioURL: audioURL, language: language)
+        return try await whisperKitService.transcribe(audioURL: audioURL, language: language, model: model)
     }
 
     // MARK: - OpenAI Transcription

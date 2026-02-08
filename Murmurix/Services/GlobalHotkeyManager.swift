@@ -8,7 +8,7 @@ import Carbon
 import AppKit
 
 class GlobalHotkeyManager: HotkeyManagerProtocol {
-    var onToggleLocalRecording: (() -> Void)?
+    var onToggleLocalRecording: ((String) -> Void)?
     var onToggleCloudRecording: (() -> Void)?
     var onToggleGeminiRecording: (() -> Void)?
     var onCancelRecording: (() -> Void)?
@@ -25,7 +25,7 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    private var toggleLocalHotkey: Hotkey
+    private var localModelHotkeys: [String: Hotkey] = [:]
     private var toggleCloudHotkey: Hotkey
     private var toggleGeminiHotkey: Hotkey
     private var cancelHotkey: Hotkey
@@ -33,14 +33,24 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
 
     init(settings: SettingsStorageProtocol = Settings.shared) {
         self.settings = settings
-        toggleLocalHotkey = settings.loadToggleLocalHotkey()
         toggleCloudHotkey = settings.loadToggleCloudHotkey()
         toggleGeminiHotkey = settings.loadToggleGeminiHotkey()
         cancelHotkey = settings.loadCancelHotkey()
+
+        // Load per-model hotkeys
+        let modelSettings = settings.loadWhisperModelSettings()
+        for (modelName, ms) in modelSettings {
+            if let hotkey = ms.hotkey {
+                localModelHotkeys[modelName] = hotkey
+            }
+        }
     }
 
-    func updateHotkeys(toggleLocal: Hotkey, toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey) {
-        toggleLocalHotkey = toggleLocal
+    func updateLocalModelHotkeys(_ hotkeys: [String: Hotkey]) {
+        localModelHotkeys = hotkeys
+    }
+
+    func updateCloudHotkeys(toggleCloud: Hotkey, toggleGemini: Hotkey, cancel: Hotkey) {
         toggleCloudHotkey = toggleCloud
         toggleGeminiHotkey = toggleGemini
         cancelHotkey = cancel
@@ -114,28 +124,30 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
             if flags.contains(.maskControl) { carbonModifiers |= UInt32(controlKey) }
             if flags.contains(.maskShift) { carbonModifiers |= UInt32(shiftKey) }
 
-            // Check toggle local hotkey
-            if keyCode == toggleLocalHotkey.keyCode && carbonModifiers == toggleLocalHotkey.modifiers {
-                onToggleLocalRecording?()
-                return nil // consume the event
+            // Check local model hotkeys
+            for (modelName, hotkey) in localModelHotkeys {
+                if keyCode == hotkey.keyCode && carbonModifiers == hotkey.modifiers {
+                    onToggleLocalRecording?(modelName)
+                    return nil
+                }
             }
 
             // Check toggle cloud (OpenAI) hotkey
             if keyCode == toggleCloudHotkey.keyCode && carbonModifiers == toggleCloudHotkey.modifiers {
                 onToggleCloudRecording?()
-                return nil // consume the event
+                return nil
             }
 
             // Check toggle Gemini hotkey
             if keyCode == toggleGeminiHotkey.keyCode && carbonModifiers == toggleGeminiHotkey.modifiers {
                 onToggleGeminiRecording?()
-                return nil // consume the event
+                return nil
             }
 
             // Check cancel hotkey - only when recording
             if isRecording && keyCode == cancelHotkey.keyCode && carbonModifiers == cancelHotkey.modifiers {
                 onCancelRecording?()
-                return nil // consume the event
+                return nil
             }
         }
 
