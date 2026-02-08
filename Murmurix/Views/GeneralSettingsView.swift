@@ -45,9 +45,8 @@ struct GeneralSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                appLanguageSection
+                languageSection
                 keyboardShortcutsSection
-                recognitionSection
                 localModelsSection
                 modelManagementSection
                 cloudSettingsSection
@@ -63,30 +62,25 @@ struct GeneralSettingsView: View {
         .transaction { $0.animation = nil }
     }
 
-    // MARK: - App Language
+    // MARK: - Language
 
-    private var appLanguageSection: some View {
+    private var languageSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(title: L10n.appLanguage)
+            SectionHeader(title: L10n.language)
 
-            HStack {
-                Spacer()
+            VStack(spacing: 0) {
+                appLanguagePicker
+                    .padding(.horizontal, Layout.Padding.standard)
+                    .padding(.vertical, Layout.Padding.vertical)
 
-                Picker("", selection: $appLanguage) {
-                    ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
-                        Text(lang.displayName).tag(lang.rawValue)
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(width: 140)
-                .transaction { $0.animation = nil }
-                .onChange(of: appLanguage) { _, _ in
-                    NotificationCenter.default.post(name: .appLanguageDidChange, object: nil)
-                }
+                Divider()
+                    .background(AppColors.divider)
+                    .padding(.leading, Layout.Padding.standard)
+
+                languagePicker
+                    .padding(.horizontal, Layout.Padding.standard)
+                    .padding(.vertical, Layout.Padding.vertical)
             }
-            .padding(.horizontal, Layout.Padding.standard)
-            .padding(.vertical, Layout.Padding.vertical)
             .background(AppColors.cardBackground)
             .cornerRadius(Layout.CornerRadius.card)
             .padding(.horizontal, Layout.Padding.standard)
@@ -152,21 +146,25 @@ struct GeneralSettingsView: View {
         }
     }
 
-    // MARK: - Recognition
+    private var appLanguagePicker: some View {
+        HStack {
+            Text(L10n.appLanguage)
+                .font(Typography.label)
+                .foregroundColor(.white)
 
-    private var recognitionSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(title: L10n.recognition)
+            Spacer()
 
-            VStack(alignment: .leading, spacing: Layout.Spacing.section) {
-                languagePicker
+            Picker("", selection: $appLanguage) {
+                ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                    Text(lang.displayName).tag(lang.rawValue)
+                }
             }
-            .padding(.horizontal, Layout.Padding.standard)
-            .padding(.vertical, Layout.Padding.vertical)
-            .background(AppColors.cardBackground)
-            .cornerRadius(Layout.CornerRadius.card)
-            .padding(.horizontal, Layout.Padding.standard)
-            .padding(.bottom, Layout.Padding.section)
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .transaction { $0.animation = nil }
+            .onChange(of: appLanguage) { _, _ in
+                NotificationCenter.default.post(name: .appLanguageDidChange, object: nil)
+            }
         }
     }
 
@@ -275,7 +273,7 @@ struct GeneralSettingsView: View {
 
     private var languagePicker: some View {
         HStack {
-            Text(L10n.language)
+            Text(L10n.recognitionLanguage)
                 .font(Typography.label)
                 .foregroundColor(.white)
 
@@ -288,7 +286,6 @@ struct GeneralSettingsView: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .frame(width: 120)
             .transaction { $0.animation = nil }
         }
     }

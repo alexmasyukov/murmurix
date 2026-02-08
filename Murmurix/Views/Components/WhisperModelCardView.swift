@@ -33,7 +33,7 @@ struct WhisperModelCardView: View {
                 .background(AppColors.divider)
                 .padding(.leading, Layout.Padding.standard)
 
-            hotkeyRow
+            keepLoadedRow
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
 
@@ -41,33 +41,23 @@ struct WhisperModelCardView: View {
                 .background(AppColors.divider)
                 .padding(.leading, Layout.Padding.standard)
 
-            keepLoadedRow
+            modelFileRow
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
 
-            if isInstalled {
-                Divider()
-                    .background(AppColors.divider)
-                    .padding(.leading, Layout.Padding.standard)
-
-                actionButtons
+            if let result = testResult {
+                TestResultBadge(result: result, successText: L10n.modelWorksCorrectly)
                     .padding(.horizontal, Layout.Padding.standard)
-                    .padding(.vertical, Layout.Padding.vertical)
-
-                if let result = testResult {
-                    TestResultBadge(result: result, successText: L10n.modelWorksCorrectly)
-                        .padding(.horizontal, Layout.Padding.standard)
-                        .padding(.bottom, Layout.Padding.vertical)
-                }
-            } else {
-                Divider()
-                    .background(AppColors.divider)
-                    .padding(.leading, Layout.Padding.standard)
-
-                downloadSection
-                    .padding(.horizontal, Layout.Padding.standard)
-                    .padding(.vertical, Layout.Padding.vertical)
+                    .padding(.bottom, Layout.Padding.vertical)
             }
+
+            Divider()
+                .background(AppColors.divider)
+                .padding(.leading, Layout.Padding.standard)
+
+            hotkeyRow
+                .padding(.horizontal, Layout.Padding.standard)
+                .padding(.vertical, Layout.Padding.vertical)
         }
         .background(AppColors.cardBackground)
         .cornerRadius(Layout.CornerRadius.card)
@@ -78,9 +68,14 @@ struct WhisperModelCardView: View {
 
     private var headerRow: some View {
         HStack {
-            Text(L10n.whisperModelDisplayName(model))
-                .font(Typography.label)
-                .foregroundColor(.white)
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                Text(model.shortName)
+                    .font(Typography.label)
+                    .foregroundColor(.white)
+                Text(L10n.whisperModelDescription(model))
+                    .font(Typography.description)
+                    .foregroundColor(.gray)
+            }
 
             Spacer()
 
@@ -90,12 +85,12 @@ struct WhisperModelCardView: View {
                         .fill(Color.green)
                         .frame(width: 6, height: 6)
                     Text(L10n.installed)
-                        .font(Typography.caption)
+                        .font(Typography.label)
                         .foregroundColor(.green)
                 }
             } else {
                 Text(L10n.notInstalled)
-                    .font(Typography.caption)
+                    .font(Typography.label)
                     .foregroundColor(.gray)
             }
         }
@@ -217,8 +212,8 @@ struct WhisperModelCardView: View {
         HStack {
             HStack(spacing: Layout.Spacing.indicator) {
                 Text(L10n.keepInMemory)
-                    .font(Typography.description)
-                    .foregroundColor(.gray)
+                    .font(Typography.label)
+                    .foregroundColor(.white)
 
                 if ms.keepLoaded {
                     Circle()
@@ -245,114 +240,117 @@ struct WhisperModelCardView: View {
         }
     }
 
-    // MARK: - Action Buttons
-
-    private var actionButtons: some View {
-        HStack(spacing: Layout.Spacing.item) {
-            Button {
-                Task { await viewModel.testModel(modelName) }
-            } label: {
-                HStack(spacing: 4) {
-                    if isTesting {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                    Text(isTesting ? L10n.testing : L10n.test)
-                }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .disabled(isTesting)
-
-            Button {
-                showDeleteConfirmation = true
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "trash")
-                    Text(L10n.delete)
-                }
-                .foregroundColor(.red)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .alert(L10n.deleteModel, isPresented: $showDeleteConfirmation) {
-                Button(L10n.cancel, role: .cancel) {}
-                Button(L10n.delete, role: .destructive) {
-                    Task { await viewModel.deleteModel(modelName) }
-                }
-            } message: {
-                Text(L10n.deleteModelMessage(modelName))
-            }
-        }
-    }
-
-    // MARK: - Download Section
+    // MARK: - Model File Row
 
     @ViewBuilder
-    private var downloadSection: some View {
-        let status = viewModel.downloadStatus(for: modelName)
-        switch status {
-        case .idle:
+    private var modelFileRow: some View {
+        if isInstalled {
             HStack(spacing: Layout.Spacing.item) {
-                Image(systemName: "arrow.down.circle")
-                    .foregroundColor(.secondary)
+                Text(L10n.modelFile)
+                    .font(Typography.label)
+                    .foregroundColor(.white)
                 Spacer()
-                Button(L10n.download) {
-                    viewModel.startDownload(for: modelName)
+                Button {
+                    Task { await viewModel.testModel(modelName) }
+                } label: {
+                    HStack(spacing: 4) {
+                        if isTesting {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(isTesting ? L10n.testing : L10n.test)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .controlSize(.small)
-            }
+                .disabled(isTesting)
 
-        case .downloading(let progress):
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(L10n.downloading(progress: Int(progress * 100)))
+                Button {
+                    showDeleteConfirmation = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "trash")
+                        Text(L10n.delete)
+                    }
+                    .foregroundColor(.red)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .alert(L10n.deleteModel, isPresented: $showDeleteConfirmation) {
+                    Button(L10n.cancel, role: .cancel) {}
+                    Button(L10n.delete, role: .destructive) {
+                        Task { await viewModel.deleteModel(modelName) }
+                    }
+                } message: {
+                    Text(L10n.deleteModelMessage(modelName))
+                }
+            }
+        } else {
+            let status = viewModel.downloadStatus(for: modelName)
+            switch status {
+            case .idle:
+                HStack(spacing: Layout.Spacing.item) {
+                    Text(L10n.modelFile)
+                        .font(Typography.label)
+                        .foregroundColor(.white)
+                    Spacer()
+                    Button(L10n.download) {
+                        viewModel.startDownload(for: modelName)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+
+            case .downloading(let progress):
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(L10n.downloading(progress: Int(progress * 100)))
+                            .font(Typography.description)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button(L10n.cancel) {
+                            viewModel.cancelDownload(for: modelName)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    ProgressView(value: progress)
+                        .progressViewStyle(.linear)
+                }
+
+            case .compiling:
+                HStack(spacing: Layout.Spacing.item) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(L10n.compiling)
                         .font(Typography.description)
                         .foregroundColor(.secondary)
+                }
+
+            case .completed:
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text(L10n.ready)
+                        .font(Typography.description)
+                        .foregroundColor(.green)
+                }
+
+            case .error(let message):
+                HStack(spacing: Layout.Spacing.item) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red)
+                    Text(message)
+                        .font(Typography.description)
+                        .foregroundColor(.red)
+                        .lineLimit(2)
                     Spacer()
-                    Button(L10n.cancel) {
-                        viewModel.cancelDownload(for: modelName)
+                    Button(L10n.retry) {
+                        viewModel.startDownload(for: modelName)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                 }
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-            }
-
-        case .compiling:
-            HStack(spacing: Layout.Spacing.item) {
-                ProgressView()
-                    .controlSize(.small)
-                Text(L10n.compiling)
-                    .font(Typography.description)
-                    .foregroundColor(.secondary)
-            }
-
-        case .completed:
-            HStack(spacing: 4) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                Text(L10n.ready)
-                    .font(Typography.description)
-                    .foregroundColor(.green)
-            }
-
-        case .error(let message):
-            HStack(spacing: Layout.Spacing.item) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.red)
-                Text(message)
-                    .font(Typography.description)
-                    .foregroundColor(.red)
-                    .lineLimit(2)
-                Spacer()
-                Button(L10n.retry) {
-                    viewModel.startDownload(for: modelName)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
         }
     }

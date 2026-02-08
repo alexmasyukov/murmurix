@@ -33,6 +33,7 @@ enum L10n {
     // MARK: - Recognition
 
     static var language: String { tr("Language", "Язык") }
+    static var recognitionLanguage: String { tr("Recognition language", "Язык распознавания") }
     static var russian: String { tr("Russian", "Русский") }
     static var english: String { tr("English", "Английский") }
     static var autoDetect: String { tr("Auto-detect", "Авто") }
@@ -50,6 +51,7 @@ enum L10n {
     static var delete: String { tr("Delete", "Удалить") }
     static var deleteModel: String { tr("Delete model?", "Удалить модель?") }
     static var cancel: String { tr("Cancel", "Отмена") }
+    static var modelFile: String { tr("Model file", "Файл модели") }
     static var download: String { tr("Download", "Скачать") }
     static var compiling: String { tr("Compiling...", "Компиляция...") }
     static var ready: String { tr("Ready!", "Готово!") }
@@ -146,14 +148,14 @@ enum L10n {
 
     // MARK: - Whisper Model Display Names
 
-    static func whisperModelDisplayName(_ model: WhisperModel) -> String {
+    static func whisperModelDescription(_ model: WhisperModel) -> String {
         switch model {
-        case .tiny: return tr("Tiny (fastest, ~75MB)", "Tiny (быстрейшая, ~75МБ)")
-        case .base: return tr("Base (~140MB)", "Base (~140МБ)")
-        case .small: return tr("Small (~460MB)", "Small (~460МБ)")
-        case .medium: return tr("Medium (~1.5GB)", "Medium (~1,5ГБ)")
-        case .largeV2: return tr("Large v2 (~3GB)", "Large v2 (~3ГБ)")
-        case .largeV3: return tr("Large v3 (best, ~3GB)", "Large v3 (лучшая, ~3ГБ)")
+        case .tiny: return tr("Fastest, ~70 MB", "Быстрейшая, ~70 МБ")
+        case .base: return "~140 MB"
+        case .small: return "~290 MB"
+        case .medium: return "~800 MB"
+        case .largeV2: return tr("~2.5 GB", "~2,5 ГБ")
+        case .largeV3: return tr("Best quality, ~2.5 GB", "Лучшее качество, ~2,5 ГБ")
         }
     }
 }
