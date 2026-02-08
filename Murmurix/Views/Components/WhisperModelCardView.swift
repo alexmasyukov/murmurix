@@ -253,12 +253,17 @@ struct WhisperModelCardView: View {
                 Button {
                     Task { await viewModel.testModel(modelName) }
                 } label: {
-                    HStack(spacing: 4) {
-                        if isTesting {
-                            ProgressView()
-                                .controlSize(.small)
+                    ZStack {
+                        // Invisible text to reserve width
+                        Text(L10n.testing)
+                            .opacity(0)
+                        HStack(spacing: 4) {
+                            if isTesting {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                            Text(isTesting ? L10n.testing : L10n.test)
                         }
-                        Text(isTesting ? L10n.testing : L10n.test)
                     }
                 }
                 .buttonStyle(.bordered)
