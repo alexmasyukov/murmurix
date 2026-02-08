@@ -26,10 +26,18 @@ protocol GeneralSettingsViewModelProtocol: ObservableObject {
     func cancelDownload()
 
     // Test functions
-    func testLocalModel(isDaemonRunning: Bool) async
+    func testLocalModel() async
     func testOpenAI(apiKey: String) async
     func testGemini(apiKey: String) async
     func clearTestResult(for service: TestService)
+}
+
+enum DownloadStatus {
+    case idle
+    case downloading(progress: Double)
+    case compiling
+    case completed
+    case error(String)
 }
 
 enum TestService {
@@ -53,20 +61,20 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
 
     var onModelChanged: (() -> Void)?
 
-    private let downloadService: ModelDownloadServiceProtocol
+    private let whisperKitService: WhisperKitServiceProtocol
     private let openAIService: OpenAITranscriptionServiceProtocol
     private let geminiService: GeminiTranscriptionServiceProtocol
     private let transcriptionServiceFactory: () -> TranscriptionServiceProtocol
     let settings: SettingsStorageProtocol
 
     init(
-        downloadService: ModelDownloadServiceProtocol = ModelDownloadService.shared,
+        whisperKitService: WhisperKitServiceProtocol = WhisperKitService.shared,
         openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
         geminiService: GeminiTranscriptionServiceProtocol = GeminiTranscriptionService.shared,
         transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol = { TranscriptionService() },
         settings: SettingsStorageProtocol = Settings.shared
     ) {
-        self.downloadService = downloadService
+        self.whisperKitService = whisperKitService
         self.openAIService = openAIService
         self.geminiService = geminiService
         self.transcriptionServiceFactory = transcriptionServiceFactory
@@ -89,23 +97,32 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
     }
 
     func startDownload(for modelName: String) {
-        downloadStatus = .downloading
+        downloadStatus = .downloading(progress: 0)
 
-        downloadService.downloadModel(modelName) { [weak self] status in
+        Task { [weak self] in
             guard let self = self else { return }
-
-            self.downloadStatus = status
-
-            if case .completed = status {
+            do {
+                try await self.whisperKitService.downloadModel(modelName) { progress in
+                    Task { @MainActor [weak self] in
+                        self?.downloadStatus = .downloading(progress: progress)
+                    }
+                }
+                self.downloadStatus = .compiling
+                try await self.whisperKitService.loadModel(name: modelName)
+                if !self.settings.keepModelLoaded {
+                    await self.whisperKitService.unloadModel()
+                }
+                self.downloadStatus = .completed
                 self.loadInstalledModels()
                 self.onModelChanged?()
                 self.scheduleStatusReset()
+            } catch {
+                self.downloadStatus = .error(error.localizedDescription)
             }
         }
     }
 
     func cancelDownload() {
-        downloadService.cancelDownload()
         downloadStatus = .idle
     }
 
@@ -118,19 +135,58 @@ final class GeneralSettingsViewModel: ObservableObject, GeneralSettingsViewModel
         }
     }
 
+    // MARK: - Model Deletion
+
+    func deleteModel(_ modelName: String) async {
+        if whisperKitService.isModelLoaded {
+            await whisperKitService.unloadModel()
+        }
+        let fm = FileManager.default
+        let documentsDir = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let modelDir = documentsDir.appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml/openai_whisper-\(modelName)")
+        try? fm.removeItem(at: modelDir)
+        loadInstalledModels()
+    }
+
+    func deleteAllModels() async {
+        if whisperKitService.isModelLoaded {
+            await whisperKitService.unloadModel()
+        }
+        let fm = FileManager.default
+        let documentsDir = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let repoDir = documentsDir.appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml")
+        if let contents = try? fm.contentsOfDirectory(atPath: repoDir.path) {
+            for item in contents where item.hasPrefix("openai_whisper-") {
+                try? fm.removeItem(at: repoDir.appendingPathComponent(item))
+            }
+        }
+        loadInstalledModels()
+    }
+
     // MARK: - API Testing
 
-    func testLocalModel(isDaemonRunning: Bool) async {
+    func testLocalModel() async {
         isTestingLocal = true
         localTestResult = nil
 
+        let modelName = settings.whisperModel
+        guard isModelInstalled(modelName) else {
+            localTestResult = .failure("Model not installed. Download it first.")
+            isTestingLocal = false
+            return
+        }
+
         do {
+            let service = transcriptionServiceFactory()
+            if !service.isModelLoaded {
+                try await service.loadModel()
+            }
+
             let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
             try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
             defer { try? FileManager.default.removeItem(at: tempURL) }
 
-            let service = transcriptionServiceFactory()
-            _ = try await service.transcribe(audioURL: tempURL, useDaemon: isDaemonRunning, mode: .local)
+            _ = try await service.transcribe(audioURL: tempURL, mode: .local)
 
             localTestResult = .success
         } catch {

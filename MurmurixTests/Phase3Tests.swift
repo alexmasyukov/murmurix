@@ -26,7 +26,7 @@ struct GeneralSettingsViewModelAPITests {
         #expect(viewModel.localTestResult == nil)
 
         let testTask = Task {
-            await viewModel.testLocalModel(isDaemonRunning: false)
+            await viewModel.testLocalModel()
         }
 
         // Give a moment for the state to be set
@@ -44,7 +44,7 @@ struct GeneralSettingsViewModelAPITests {
             transcriptionServiceFactory: { mockTranscription }
         )
 
-        await viewModel.testLocalModel(isDaemonRunning: false)
+        await viewModel.testLocalModel()
 
         #expect(mockTranscription.transcribeCallCount == 1)
         #expect(viewModel.localTestResult == .success)
@@ -58,7 +58,7 @@ struct GeneralSettingsViewModelAPITests {
             transcriptionServiceFactory: { mockTranscription }
         )
 
-        await viewModel.testLocalModel(isDaemonRunning: true)
+        await viewModel.testLocalModel()
 
         #expect(mockTranscription.transcribeCallCount == 1)
         if case .failure = viewModel.localTestResult {
@@ -69,20 +69,16 @@ struct GeneralSettingsViewModelAPITests {
         #expect(viewModel.isTestingLocal == false)
     }
 
-    @Test func testLocalModelUsesCorrectDaemonState() async {
+    @Test func testLocalModelCallsService() async {
         let mockTranscription = MockTranscriptionService()
-        var capturedUseDaemon: Bool?
-
-        // We can't directly capture the useDaemon parameter from MockTranscriptionService,
-        // but we can verify the service was called
         let viewModel = GeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
 
-        await viewModel.testLocalModel(isDaemonRunning: true)
+        await viewModel.testLocalModel()
         #expect(mockTranscription.transcribeCallCount == 1)
 
-        await viewModel.testLocalModel(isDaemonRunning: false)
+        await viewModel.testLocalModel()
         #expect(mockTranscription.transcribeCallCount == 2)
     }
 
@@ -218,7 +214,7 @@ struct GeneralSettingsViewModelAPITests {
             transcriptionServiceFactory: { mockTranscription }
         )
 
-        await viewModel.testLocalModel(isDaemonRunning: false)
+        await viewModel.testLocalModel()
         #expect(viewModel.localTestResult != nil)
 
         viewModel.clearTestResult(for: .local)

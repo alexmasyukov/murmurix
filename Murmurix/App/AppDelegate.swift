@@ -29,11 +29,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupManagers()
         setupHotkeys()
 
-        coordinator.startDaemonIfNeeded()
+        coordinator.loadModelIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        coordinator.stopDaemon()
+        coordinator.unloadModel()
         hotkeyManager.stop()
     }
 
@@ -156,16 +156,16 @@ extension AppDelegate: MenuBarManagerDelegate {
 
     func menuBarDidRequestOpenSettings() {
         windowManager.showSettingsWindow(
-            isDaemonRunning: transcriptionService.isDaemonRunning,
-            onDaemonToggle: { [weak self] enabled in
-                self?.coordinator.setDaemonEnabled(enabled)
+            isModelLoaded: transcriptionService.isModelLoaded,
+            onModelToggle: { [weak self] enabled in
+                self?.coordinator.setModelLoaded(enabled)
             },
             onHotkeysChanged: { [weak self] toggleLocal, toggleCloud, toggleGemini, cancel in
                 self?.hotkeyManager.updateHotkeys(toggleLocal: toggleLocal, toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
                 self?.menuBarManager.updateHotkeyDisplay()
             },
             onModelChanged: { [weak self] in
-                self?.coordinator.restartDaemon()
+                self?.coordinator.reloadModel()
             },
             onWindowOpen: { [weak self] in
                 self?.hotkeyManager.pause()

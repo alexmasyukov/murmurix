@@ -140,7 +140,6 @@ final class RecordingCoordinator {
     private func performTranscription(audioURL: URL, duration: TimeInterval) {
         currentAudioURL = audioURL
         let service = transcriptionService
-        let useDaemon = settings.keepDaemonRunning
         let language = settings.language
         let mode = currentTranscriptionMode
 
@@ -166,7 +165,7 @@ final class RecordingCoordinator {
                     transcriptionURL = audioURL
                 }
 
-                let transcribedText = try await service.transcribe(audioURL: transcriptionURL, useDaemon: useDaemon, mode: mode)
+                let transcribedText = try await service.transcribe(audioURL: transcriptionURL, mode: mode)
 
                 // Check if cancelled
                 if Task.isCancelled { return }
@@ -210,31 +209,32 @@ final class RecordingCoordinator {
         }
     }
 
-    // MARK: - Daemon Control
+    // MARK: - Model Control
 
-    func startDaemonIfNeeded() {
-        if settings.keepDaemonRunning {
-            transcriptionService.startDaemon()
+    func loadModelIfNeeded() {
+        if settings.keepModelLoaded {
+            Task { try? await transcriptionService.loadModel() }
         }
     }
 
-    func stopDaemon() {
-        transcriptionService.stopDaemon()
+    func unloadModel() {
+        Task { await transcriptionService.unloadModel() }
     }
 
-    func setDaemonEnabled(_ enabled: Bool) {
+    func setModelLoaded(_ enabled: Bool) {
         if enabled {
-            transcriptionService.startDaemon()
+            Task { try? await transcriptionService.loadModel() }
         } else {
-            transcriptionService.stopDaemon()
+            Task { await transcriptionService.unloadModel() }
         }
     }
 
-    func restartDaemon() {
-        transcriptionService.stopDaemon()
-        // Wait a bit for cleanup
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.transcriptionService.startDaemon()
+    func reloadModel() {
+        Task {
+            await transcriptionService.unloadModel()
+            if settings.keepModelLoaded {
+                try? await transcriptionService.loadModel()
+            }
         }
     }
 }

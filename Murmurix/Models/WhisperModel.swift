@@ -25,20 +25,20 @@ enum WhisperModel: String, CaseIterable {
     }
 
     var isInstalled: Bool {
-        let hfCache = NSHomeDirectory() + "/.cache/huggingface/hub/models--Systran--faster-whisper-\(rawValue)"
-        let snapshotsPath = hfCache + "/snapshots"
+        let fm = FileManager.default
+        let documentsDir = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let modelDir = documentsDir
+            .appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml/openai_whisper-\(rawValue)")
 
-        guard FileManager.default.fileExists(atPath: snapshotsPath),
-              let snapshots = try? FileManager.default.contentsOfDirectory(atPath: snapshotsPath) else {
+        var isDirectory: ObjCBool = false
+        guard fm.fileExists(atPath: modelDir.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else {
             return false
         }
 
-        for snapshot in snapshots {
-            let modelBin = snapshotsPath + "/\(snapshot)/model.bin"
-            let configJson = snapshotsPath + "/\(snapshot)/config.json"
-            if FileManager.default.fileExists(atPath: modelBin) || FileManager.default.fileExists(atPath: configJson) {
-                return true
-            }
+        // Check that the folder contains at least one .mlmodelc directory
+        if let contents = try? fm.contentsOfDirectory(atPath: modelDir.path) {
+            return contents.contains { $0.hasSuffix(".mlmodelc") }
         }
         return false
     }

@@ -19,9 +19,9 @@ struct SettingsTests {
 
     // MARK: - Default Values
 
-    @Test func defaultKeepDaemonRunningIsTrue() {
+    @Test func defaultKeepModelLoadedIsTrue() {
         let settings = createSettings()
-        #expect(settings.keepDaemonRunning == true)
+        #expect(settings.keepModelLoaded == true)
     }
 
     @Test func defaultLanguageIsRussian() {
@@ -60,14 +60,14 @@ struct SettingsTests {
 
     // MARK: - Persistence
 
-    @Test func keepDaemonRunningPersists() {
+    @Test func keepModelLoadedPersists() {
         let settings = createSettings()
 
-        settings.keepDaemonRunning = false
-        #expect(settings.keepDaemonRunning == false)
+        settings.keepModelLoaded = false
+        #expect(settings.keepModelLoaded == false)
 
-        settings.keepDaemonRunning = true
-        #expect(settings.keepDaemonRunning == true)
+        settings.keepModelLoaded = true
+        #expect(settings.keepModelLoaded == true)
     }
 
     @Test func languagePersists() {

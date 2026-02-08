@@ -43,7 +43,7 @@ final class Settings: SettingsStorageProtocol {
 
     // MARK: - Core Settings
 
-    var keepDaemonRunning: Bool {
+    var keepModelLoaded: Bool {
         get { defaults.bool(forKey: Keys.keepDaemonRunning) }
         set { defaults.set(newValue, forKey: Keys.keepDaemonRunning) }
     }

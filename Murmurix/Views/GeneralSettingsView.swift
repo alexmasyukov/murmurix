@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct GeneralSettingsView: View {
-    @AppStorage("keepDaemonRunning") private var keepDaemonRunning = true
+    @AppStorage("keepDaemonRunning") private var keepModelLoaded = true
     @AppStorage("language") private var language = "ru"
     @AppStorage("whisperModel") private var whisperModel = WhisperModel.small.rawValue
     @AppStorage("openaiTranscriptionModel") private var openaiTranscriptionModel = OpenAITranscriptionModel.gpt4oTranscribe.rawValue
@@ -18,22 +18,24 @@ struct GeneralSettingsView: View {
     @State private var openaiApiKey: String = ""
     @State private var geminiApiKey: String = ""
     @AppStorage("geminiModel") private var geminiModel = GeminiTranscriptionModel.flash2.rawValue
+    @State private var showDeleteModelConfirmation = false
+    @State private var showDeleteAllConfirmation = false
 
     @StateObject private var viewModel = GeneralSettingsViewModel()
-    @Binding var isDaemonRunning: Bool
+    @Binding var isModelLoaded: Bool
 
-    var onDaemonToggle: ((Bool) -> Void)?
+    var onModelToggle: ((Bool) -> Void)?
     var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
 
     init(
-        isDaemonRunning: Binding<Bool>,
-        onDaemonToggle: ((Bool) -> Void)? = nil,
+        isModelLoaded: Binding<Bool>,
+        onModelToggle: ((Bool) -> Void)? = nil,
         onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)? = nil,
         onModelChanged: (() -> Void)? = nil
     ) {
-        self._isDaemonRunning = isDaemonRunning
-        self.onDaemonToggle = onDaemonToggle
+        self._isModelLoaded = isModelLoaded
+        self.onModelToggle = onModelToggle
         self.onHotkeysChanged = onHotkeysChanged
         self.onModelChanged = onModelChanged
         _toggleLocalHotkey = State(initialValue: Settings.shared.loadToggleLocalHotkey())
@@ -166,8 +168,8 @@ struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: Layout.Spacing.item) {
                 modelPicker
                 modelDownloadStatus
-                daemonToggle
-                localTestButton
+                modelToggle
+                modelManagement
             }
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.vertical, Layout.Padding.vertical)
@@ -178,7 +180,7 @@ struct GeneralSettingsView: View {
         }
     }
 
-    private var daemonToggle: some View {
+    private var modelToggle: some View {
         HStack {
             VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
                 HStack(spacing: Layout.Spacing.indicator) {
@@ -187,24 +189,24 @@ struct GeneralSettingsView: View {
                         .foregroundColor(.white)
 
                     Circle()
-                        .fill(isDaemonRunning ? Color.green : Color.gray.opacity(AppColors.disabledOpacity))
+                        .fill(isModelLoaded ? Color.green : Color.gray.opacity(AppColors.disabledOpacity))
                         .frame(width: 8, height: 8)
 
-                    Text(isDaemonRunning ? "Running" : "Stopped")
+                    Text(isModelLoaded ? "Loaded" : "Not loaded")
                         .font(Typography.caption)
-                        .foregroundColor(isDaemonRunning ? .green : .gray)
+                        .foregroundColor(isModelLoaded ? .green : .gray)
                 }
                 Text("Faster transcription, uses ~500MB RAM")
                     .font(Typography.description)
                     .foregroundColor(.gray)
             }
             Spacer()
-            Toggle("", isOn: $keepDaemonRunning)
+            Toggle("", isOn: $keepModelLoaded)
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .transaction { $0.animation = nil }
-                .onChange(of: keepDaemonRunning) { _, newValue in
-                    onDaemonToggle?(newValue)
+                .onChange(of: keepModelLoaded) { _, newValue in
+                    onModelToggle?(newValue)
                 }
         }
     }
@@ -214,7 +216,7 @@ struct GeneralSettingsView: View {
             HStack {
                 Button {
                     Task {
-                        await viewModel.testLocalModel(isDaemonRunning: isDaemonRunning)
+                        await viewModel.testLocalModel()
                     }
                 } label: {
                     HStack(spacing: 6) {
@@ -249,6 +251,37 @@ struct GeneralSettingsView: View {
                     }
                 }
                 .font(Typography.description)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var modelManagement: some View {
+        if !viewModel.installedModels.isEmpty {
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                Button {
+                    showDeleteAllConfirmation = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "trash.fill")
+                        Text("Delete all models")
+                    }
+                    .foregroundColor(.red)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .alert("Delete all models?", isPresented: $showDeleteAllConfirmation) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Delete all", role: .destructive) {
+                        Task { await viewModel.deleteAllModels() }
+                    }
+                } message: {
+                    Text("All \(viewModel.installedModels.count) downloaded models will be removed from disk and unloaded from memory.")
+                }
+
+                Text("Removes all downloaded models from disk and unloads from memory")
+                    .font(Typography.description)
+                    .foregroundColor(.gray)
             }
         }
     }
@@ -453,36 +486,94 @@ struct GeneralSettingsView: View {
     }
 
     private var modelPicker: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
-                Text("Model")
-                    .font(Typography.label)
-                    .foregroundColor(.white)
-                Text("Larger models are more accurate but slower")
-                    .font(Typography.description)
-                    .foregroundColor(.gray)
-            }
+        VStack(alignment: .leading, spacing: Layout.Spacing.item) {
+            HStack {
+                VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                    Text("Model")
+                        .font(Typography.label)
+                        .foregroundColor(.white)
+                    Text("Larger models are more accurate but slower")
+                        .font(Typography.description)
+                        .foregroundColor(.gray)
+                }
 
-            Spacer()
+                Spacer()
 
-            Picker("", selection: $whisperModel) {
-                ForEach(WhisperModel.allCases, id: \.rawValue) { model in
-                    HStack {
-                        Text(model.displayName)
-                        if !viewModel.isModelInstalled(model.rawValue) {
-                            Text("(not installed)")
-                                .foregroundColor(.secondary)
+                Picker("", selection: $whisperModel) {
+                    ForEach(WhisperModel.allCases, id: \.rawValue) { model in
+                        HStack {
+                            Text(model.displayName)
+                            if !viewModel.isModelInstalled(model.rawValue) {
+                                Text("(not installed)")
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .tag(model.rawValue)
                     }
-                    .tag(model.rawValue)
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .transaction { $0.animation = nil }
+                .onChange(of: whisperModel) { _, newValue in
+                    viewModel.handleModelChange(newValue)
                 }
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .frame(width: 220)
-            .transaction { $0.animation = nil }
-            .onChange(of: whisperModel) { _, newValue in
-                viewModel.handleModelChange(newValue)
+
+            if viewModel.isModelInstalled(whisperModel) {
+                HStack(spacing: Layout.Spacing.item) {
+                    Button {
+                        Task { await viewModel.testLocalModel() }
+                    } label: {
+                        HStack(spacing: 4) {
+                            if viewModel.isTestingLocal {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                            Text(viewModel.isTestingLocal ? "Testing..." : "Test model")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(viewModel.isTestingLocal)
+
+                    Button {
+                        showDeleteModelConfirmation = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "trash")
+                            Text("Delete model")
+                        }
+                        .foregroundColor(.red)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .alert("Delete model?", isPresented: $showDeleteModelConfirmation) {
+                        Button("Cancel", role: .cancel) {}
+                        Button("Delete", role: .destructive) {
+                            Task { await viewModel.deleteModel(whisperModel) }
+                        }
+                    } message: {
+                        Text("Model \"\(whisperModel)\" will be removed from disk and unloaded from memory.")
+                    }
+                }
+
+                if let result = viewModel.localTestResult {
+                    HStack(spacing: 4) {
+                        switch result {
+                        case .success:
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Model works correctly")
+                                .foregroundColor(.green)
+                        case .failure(let message):
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                            Text(message)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .font(Typography.description)
+                }
             }
         }
     }
@@ -506,10 +597,10 @@ struct GeneralSettingsView: View {
                         .controlSize(.small)
                     }
 
-                case .downloading:
+                case .downloading(let progress):
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text("Downloading model...")
+                            Text("Downloading model... \(Int(progress * 100))%")
                                 .foregroundColor(.secondary)
                             Spacer()
                             Button("Cancel") {
@@ -518,15 +609,23 @@ struct GeneralSettingsView: View {
                             .buttonStyle(.bordered)
                             .controlSize(.small)
                         }
-                        ProgressView()
+                        ProgressView(value: progress)
                             .progressViewStyle(.linear)
+                    }
+
+                case .compiling:
+                    HStack(spacing: Layout.Spacing.item) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Compiling model for Neural Engine...")
+                            .foregroundColor(.secondary)
                     }
 
                 case .completed:
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                        Text("Download completed!")
+                        Text("Model ready!")
                             .foregroundColor(.green)
                     }
 

@@ -19,11 +19,11 @@ protocol AudioRecorderProtocol: AnyObject {
 // MARK: - Transcription
 
 protocol TranscriptionServiceProtocol: Sendable {
-    var isDaemonRunning: Bool { get }
+    var isModelLoaded: Bool { get }
 
-    func startDaemon()
-    func stopDaemon()
-    func transcribe(audioURL: URL, useDaemon: Bool, mode: TranscriptionMode) async throws -> String
+    func loadModel() async throws
+    func unloadModel() async
+    func transcribe(audioURL: URL, mode: TranscriptionMode) async throws -> String
 }
 
 // MARK: - Hotkey Management
@@ -50,7 +50,7 @@ extension URLSession: URLSessionProtocol {}
 // MARK: - Settings Storage
 
 protocol SettingsStorageProtocol: AnyObject {
-    var keepDaemonRunning: Bool { get set }
+    var keepModelLoaded: Bool { get set }
     var language: String { get set }
     var transcriptionMode: String { get set }
     var whisperModel: String { get set }

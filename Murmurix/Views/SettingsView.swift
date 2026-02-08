@@ -6,28 +6,28 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Binding var isDaemonRunning: Bool
+    @Binding var isModelLoaded: Bool
 
-    var onDaemonToggle: ((Bool) -> Void)?
+    var onModelToggle: ((Bool) -> Void)?
     var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
 
     init(
-        isDaemonRunning: Binding<Bool>,
-        onDaemonToggle: ((Bool) -> Void)? = nil,
+        isModelLoaded: Binding<Bool>,
+        onModelToggle: ((Bool) -> Void)? = nil,
         onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)? = nil,
         onModelChanged: (() -> Void)? = nil
     ) {
-        self._isDaemonRunning = isDaemonRunning
-        self.onDaemonToggle = onDaemonToggle
+        self._isModelLoaded = isModelLoaded
+        self.onModelToggle = onModelToggle
         self.onHotkeysChanged = onHotkeysChanged
         self.onModelChanged = onModelChanged
     }
 
     var body: some View {
         GeneralSettingsView(
-            isDaemonRunning: $isDaemonRunning,
-            onDaemonToggle: onDaemonToggle,
+            isModelLoaded: $isModelLoaded,
+            onModelToggle: onModelToggle,
             onHotkeysChanged: onHotkeysChanged,
             onModelChanged: onModelChanged
         )
@@ -37,5 +37,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(isDaemonRunning: .constant(true))
+    SettingsView(isModelLoaded: .constant(true))
 }

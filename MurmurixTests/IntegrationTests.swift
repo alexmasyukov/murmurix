@@ -2,201 +2,185 @@
 //  IntegrationTests.swift
 //  MurmurixTests
 //
-//  Integration tests that use the real daemon for local model transcription.
-//  These tests require:
-//  - Python 3 installed
-//  - Whisper model installed (tiny recommended for tests)
-//  - transcribe_daemon.py script available
-//
 
 import Testing
 import Foundation
 @testable import Murmurix
 
-// MARK: - Test Skip Error
+// MARK: - TranscriptionService Integration Tests (with mocked backends)
 
-struct TestSkipError: Error, CustomStringConvertible {
-    let message: String
+struct TranscriptionServiceIntegrationTests {
 
-    init(_ message: String) {
-        self.message = message
-    }
+    // MARK: - Local Mode (WhisperKit)
 
-    var description: String { message }
-}
+    @Test func localModeTranscribesViaWhisperKit() async throws {
+        let mockWhisperKit = MockWhisperKitService()
+        mockWhisperKit.transcribeResult = .success("Hello from WhisperKit")
+        let mockSettings = MockSettings()
+        mockSettings.whisperModel = "small"
 
-// MARK: - Daemon Integration Tests (All in one serialized suite to avoid conflicts)
-
-@Suite(.serialized)
-struct DaemonIntegrationTests {
-
-    // MARK: - Lifecycle Tests
-
-    @Test func daemonStartsAndStops() async throws {
-        // Cleanup any leftover daemon first
-        DaemonCleanup.forceCleanup()
-        try await Task.sleep(nanoseconds: 500_000_000) // 500ms
-
-        guard PythonResolver.findPython() != nil,
-              PythonResolver.findDaemonScript() != nil else {
-            throw TestSkipError("Python or daemon script not found")
-        }
-
-        let testDefaults = UserDefaults(suiteName: "lifecycle-test-\(UUID().uuidString)")!
-        let settings = Settings(defaults: testDefaults)
-        settings.whisperModel = "tiny"
-
-        let daemon = DaemonManager(settings: settings, language: "en")
-
-        defer {
-            daemon.stop()
-            DaemonCleanup.forceCleanup()
-        }
-
-        // Initially not running (after cleanup)
-        #expect(daemon.isRunning == false)
-
-        // Start
-        daemon.start()
-
-        // Wait for startup
-        for _ in 0..<100 {
-            if daemon.isRunning { break }
-            try await Task.sleep(nanoseconds: 100_000_000)
-        }
-
-        #expect(daemon.isRunning == true)
-
-        // Stop
-        daemon.stop()
-
-        // Should be stopped
-        #expect(daemon.isRunning == false)
-    }
-
-    @Test func daemonCleansUpSocketFile() async throws {
-        // Cleanup any leftover daemon first
-        DaemonCleanup.forceCleanup()
-        try await Task.sleep(nanoseconds: 500_000_000) // 500ms
-
-        guard PythonResolver.findPython() != nil,
-              PythonResolver.findDaemonScript() != nil else {
-            throw TestSkipError("Python or daemon script not found")
-        }
-
-        let testDefaults = UserDefaults(suiteName: "cleanup-test-\(UUID().uuidString)")!
-        let settings = Settings(defaults: testDefaults)
-        settings.whisperModel = "tiny"
-
-        let daemon = DaemonManager(settings: settings, language: "en")
-        let socketPath = daemon.socketPath
-
-        defer {
-            daemon.stop()
-            DaemonCleanup.forceCleanup()
-        }
-
-        // Start daemon
-        daemon.start()
-
-        // Wait for socket to appear
-        for _ in 0..<100 {
-            if FileManager.default.fileExists(atPath: socketPath) { break }
-            try await Task.sleep(nanoseconds: 100_000_000)
-        }
-
-        // Stop daemon
-        daemon.stop()
-
-        // Socket file should be cleaned up
-        #expect(FileManager.default.fileExists(atPath: socketPath) == false)
-    }
-
-    // MARK: - Transcription Tests
-
-    @Test func daemonTranscribesSilentAudio() async throws {
-        // Cleanup any leftover daemon first
-        DaemonCleanup.forceCleanup()
-        try await Task.sleep(nanoseconds: 500_000_000) // 500ms
-
-        // Skip if prerequisites not met
-        guard PythonResolver.findPython() != nil else {
-            throw TestSkipError("Python not found")
-        }
-        guard PythonResolver.findDaemonScript() != nil else {
-            throw TestSkipError("Daemon script not found")
-        }
-
-        // Setup
-        let testDefaults = UserDefaults(suiteName: "transcribe-test-\(UUID().uuidString)")!
-        let settings = Settings(defaults: testDefaults)
-        settings.whisperModel = "tiny"
-        settings.language = "en"
-
-        let daemon = DaemonManager(settings: settings, language: "en")
-
-        // Cleanup on exit
-        defer {
-            daemon.stop()
-            DaemonCleanup.forceCleanup()
-        }
-
-        // Start daemon
-        daemon.start()
-
-        // Wait for daemon to be ready (longer wait for model loading)
-        for _ in 0..<300 { // 30 seconds
-            if daemon.isRunning { break }
-            try await Task.sleep(nanoseconds: 100_000_000)
-        }
-
-        guard daemon.isRunning else {
-            throw TestSkipError("Daemon failed to start")
-        }
-
-        // Create test audio file
-        let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
-        try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 1.0)
-        defer { try? FileManager.default.removeItem(at: tempURL) }
-
-        // Create service and transcribe
-        let service = TranscriptionService(settings: settings, language: "en")
-        let result = try await service.transcribe(
-            audioURL: tempURL,
-            useDaemon: true,
-            mode: .local
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings
         )
 
-        // Silent audio should return empty or minimal text
-        #expect(result.count < 100, "Silent audio should produce minimal text")
+        let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
+        let result = try await service.transcribe(audioURL: audioURL, mode: .local)
+
+        #expect(result == "Hello from WhisperKit")
+        #expect(mockWhisperKit.transcribeCallCount == 1)
     }
-}
 
-// MARK: - Force Cleanup Utility
+    @Test func localModeThrowsWhenWhisperKitFails() async {
+        let mockWhisperKit = MockWhisperKitService()
+        mockWhisperKit.transcribeResult = .failure(MurmurixError.transcription(.failed("Model error")))
+        let mockSettings = MockSettings()
 
-enum DaemonCleanup {
-    /// Kills any running daemon processes and cleans up socket files
-    static func forceCleanup() {
-        let socketPath = AppPaths.socketPath
-        let pidPath = socketPath + ".pid"
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings
+        )
 
-        // Try to read PID and kill
-        if let pidString = try? String(contentsOfFile: pidPath, encoding: .utf8),
-           let pid = Int32(pidString.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            kill(pid, SIGTERM)
-            usleep(100_000) // 100ms
-            kill(pid, SIGKILL) // Force kill if still running
+        let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
+
+        await #expect(throws: Error.self) {
+            try await service.transcribe(audioURL: audioURL, mode: .local)
         }
+    }
 
-        // Kill by process name as fallback
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-        task.arguments = ["-f", "transcribe_daemon.py"]
-        try? task.run()
-        task.waitUntilExit()
+    // MARK: - OpenAI Mode
 
-        // Clean up files
-        try? FileManager.default.removeItem(atPath: socketPath)
-        try? FileManager.default.removeItem(atPath: pidPath)
+    @Test func openaiModeTranscribesViaOpenAI() async throws {
+        let mockOpenAI = MockOpenAITranscriptionService()
+        mockOpenAI.transcribeResult = .success("Hello from OpenAI")
+        let mockSettings = MockSettings()
+        mockSettings.openaiApiKey = "sk-test-key"
+        mockSettings.openaiTranscriptionModel = "gpt-4o-transcribe"
+
+        let service = TranscriptionService(
+            whisperKitService: MockWhisperKitService(),
+            settings: mockSettings,
+            openAIService: mockOpenAI
+        )
+
+        let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
+        let result = try await service.transcribe(audioURL: audioURL, mode: .openai)
+
+        #expect(result == "Hello from OpenAI")
+        #expect(mockOpenAI.transcribeCallCount == 1)
+    }
+
+    @Test func openaiModeThrowsWhenApiKeyMissing() async {
+        let mockOpenAI = MockOpenAITranscriptionService()
+        let mockSettings = MockSettings()
+        mockSettings.openaiApiKey = ""
+
+        let service = TranscriptionService(
+            whisperKitService: MockWhisperKitService(),
+            settings: mockSettings,
+            openAIService: mockOpenAI
+        )
+
+        let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
+
+        await #expect(throws: Error.self) {
+            try await service.transcribe(audioURL: audioURL, mode: .openai)
+        }
+        #expect(mockOpenAI.transcribeCallCount == 0)
+    }
+
+    // MARK: - Gemini Mode
+
+    @Test func geminiModeTranscribesViaGemini() async throws {
+        let mockGemini = MockGeminiTranscriptionService()
+        mockGemini.transcribeResult = .success("Hello from Gemini")
+        let mockSettings = MockSettings()
+        mockSettings.geminiApiKey = "test-gemini-key"
+        mockSettings.geminiModel = GeminiTranscriptionModel.flash2.rawValue
+
+        let service = TranscriptionService(
+            whisperKitService: MockWhisperKitService(),
+            settings: mockSettings,
+            geminiService: mockGemini
+        )
+
+        let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
+        let result = try await service.transcribe(audioURL: audioURL, mode: .gemini)
+
+        #expect(result == "Hello from Gemini")
+        #expect(mockGemini.transcribeCallCount == 1)
+    }
+
+    @Test func geminiModeThrowsWhenApiKeyMissing() async {
+        let mockGemini = MockGeminiTranscriptionService()
+        let mockSettings = MockSettings()
+        mockSettings.geminiApiKey = ""
+
+        let service = TranscriptionService(
+            whisperKitService: MockWhisperKitService(),
+            settings: mockSettings,
+            geminiService: mockGemini
+        )
+
+        let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
+
+        await #expect(throws: Error.self) {
+            try await service.transcribe(audioURL: audioURL, mode: .gemini)
+        }
+        #expect(mockGemini.transcribeCallCount == 0)
+    }
+
+    // MARK: - Model Loading
+
+    @Test func loadModelDelegatesToWhisperKit() async throws {
+        let mockWhisperKit = MockWhisperKitService()
+        let mockSettings = MockSettings()
+        mockSettings.whisperModel = "tiny"
+
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings
+        )
+
+        try await service.loadModel()
+
+        #expect(mockWhisperKit.loadModelCallCount == 1)
+        #expect(mockWhisperKit.lastModelName == "tiny")
+        #expect(service.isModelLoaded == true)
+    }
+
+    @Test func unloadModelDelegatesToWhisperKit() async {
+        let mockWhisperKit = MockWhisperKitService()
+        mockWhisperKit.isModelLoaded = true
+        let mockSettings = MockSettings()
+
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings
+        )
+
+        await service.unloadModel()
+
+        #expect(mockWhisperKit.unloadModelCallCount == 1)
+        #expect(service.isModelLoaded == false)
+    }
+
+    @Test func isModelLoadedReflectsWhisperKitState() async throws {
+        let mockWhisperKit = MockWhisperKitService()
+        let mockSettings = MockSettings()
+        mockSettings.whisperModel = "base"
+
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings
+        )
+
+        #expect(service.isModelLoaded == false)
+
+        try await service.loadModel()
+        #expect(service.isModelLoaded == true)
+
+        await service.unloadModel()
+        #expect(service.isModelLoaded == false)
     }
 }

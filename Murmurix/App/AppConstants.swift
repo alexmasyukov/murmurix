@@ -72,14 +72,6 @@ enum AudioConfig {
     static let sampleRate: Double = 16000.0
 }
 
-// MARK: - Network
-
-enum NetworkConfig {
-    static let daemonSocketTimeout: Int = 30
-    static let daemonStartupTimeout: Int = 50  // iterations of 0.1s = 5s
-    static let shutdownTimeout: Int = 5
-}
-
 // MARK: - Window Sizes
 
 enum WindowSize {
@@ -93,14 +85,9 @@ enum WindowSize {
 
 enum AppPaths {
     static let applicationSupport = "~/Library/Application Support/Murmurix"
-    static let daemonSocket = "daemon.sock"
     static let historyDatabase = "history.sqlite"
 
     static var expandedApplicationSupport: String {
         NSHomeDirectory() + "/Library/Application Support/Murmurix"
-    }
-
-    static var socketPath: String {
-        expandedApplicationSupport + "/" + daemonSocket
     }
 }

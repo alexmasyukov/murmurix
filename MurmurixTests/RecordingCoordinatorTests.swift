@@ -158,34 +158,48 @@ struct RecordingCoordinatorTests {
         #expect(delegate.lastError != nil)
     }
 
-    // MARK: - Daemon Control
+    // MARK: - Model Control
 
-    @Test func startDaemonIfNeededStartsWhenEnabled() {
+    @Test func loadModelIfNeededLoadsWhenEnabled() async throws {
         let (coordinator, _, transcriptionService, _, settings, _) = createCoordinator()
-        settings.keepDaemonRunning = true
+        settings.keepModelLoaded = true
 
-        coordinator.startDaemonIfNeeded()
+        coordinator.loadModelIfNeeded()
 
-        #expect(transcriptionService.startDaemonCallCount == 1)
+        // loadModelIfNeeded runs in a Task, give it time to execute
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(transcriptionService.loadModelCallCount == 1)
     }
 
-    @Test func startDaemonIfNeededDoesNothingWhenDisabled() {
+    @Test func loadModelIfNeededDoesNothingWhenDisabled() async throws {
         let (coordinator, _, transcriptionService, _, settings, _) = createCoordinator()
-        settings.keepDaemonRunning = false
+        settings.keepModelLoaded = false
 
-        coordinator.startDaemonIfNeeded()
+        coordinator.loadModelIfNeeded()
 
-        #expect(transcriptionService.startDaemonCallCount == 0)
+        // Give time for any potential Task to execute
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(transcriptionService.loadModelCallCount == 0)
     }
 
-    @Test func setDaemonEnabledStartsOrStopsDaemon() {
+    @Test func setModelLoadedLoadsOrUnloadsModel() async throws {
         let (coordinator, _, transcriptionService, _, _, _) = createCoordinator()
 
-        coordinator.setDaemonEnabled(true)
-        #expect(transcriptionService.startDaemonCallCount == 1)
+        coordinator.setModelLoaded(true)
 
-        coordinator.setDaemonEnabled(false)
-        #expect(transcriptionService.stopDaemonCallCount == 1)
+        // setModelLoaded runs in a Task, give it time to execute
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(transcriptionService.loadModelCallCount == 1)
+
+        coordinator.setModelLoaded(false)
+
+        // Give time for the Task to execute
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(transcriptionService.unloadModelCallCount == 1)
     }
 
     // MARK: - Voice Activity Detection

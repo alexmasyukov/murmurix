@@ -16,24 +16,10 @@ struct MurmurixErrorTests {
 
     // MARK: - TranscriptionError
 
-    @Test func transcriptionErrorPythonNotFound() {
-        let error = MurmurixError.transcription(.pythonNotFound)
+    @Test func transcriptionErrorModelNotLoaded() {
+        let error = MurmurixError.transcription(.modelNotLoaded)
 
-        #expect(error.errorDescription?.contains("Python") == true)
-        #expect(error.recoverySuggestion?.contains("install") == true)
-    }
-
-    @Test func transcriptionErrorScriptNotFound() {
-        let error = MurmurixError.transcription(.scriptNotFound)
-
-        #expect(error.errorDescription?.contains("script") == true)
-        #expect(error.recoverySuggestion?.contains("Murmurix") == true)
-    }
-
-    @Test func transcriptionErrorDaemonNotRunning() {
-        let error = MurmurixError.transcription(.daemonNotRunning)
-
-        #expect(error.errorDescription?.contains("daemon") == true)
+        #expect(error.errorDescription?.contains("not loaded") == true)
         #expect(error.recoverySuggestion?.contains("Settings") == true)
     }
 
@@ -51,27 +37,27 @@ struct MurmurixErrorTests {
         #expect(error.recoverySuggestion?.contains("shorter") == true)
     }
 
-    // MARK: - DaemonError
+    // MARK: - ModelError
 
-    @Test func daemonErrorNotRunning() {
-        let error = MurmurixError.daemon(.notRunning)
+    @Test func modelErrorDownloadFailed() {
+        let error = MurmurixError.model(.downloadFailed("Network error"))
 
-        #expect(error.errorDescription?.contains("not running") == true)
-        #expect(error.recoverySuggestion?.contains("Settings") == true)
+        #expect(error.errorDescription?.contains("Network error") == true)
+        #expect(error.recoverySuggestion?.contains("internet") == true)
     }
 
-    @Test func daemonErrorStartFailed() {
-        let error = MurmurixError.daemon(.startFailed("Port in use"))
+    @Test func modelErrorLoadFailed() {
+        let error = MurmurixError.model(.loadFailed("Out of memory"))
 
-        #expect(error.errorDescription?.contains("Port in use") == true)
-        #expect(error.recoverySuggestion?.contains("Python") == true)
-    }
-
-    @Test func daemonErrorCommunicationFailed() {
-        let error = MurmurixError.daemon(.communicationFailed)
-
-        #expect(error.errorDescription?.contains("communicate") == true)
+        #expect(error.errorDescription?.contains("Out of memory") == true)
         #expect(error.recoverySuggestion?.contains("restart") == true)
+    }
+
+    @Test func modelErrorNotFound() {
+        let error = MurmurixError.model(.notFound("large-v3"))
+
+        #expect(error.errorDescription?.contains("large-v3") == true)
+        #expect(error.recoverySuggestion?.contains("Download") == true)
     }
 
     // MARK: - SystemError
@@ -109,14 +95,12 @@ struct MurmurixErrorTests {
 
     @Test func allErrorsHaveDescriptions() {
         let errors: [MurmurixError] = [
-            .transcription(.pythonNotFound),
-            .transcription(.scriptNotFound),
-            .transcription(.daemonNotRunning),
+            .transcription(.modelNotLoaded),
             .transcription(.failed("test")),
             .transcription(.timeout),
-            .daemon(.notRunning),
-            .daemon(.startFailed("test")),
-            .daemon(.communicationFailed),
+            .model(.downloadFailed("test")),
+            .model(.loadFailed("test")),
+            .model(.notFound("test")),
             .system(.microphonePermissionDenied),
             .system(.accessibilityPermissionDenied),
             .system(.fileNotFound("test")),
@@ -197,14 +181,6 @@ struct AppConstantsTests {
         #expect(AudioConfig.sampleRate > 0)
     }
 
-    // MARK: - NetworkConfig
-
-    @Test func networkConfigTimeoutsArePositive() {
-        #expect(NetworkConfig.daemonSocketTimeout > 0)
-        #expect(NetworkConfig.daemonStartupTimeout > 0)
-        #expect(NetworkConfig.shutdownTimeout > 0)
-    }
-
     // MARK: - WindowSize
 
     @Test func windowSizesAreReasonable() {
@@ -225,7 +201,6 @@ struct AppConstantsTests {
 
     @Test func appPathsAreNotEmpty() {
         #expect(!AppPaths.applicationSupport.isEmpty)
-        #expect(!AppPaths.daemonSocket.isEmpty)
         #expect(!AppPaths.historyDatabase.isEmpty)
     }
 
@@ -233,12 +208,6 @@ struct AppConstantsTests {
         let expanded = AppPaths.expandedApplicationSupport
         #expect(expanded.hasPrefix("/"))
         #expect(expanded.contains("Library/Application Support/Murmurix"))
-    }
-
-    @Test func appPathsSocketPathIsAbsolute() {
-        let socketPath = AppPaths.socketPath
-        #expect(socketPath.hasPrefix("/"))
-        #expect(socketPath.contains("daemon.sock"))
     }
 }
 
@@ -606,23 +575,10 @@ struct DependencyInjectionTests {
         mockSettings.transcriptionMode = "local"
         mockSettings.whisperModel = "tiny"
 
-        let service = TranscriptionService(settings: mockSettings)
+        let mockWhisperKit = MockWhisperKitService()
+        let service = TranscriptionService(whisperKitService: mockWhisperKit, settings: mockSettings)
 
-        // Just verify the service can be created with mock settings
-        // Note: isDaemonRunning depends on external state (socket file existence)
-        // so we only verify the service exists
         #expect(type(of: service) == TranscriptionService.self)
-    }
-
-    @Test func daemonManagerAcceptsSettings() {
-        let mockSettings = MockSettings()
-        mockSettings.whisperModel = "base"
-
-        let manager = DaemonManager(settings: mockSettings)
-
-        // Verify manager is created with correct socket path
-        // Note: isRunning depends on external state (socket file existence)
-        #expect(manager.socketPath.contains("daemon.sock"))
     }
 
     @Test func globalHotkeyManagerAcceptsSettings() {
@@ -631,13 +587,6 @@ struct DependencyInjectionTests {
         let manager = GlobalHotkeyManager(settings: mockSettings)
 
         #expect(manager.isRecording == false)
-    }
-
-    @MainActor @Test func generalSettingsViewModelAcceptsDownloadService() {
-        let mockService = MockModelDownloadService()
-        let viewModel = GeneralSettingsViewModel(downloadService: mockService)
-
-        #expect(viewModel.downloadStatus == .idle)
     }
 
     @Test func historyServiceAcceptsRepository() {

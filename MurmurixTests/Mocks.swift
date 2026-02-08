@@ -41,26 +41,26 @@ final class MockAudioRecorder: AudioRecorderProtocol {
 // MARK: - Mock Transcription Service
 
 final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked Sendable {
-    var isDaemonRunning: Bool = false
+    var isModelLoaded: Bool = false
 
-    var startDaemonCallCount = 0
-    var stopDaemonCallCount = 0
+    var loadModelCallCount = 0
+    var unloadModelCallCount = 0
     var transcribeCallCount = 0
 
     var transcriptionResult: Result<String, Error> = .success("Test transcription")
     var transcriptionDelay: TimeInterval = 0
 
-    func startDaemon() {
-        startDaemonCallCount += 1
-        isDaemonRunning = true
+    func loadModel() async throws {
+        loadModelCallCount += 1
+        isModelLoaded = true
     }
 
-    func stopDaemon() {
-        stopDaemonCallCount += 1
-        isDaemonRunning = false
+    func unloadModel() async {
+        unloadModelCallCount += 1
+        isModelLoaded = false
     }
 
-    func transcribe(audioURL: URL, useDaemon: Bool, mode: TranscriptionMode = .local) async throws -> String {
+    func transcribe(audioURL: URL, mode: TranscriptionMode = .local) async throws -> String {
         transcribeCallCount += 1
 
         if transcriptionDelay > 0 {
@@ -112,7 +112,7 @@ final class MockHistoryService: HistoryServiceProtocol {
 // MARK: - Mock Settings
 
 final class MockSettings: SettingsStorageProtocol {
-    var keepDaemonRunning: Bool = true
+    var keepModelLoaded: Bool = true
     var language: String = "ru"
     var transcriptionMode: String = "local"
     var whisperModel: String = "small"
@@ -208,21 +208,40 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
     }
 }
 
-// MARK: - Mock Model Download Service
+// MARK: - Mock WhisperKit Service
 
-final class MockModelDownloadService: ModelDownloadServiceProtocol {
+final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
+    var isModelLoaded: Bool = false
+    var loadModelCallCount = 0
+    var unloadModelCallCount = 0
+    var transcribeCallCount = 0
     var downloadModelCallCount = 0
-    var cancelDownloadCallCount = 0
-    var lastDownloadedModel: String?
+    var lastModelName: String?
+    var transcribeResult: Result<String, Error> = .success("Transcribed text")
 
-    func downloadModel(_ modelName: String, onProgress: @escaping (DownloadStatus) -> Void) {
-        downloadModelCallCount += 1
-        lastDownloadedModel = modelName
-        onProgress(.downloading)
+    func loadModel(name: String) async throws {
+        loadModelCallCount += 1
+        lastModelName = name
+        isModelLoaded = true
     }
 
-    func cancelDownload() {
-        cancelDownloadCallCount += 1
+    func unloadModel() async {
+        unloadModelCallCount += 1
+        isModelLoaded = false
+    }
+
+    func transcribe(audioURL: URL, language: String) async throws -> String {
+        transcribeCallCount += 1
+        switch transcribeResult {
+        case .success(let text): return text
+        case .failure(let error): throw error
+        }
+    }
+
+    func downloadModel(_ name: String, progress: @escaping @Sendable (Double) -> Void) async throws {
+        downloadModelCallCount += 1
+        lastModelName = name
+        progress(1.0)
     }
 }
 
@@ -287,26 +306,6 @@ final class MockGeminiTranscriptionService: GeminiTranscriptionServiceProtocol, 
         case .failure(let error):
             throw error
         }
-    }
-}
-
-// MARK: - Mock Daemon Manager
-
-final class MockDaemonManager: DaemonManagerProtocol, @unchecked Sendable {
-    var isRunning: Bool = false
-    var socketPath: String = "/tmp/test_murmurix.sock"
-
-    var startCallCount = 0
-    var stopCallCount = 0
-
-    func start() {
-        startCallCount += 1
-        isRunning = true
-    }
-
-    func stop() {
-        stopCallCount += 1
-        isRunning = false
     }
 }
 
@@ -413,44 +412,5 @@ final class MockURLSession: URLSessionProtocol, @unchecked Sendable {
         responseData = (try? JSONSerialization.data(withJSONObject: errorJson)) ?? Data()
         responseStatusCode = statusCode
         error = nil
-    }
-}
-
-// MARK: - Mock Socket Client
-
-final class MockSocketClient: SocketClientProtocol, @unchecked Sendable {
-    var response: [String: Any] = [:]
-    var error: Error?
-    var lastRequest: [String: Any]?
-    var lastTimeout: Int?
-    var sendCallCount = 0
-
-    func send(request: [String: Any], timeout: Int) throws -> [String: Any] {
-        sendCallCount += 1
-        lastRequest = request
-        lastTimeout = timeout
-
-        if let error = error {
-            throw error
-        }
-
-        return response
-    }
-
-    /// Helper to set up a successful transcription response
-    func setTranscriptionResponse(text: String) {
-        response = ["text": text]
-        error = nil
-    }
-
-    /// Helper to set up an error response
-    func setErrorResponse(message: String) {
-        response = ["error": message]
-        error = nil
-    }
-
-    /// Helper to set up a socket error
-    func setSocketError(_ socketError: SocketError) {
-        error = socketError
     }
 }

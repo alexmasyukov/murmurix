@@ -6,22 +6,22 @@
 import Cocoa
 import SwiftUI
 
-class DaemonStatusModel: ObservableObject {
-    @Published var isRunning: Bool = false
+class ModelStatusModel: ObservableObject {
+    @Published var isLoaded: Bool = false
 }
 
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
-    var onDaemonToggle: ((Bool) -> Void)?
+    var onModelToggle: ((Bool) -> Void)?
     var onHotkeysChanged: ((Hotkey, Hotkey, Hotkey, Hotkey) -> Void)?
     var onModelChanged: (() -> Void)?
     var onWindowOpen: (() -> Void)?
     var onWindowClose: (() -> Void)?
 
-    private let daemonStatus = DaemonStatusModel()
+    private let modelStatus = ModelStatusModel()
 
     convenience init(
-        isDaemonRunning: Bool,
-        onDaemonToggle: @escaping (Bool) -> Void,
+        isModelLoaded: Bool,
+        onModelToggle: @escaping (Bool) -> Void,
         onHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey, Hotkey) -> Void,
         onModelChanged: @escaping () -> Void = {},
         onWindowOpen: @escaping () -> Void = {},
@@ -37,23 +37,23 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.title = "Settings"
 
         self.init(window: window)
-        self.onDaemonToggle = onDaemonToggle
+        self.onModelToggle = onModelToggle
         self.onHotkeysChanged = onHotkeysChanged
         self.onModelChanged = onModelChanged
         self.onWindowOpen = onWindowOpen
         self.onWindowClose = onWindowClose
-        self.daemonStatus.isRunning = isDaemonRunning
+        self.modelStatus.isLoaded = isModelLoaded
         window.delegate = self
 
         let settingsView = SettingsView(
-            isDaemonRunning: Binding(
-                get: { [weak self] in self?.daemonStatus.isRunning ?? false },
-                set: { [weak self] in self?.daemonStatus.isRunning = $0 }
+            isModelLoaded: Binding(
+                get: { [weak self] in self?.modelStatus.isLoaded ?? false },
+                set: { [weak self] in self?.modelStatus.isLoaded = $0 }
             ),
-            onDaemonToggle: { [weak self] enabled in
-                onDaemonToggle(enabled)
+            onModelToggle: { [weak self] enabled in
+                onModelToggle(enabled)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    self?.daemonStatus.isRunning = enabled
+                    self?.modelStatus.isLoaded = enabled
                 }
             },
             onHotkeysChanged: onHotkeysChanged,
@@ -62,8 +62,8 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.contentView = NSHostingView(rootView: settingsView)
     }
 
-    func updateDaemonStatus(_ isRunning: Bool) {
-        daemonStatus.isRunning = isRunning
+    func updateModelStatus(_ isLoaded: Bool) {
+        modelStatus.isLoaded = isLoaded
     }
 
     override func showWindow(_ sender: Any?) {

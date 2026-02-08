@@ -8,13 +8,13 @@ import Foundation
 /// Unified error type for Murmurix application
 enum MurmurixError: LocalizedError {
     case transcription(TranscriptionError)
-    case daemon(DaemonError)
+    case model(ModelError)
     case system(SystemError)
 
     var errorDescription: String? {
         switch self {
         case .transcription(let error): return error.errorDescription
-        case .daemon(let error): return error.errorDescription
+        case .model(let error): return error.errorDescription
         case .system(let error): return error.errorDescription
         }
     }
@@ -22,7 +22,7 @@ enum MurmurixError: LocalizedError {
     var recoverySuggestion: String? {
         switch self {
         case .transcription(let error): return error.recoverySuggestion
-        case .daemon(let error): return error.recoverySuggestion
+        case .model(let error): return error.recoverySuggestion
         case .system(let error): return error.recoverySuggestion
         }
     }
@@ -31,20 +31,14 @@ enum MurmurixError: LocalizedError {
 // MARK: - Transcription Errors
 
 enum TranscriptionError: LocalizedError {
-    case pythonNotFound
-    case scriptNotFound
-    case daemonNotRunning
+    case modelNotLoaded
     case failed(String)
     case timeout
 
     var errorDescription: String? {
         switch self {
-        case .pythonNotFound:
-            return "Python not found"
-        case .scriptNotFound:
-            return "Transcription script not found"
-        case .daemonNotRunning:
-            return "Transcription daemon is not running"
+        case .modelNotLoaded:
+            return "Whisper model is not loaded"
         case .failed(let message):
             return "Transcription failed: \(message)"
         case .timeout:
@@ -54,12 +48,8 @@ enum TranscriptionError: LocalizedError {
 
     var recoverySuggestion: String? {
         switch self {
-        case .pythonNotFound:
-            return "Please install Python 3.11 or later"
-        case .scriptNotFound:
-            return "Reinstall the application or check ~/Library/Application Support/Murmurix/"
-        case .daemonNotRunning:
-            return "Enable 'Keep model in memory' in Settings"
+        case .modelNotLoaded:
+            return "Enable 'Keep model loaded' in Settings"
         case .failed:
             return "Try recording again"
         case .timeout:
@@ -68,32 +58,32 @@ enum TranscriptionError: LocalizedError {
     }
 }
 
-// MARK: - Daemon Errors
+// MARK: - Model Errors
 
-enum DaemonError: LocalizedError {
-    case notRunning
-    case startFailed(String)
-    case communicationFailed
+enum ModelError: LocalizedError {
+    case downloadFailed(String)
+    case loadFailed(String)
+    case notFound(String)
 
     var errorDescription: String? {
         switch self {
-        case .notRunning:
-            return "Daemon is not running"
-        case .startFailed(let reason):
-            return "Failed to start daemon: \(reason)"
-        case .communicationFailed:
-            return "Failed to communicate with daemon"
+        case .downloadFailed(let reason):
+            return "Model download failed: \(reason)"
+        case .loadFailed(let reason):
+            return "Failed to load model: \(reason)"
+        case .notFound(let name):
+            return "Model not found: \(name)"
         }
     }
 
     var recoverySuggestion: String? {
         switch self {
-        case .notRunning:
-            return "Enable 'Keep model in memory' in Settings"
-        case .startFailed:
-            return "Check Python installation and available disk space"
-        case .communicationFailed:
+        case .downloadFailed:
+            return "Check your internet connection and try again"
+        case .loadFailed:
             return "Try restarting the application"
+        case .notFound:
+            return "Download the model from Settings"
         }
     }
 }

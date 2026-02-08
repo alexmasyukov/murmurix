@@ -62,8 +62,8 @@ final class WindowManager {
     // MARK: - Settings Window
 
     func showSettingsWindow(
-        isDaemonRunning: Bool,
-        onDaemonToggle: @escaping (Bool) -> Void,
+        isModelLoaded: Bool,
+        onModelToggle: @escaping (Bool) -> Void,
         onHotkeysChanged: @escaping (Hotkey, Hotkey, Hotkey, Hotkey) -> Void,
         onModelChanged: @escaping () -> Void,
         onWindowOpen: @escaping () -> Void,
@@ -71,15 +71,15 @@ final class WindowManager {
     ) {
         if settingsController == nil {
             settingsController = SettingsWindowController(
-                isDaemonRunning: isDaemonRunning,
-                onDaemonToggle: onDaemonToggle,
+                isModelLoaded: isModelLoaded,
+                onModelToggle: onModelToggle,
                 onHotkeysChanged: onHotkeysChanged,
                 onModelChanged: onModelChanged,
                 onWindowOpen: onWindowOpen,
                 onWindowClose: onWindowClose
             )
         } else {
-            settingsController?.updateDaemonStatus(isDaemonRunning)
+            settingsController?.updateModelStatus(isModelLoaded)
             onWindowOpen()
         }
         settingsController?.showWindow(nil)
