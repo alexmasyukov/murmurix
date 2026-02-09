@@ -559,6 +559,7 @@ struct SettingsMigrationTests {
 
 // MARK: - RecordingCoordinator Model Control Tests
 
+@MainActor
 struct RecordingCoordinatorModelControlTests {
 
     private func createCoordinator() -> (

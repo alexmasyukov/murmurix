@@ -6,6 +6,7 @@
 import AppKit
 import Carbon
 
+@MainActor
 protocol MenuBarManagerDelegate: AnyObject {
     func menuBarDidRequestToggleLocalRecording(model: String)
     func menuBarDidRequestToggleCloudRecording()
@@ -15,6 +16,7 @@ protocol MenuBarManagerDelegate: AnyObject {
     func menuBarDidRequestQuit()
 }
 
+@MainActor
 final class MenuBarManager {
     weak var delegate: MenuBarManagerDelegate?
 

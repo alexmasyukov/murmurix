@@ -23,6 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - App Lifecycle
 
+    @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMainMenu()
         setupServices()
@@ -37,6 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
+    @MainActor
     func applicationWillTerminate(_ notification: Notification) {
         coordinator.unloadAllModels()
         hotkeyManager.stop()
@@ -44,6 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Setup
 
+    @MainActor
     private func setupMainMenu() {
         let mainMenu = NSMenu()
 
@@ -70,6 +73,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = mainMenu
     }
 
+    @MainActor
     private func setupServices() {
         audioRecorder = AudioRecorder()
         transcriptionService = TranscriptionService()
@@ -83,6 +87,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.delegate = self
     }
 
+    @MainActor
     private func setupManagers() {
         menuBarManager = MenuBarManager(settings: settings)
         menuBarManager.delegate = self
@@ -93,6 +98,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var currentRecordingMode: TranscriptionMode = .local(model: "small")
 
+    @MainActor
     private func setupHotkeys() {
         hotkeyManager = GlobalHotkeyManager()
         hotkeyManager.onToggleLocalRecording = { [weak self] modelName in
@@ -118,6 +124,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager.start()
     }
 
+    @MainActor
     @objc private func handleLanguageChange() {
         setupMainMenu()
         menuBarManager.rebuildMenu()
@@ -125,6 +132,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Recording Actions
 
+    @MainActor
     private func toggleRecording(mode: TranscriptionMode) {
         if coordinator.state == .idle {
             shouldPasteDirectly = TextPaster.isTextFieldFocused()
@@ -133,12 +141,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.toggleRecording(mode: currentRecordingMode)
     }
 
+    @MainActor
     private func cancelRecording() {
         coordinator.cancelRecording()
         hotkeyManager.isRecording = false
         windowManager.dismissRecordingWindow()
     }
 
+    @MainActor
     private func dismissRecordingUI() {
         windowManager.dismissRecordingWindow()
         shouldPasteDirectly = false
@@ -147,6 +157,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 // MARK: - MenuBarManagerDelegate
 
+@MainActor
 extension AppDelegate: MenuBarManagerDelegate {
     func menuBarDidRequestToggleLocalRecording(model: String) {
         toggleRecording(mode: .local(model: model))
@@ -194,6 +205,7 @@ extension AppDelegate: MenuBarManagerDelegate {
 
 // MARK: - RecordingCoordinatorDelegate
 
+@MainActor
 extension AppDelegate: RecordingCoordinatorDelegate {
     func recordingDidStart() {
         hotkeyManager.isRecording = true

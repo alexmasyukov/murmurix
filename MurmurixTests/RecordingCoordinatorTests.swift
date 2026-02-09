@@ -8,6 +8,7 @@ import Foundation
 import Carbon
 @testable import Murmurix
 
+@MainActor
 struct RecordingCoordinatorTests {
 
     private func createCoordinator() -> (

@@ -40,6 +40,7 @@ enum TranscriptionMode: Equatable {
     }
 }
 
+@MainActor
 protocol RecordingCoordinatorDelegate: AnyObject {
     func recordingDidStart()
     func recordingDidStop()
@@ -50,6 +51,7 @@ protocol RecordingCoordinatorDelegate: AnyObject {
     func transcriptionDidCancel()
 }
 
+@MainActor
 final class RecordingCoordinator {
     weak var delegate: RecordingCoordinatorDelegate?
 
