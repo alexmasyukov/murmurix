@@ -23,7 +23,6 @@ final class MenuBarManager {
     private var statusItem: NSStatusItem!
     private var menu: NSMenu!
     private var localModelMenuItems: [String: NSMenuItem] = [:]
-    private var localSeparatorIndex: Int = 0
     private var toggleCloudMenuItem: NSMenuItem?
     private var toggleGeminiMenuItem: NSMenuItem?
     private let settings: SettingsStorageProtocol
@@ -87,6 +86,7 @@ final class MenuBarManager {
 
     private func setupMenu() {
         menu = NSMenu()
+        localModelMenuItems.removeAll()
 
         // Add local model items from settings
         let modelSettings = settings.loadWhisperModelSettings()
@@ -106,27 +106,29 @@ final class MenuBarManager {
             localModelMenuItems[model.rawValue] = item
         }
 
-        toggleCloudMenuItem = NSMenuItem(
+        let cloudMenuItem = NSMenuItem(
             title: L10n.cloudRecordingOpenAI,
             action: #selector(handleToggleCloudRecording),
             keyEquivalent: ""
         )
-        toggleCloudMenuItem?.target = self
+        cloudMenuItem.target = self
         if let hotkey = settings.loadToggleCloudHotkey() {
-            applyHotkeyToMenuItem(toggleCloudMenuItem!, hotkey: hotkey)
+            applyHotkeyToMenuItem(cloudMenuItem, hotkey: hotkey)
         }
-        menu.addItem(toggleCloudMenuItem!)
+        toggleCloudMenuItem = cloudMenuItem
+        menu.addItem(cloudMenuItem)
 
-        toggleGeminiMenuItem = NSMenuItem(
+        let geminiMenuItem = NSMenuItem(
             title: L10n.geminiRecording,
             action: #selector(handleToggleGeminiRecording),
             keyEquivalent: ""
         )
-        toggleGeminiMenuItem?.target = self
+        geminiMenuItem.target = self
         if let hotkey = settings.loadToggleGeminiHotkey() {
-            applyHotkeyToMenuItem(toggleGeminiMenuItem!, hotkey: hotkey)
+            applyHotkeyToMenuItem(geminiMenuItem, hotkey: hotkey)
         }
-        menu.addItem(toggleGeminiMenuItem!)
+        toggleGeminiMenuItem = geminiMenuItem
+        menu.addItem(geminiMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
