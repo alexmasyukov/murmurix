@@ -29,8 +29,7 @@ final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
     }
 
     func loadRecords() {
-        pendingSelectionUpdate?.cancel()
-        pendingSelectionUpdate = nil
+        clearPendingSelectionUpdate()
 
         let fetched = historyService.fetchAll()
         records = fetched
@@ -49,21 +48,24 @@ final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
     }
 
     func clearHistory() {
-        pendingSelectionUpdate?.cancel()
-        pendingSelectionUpdate = nil
+        clearPendingSelectionUpdate()
         historyService.deleteAll()
         records = []
         selectedRecord = nil
     }
 
     func deleteRecord(_ record: TranscriptionRecord) {
-        pendingSelectionUpdate?.cancel()
-        pendingSelectionUpdate = nil
+        clearPendingSelectionUpdate()
         historyService.delete(id: record.id)
         records.removeAll { $0.id == record.id }
         if selectedRecord?.id == record.id {
             selectedRecord = records.first
         }
+    }
+
+    private func clearPendingSelectionUpdate() {
+        pendingSelectionUpdate?.cancel()
+        pendingSelectionUpdate = nil
     }
 
     // MARK: - Statistics
