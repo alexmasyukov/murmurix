@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:20  
+Последнее обновление: 2026-02-09 15:21  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -609,3 +609,14 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - более единообразный structured-concurrency подход в UI-слое.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/MurmurixTests` -> `** TEST SUCCEEDED **`.
+
+### 10.18 HotkeyCaptureService: main-dispatch через structured concurrency
+
+- В `HotkeyCaptureService` заменён `DispatchQueue.main.async` в monitor callbacks на `Task { @MainActor ... }`.
+- Изменен файл:
+  - `Murmurix/Services/HotkeyCaptureService.swift`
+- Эффект:
+  - единообразный concurrency-стиль без GCD в hotkey-capture path,
+  - сохранено прежнее поведение доставки key events на main actor.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HotkeyCaptureServiceTests -only-testing:MurmurixTests/GlobalHotkeyManagerTests` -> `** TEST SUCCEEDED **`.

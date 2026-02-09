@@ -45,14 +45,14 @@ final class HotkeyCaptureService {
         self.onHotkeyCaptured = onHotkeyCaptured
 
         localMonitor = monitorManager.addLocalKeyDownMonitor { [weak self] event in
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.capture(event)
             }
             return nil
         }
 
         globalMonitor = monitorManager.addGlobalKeyDownMonitor { [weak self] event in
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.capture(event)
             }
         }
