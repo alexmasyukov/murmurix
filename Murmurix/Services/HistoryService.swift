@@ -21,9 +21,15 @@ final class HistoryService: HistoryServiceProtocol {
         if let repository = repository {
             self.repository = repository
         } else {
-            let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            let fileManager = FileManager.default
+            let supportDir = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+                ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
             let appDir = supportDir.appendingPathComponent("Murmurix")
-            try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+            do {
+                try fileManager.createDirectory(at: appDir, withIntermediateDirectories: true)
+            } catch {
+                Logger.History.error("Failed to create history directory \(appDir.path): \(error.localizedDescription)")
+            }
             let dbPath = appDir.appendingPathComponent("history.sqlite").path
             self.repository = SQLiteTranscriptionRepository(dbPath: dbPath)
         }

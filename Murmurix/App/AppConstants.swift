@@ -130,8 +130,9 @@ enum ModelPaths {
         }
 #endif
 
-        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            .appendingPathComponent(repoSubpath)
+        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
+        return documentsDir.appendingPathComponent(repoSubpath)
     }
 
     static var downloadBaseDir: URL {
