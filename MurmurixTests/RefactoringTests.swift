@@ -498,7 +498,7 @@ struct SQLiteDatabaseTests {
 
         if let insertStmt = db.prepareStatement("INSERT INTO test (value) VALUES (?)") {
             db.bindText(insertStmt, index: 1, value: "Hello World")
-            db.step(insertStmt)
+            _ = db.step(insertStmt)
             db.finalize(insertStmt)
         }
 
@@ -518,7 +518,7 @@ struct SQLiteDatabaseTests {
 
         if let insertStmt = db.prepareStatement("INSERT INTO test (value) VALUES (?)") {
             db.bindDouble(insertStmt, index: 1, value: 3.14159)
-            db.step(insertStmt)
+            _ = db.step(insertStmt)
             db.finalize(insertStmt)
         }
 
