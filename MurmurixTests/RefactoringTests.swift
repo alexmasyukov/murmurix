@@ -577,9 +577,12 @@ struct SQLiteDatabaseTests {
 struct SQLiteTranscriptionRepositoryTests {
 
     private func createTempRepository() -> SQLiteTranscriptionRepository {
+        SQLiteTranscriptionRepository(dbPath: createTempDatabasePath())
+    }
+
+    private func createTempDatabasePath() -> String {
         let tempDir = FileManager.default.temporaryDirectory
-        let dbPath = tempDir.appendingPathComponent("test_repo_\(UUID().uuidString).sqlite").path
-        return SQLiteTranscriptionRepository(dbPath: dbPath)
+        return tempDir.appendingPathComponent("test_repo_\(UUID().uuidString).sqlite").path
     }
 
     @Test func saveAndFetchRecord() throws {
@@ -658,6 +661,31 @@ struct SQLiteTranscriptionRepositoryTests {
         #expect(fetched.count == 1)
         #expect(fetched.first?.text == "Updated")
         #expect(fetched.first?.language == "ru")
+    }
+
+    @Test func initializationSetsSchemaUserVersionToOne() {
+        let dbPath = createTempDatabasePath()
+
+        _ = SQLiteTranscriptionRepository(dbPath: dbPath)
+        let db = SQLiteDatabase(path: dbPath)
+
+        #expect(db.userVersion() == 1)
+    }
+
+    @Test func reinitializationKeepsDataAndVersion() throws {
+        let dbPath = createTempDatabasePath()
+        let firstRepo = SQLiteTranscriptionRepository(dbPath: dbPath)
+
+        let record = TranscriptionRecord(text: "Persisted", language: "en", duration: 3)
+        try firstRepo.save(record)
+
+        let secondRepo = SQLiteTranscriptionRepository(dbPath: dbPath)
+        let fetched = try secondRepo.fetchAll()
+        let db = SQLiteDatabase(path: dbPath)
+
+        #expect(fetched.count == 1)
+        #expect(fetched.first?.text == "Persisted")
+        #expect(db.userVersion() == 1)
     }
 }
 

@@ -101,16 +101,35 @@ final class SQLiteDatabase {
     func columnDouble(_ statement: OpaquePointer?, index: Int32) -> Double {
         return sqlite3_column_double(statement, index)
     }
+
+    func columnInt(_ statement: OpaquePointer?, index: Int32) -> Int32 {
+        return sqlite3_column_int(statement, index)
+    }
+
+    func userVersion() -> Int32 {
+        guard let statement = prepareStatement("PRAGMA user_version") else { return 0 }
+        defer { finalize(statement) }
+        guard stepRow(statement) else { return 0 }
+        return columnInt(statement, index: 0)
+    }
+
+    func setUserVersion(_ version: Int32) {
+        execute("PRAGMA user_version = \(version)")
+    }
 }
 
 // MARK: - Transcription Repository
 
 final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
+    private enum Migration {
+        static let currentSchemaVersion: Int32 = 1
+    }
+
     private let database: SQLiteDatabase
 
     init(database: SQLiteDatabase) {
         self.database = database
-        createTable()
+        migrateSchemaIfNeeded()
     }
 
     convenience init(dbPath: String) {
@@ -128,6 +147,16 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
             )
             """
         database.execute(sql)
+    }
+
+    private func migrateSchemaIfNeeded() {
+        let currentVersion = database.userVersion()
+
+        if currentVersion < 1 {
+            createTable()
+            database.setUserVersion(Migration.currentSchemaVersion)
+            Logger.History.debug("Applied SQLite schema migration to version \(Migration.currentSchemaVersion)")
+        }
     }
 
     func save(_ item: TranscriptionRecord) throws {
