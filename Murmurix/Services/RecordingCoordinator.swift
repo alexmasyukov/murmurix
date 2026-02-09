@@ -239,11 +239,7 @@ final class RecordingCoordinator {
         let modelSettings = settings.loadWhisperModelSettings()
         for (modelName, ms) in modelSettings where ms.keepLoaded {
             Task {
-                do {
-                    try await transcriptionService.loadModel(name: modelName)
-                } catch {
-                    Logger.Model.error("Failed to load model \(modelName): \(error.localizedDescription)")
-                }
+                await self.loadModelWithLogging(name: modelName, action: "load")
             }
         }
     }
@@ -255,11 +251,7 @@ final class RecordingCoordinator {
     func setModelLoaded(_ enabled: Bool, model: String) {
         if enabled {
             Task {
-                do {
-                    try await transcriptionService.loadModel(name: model)
-                } catch {
-                    Logger.Model.error("Failed to load model \(model): \(error.localizedDescription)")
-                }
+                await self.loadModelWithLogging(name: model, action: "load")
             }
         } else {
             Task { await transcriptionService.unloadModel(name: model) }
@@ -271,11 +263,7 @@ final class RecordingCoordinator {
             await transcriptionService.unloadModel(name: name)
             let modelSettings = settings.loadWhisperModelSettings()
             if modelSettings[name]?.keepLoaded == true {
-                do {
-                    try await transcriptionService.loadModel(name: name)
-                } catch {
-                    Logger.Model.error("Failed to reload model \(name): \(error.localizedDescription)")
-                }
+                await self.loadModelWithLogging(name: name, action: "reload")
             }
         }
     }
@@ -317,5 +305,13 @@ final class RecordingCoordinator {
             removeFileIfExists(compressedURL, context: "\(phase) (compressed)")
         }
         currentCompressedAudioURL = nil
+    }
+
+    private func loadModelWithLogging(name: String, action: String) async {
+        do {
+            try await transcriptionService.loadModel(name: name)
+        } catch {
+            Logger.Model.error("Failed to \(action) model \(name): \(error.localizedDescription)")
+        }
     }
 }
