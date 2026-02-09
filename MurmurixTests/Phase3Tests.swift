@@ -18,7 +18,7 @@ struct GeneralSettingsViewModelAPITests {
 
     @Test func testLocalModelSetsLoadingState() async {
         let mockTranscription = MockTranscriptionService()
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
         viewModel.installedModels = ["small"]
@@ -41,7 +41,7 @@ struct GeneralSettingsViewModelAPITests {
     @Test func testLocalModelSuccess() async {
         let mockTranscription = MockTranscriptionService()
         mockTranscription.transcriptionResult = .success("test result")
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
         viewModel.installedModels = ["small"]
@@ -56,7 +56,7 @@ struct GeneralSettingsViewModelAPITests {
     @Test func testLocalModelFailure() async {
         let mockTranscription = MockTranscriptionService()
         mockTranscription.transcriptionResult = .failure(TestError.transcriptionFailed)
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
         viewModel.installedModels = ["small"]
@@ -73,7 +73,7 @@ struct GeneralSettingsViewModelAPITests {
 
     @Test func testLocalModelCallsService() async {
         let mockTranscription = MockTranscriptionService()
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
         viewModel.installedModels = ["small"]
@@ -87,7 +87,7 @@ struct GeneralSettingsViewModelAPITests {
 
     @Test func testLocalModelFailsWhenNotInstalled() async {
         let mockTranscription = MockTranscriptionService()
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
         // installedModels is empty — model not installed
@@ -107,7 +107,7 @@ struct GeneralSettingsViewModelAPITests {
 
     @Test func testOpenAISetsLoadingState() async {
         let mockOpenAI = MockOpenAITranscriptionService()
-        let viewModel = GeneralSettingsViewModel(openAIService: mockOpenAI)
+        let viewModel = makeGeneralSettingsViewModel(openAIService: mockOpenAI)
 
         #expect(viewModel.isTestingOpenAI == false)
         #expect(viewModel.openaiTestResult == nil)
@@ -126,7 +126,7 @@ struct GeneralSettingsViewModelAPITests {
     @Test func testOpenAIValidationSuccess() async {
         let mockOpenAI = MockOpenAITranscriptionService()
         mockOpenAI.validateAPIKeyResult = .success(true)
-        let viewModel = GeneralSettingsViewModel(openAIService: mockOpenAI)
+        let viewModel = makeGeneralSettingsViewModel(openAIService: mockOpenAI)
 
         await viewModel.testOpenAI(apiKey: "sk-valid1234567890")
 
@@ -138,7 +138,7 @@ struct GeneralSettingsViewModelAPITests {
     @Test func testOpenAIValidationInvalidKey() async {
         let mockOpenAI = MockOpenAITranscriptionService()
         mockOpenAI.validateAPIKeyResult = .success(false)
-        let viewModel = GeneralSettingsViewModel(openAIService: mockOpenAI)
+        let viewModel = makeGeneralSettingsViewModel(openAIService: mockOpenAI)
 
         await viewModel.testOpenAI(apiKey: "sk-invalid123456789")
 
@@ -154,7 +154,7 @@ struct GeneralSettingsViewModelAPITests {
     @Test func testOpenAIValidationNetworkError() async {
         let mockOpenAI = MockOpenAITranscriptionService()
         mockOpenAI.validateAPIKeyResult = .failure(TestError.networkError)
-        let viewModel = GeneralSettingsViewModel(openAIService: mockOpenAI)
+        let viewModel = makeGeneralSettingsViewModel(openAIService: mockOpenAI)
 
         await viewModel.testOpenAI(apiKey: "sk-test1234567890")
 
@@ -169,7 +169,7 @@ struct GeneralSettingsViewModelAPITests {
 
     @Test func testGeminiSetsLoadingState() async {
         let mockGemini = MockGeminiTranscriptionService()
-        let viewModel = GeneralSettingsViewModel(geminiService: mockGemini)
+        let viewModel = makeGeneralSettingsViewModel(geminiService: mockGemini)
 
         #expect(viewModel.isTestingGemini == false)
         #expect(viewModel.geminiTestResult == nil)
@@ -188,7 +188,7 @@ struct GeneralSettingsViewModelAPITests {
     @Test func testGeminiValidationSuccess() async {
         let mockGemini = MockGeminiTranscriptionService()
         mockGemini.validateAPIKeyResult = .success(true)
-        let viewModel = GeneralSettingsViewModel(geminiService: mockGemini)
+        let viewModel = makeGeneralSettingsViewModel(geminiService: mockGemini)
 
         await viewModel.testGemini(apiKey: "AI-valid1234567890")
 
@@ -200,7 +200,7 @@ struct GeneralSettingsViewModelAPITests {
     @Test func testGeminiValidationInvalidKey() async {
         let mockGemini = MockGeminiTranscriptionService()
         mockGemini.validateAPIKeyResult = .success(false)
-        let viewModel = GeneralSettingsViewModel(geminiService: mockGemini)
+        let viewModel = makeGeneralSettingsViewModel(geminiService: mockGemini)
 
         await viewModel.testGemini(apiKey: "AI-invalid123456789")
 
@@ -216,7 +216,7 @@ struct GeneralSettingsViewModelAPITests {
     @Test func testGeminiValidationNetworkError() async {
         let mockGemini = MockGeminiTranscriptionService()
         mockGemini.validateAPIKeyResult = .failure(TestError.networkError)
-        let viewModel = GeneralSettingsViewModel(geminiService: mockGemini)
+        let viewModel = makeGeneralSettingsViewModel(geminiService: mockGemini)
 
         await viewModel.testGemini(apiKey: "AI-test1234567890")
 
@@ -231,7 +231,7 @@ struct GeneralSettingsViewModelAPITests {
 
     @Test func clearTestResultClearsLocalResult() async {
         let mockTranscription = MockTranscriptionService()
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             transcriptionServiceFactory: { mockTranscription }
         )
 
@@ -244,7 +244,7 @@ struct GeneralSettingsViewModelAPITests {
 
     @Test func clearTestResultClearsOpenAIResult() async {
         let mockOpenAI = MockOpenAITranscriptionService()
-        let viewModel = GeneralSettingsViewModel(openAIService: mockOpenAI)
+        let viewModel = makeGeneralSettingsViewModel(openAIService: mockOpenAI)
 
         await viewModel.testOpenAI(apiKey: "sk-test1234567890")
         #expect(viewModel.openaiTestResult != nil)
@@ -255,7 +255,7 @@ struct GeneralSettingsViewModelAPITests {
 
     @Test func clearTestResultClearsGeminiResult() async {
         let mockGemini = MockGeminiTranscriptionService()
-        let viewModel = GeneralSettingsViewModel(geminiService: mockGemini)
+        let viewModel = makeGeneralSettingsViewModel(geminiService: mockGemini)
 
         await viewModel.testGemini(apiKey: "AI-test1234567890")
         #expect(viewModel.geminiTestResult != nil)
@@ -272,13 +272,13 @@ struct GeneralSettingsViewModelSettingsDITests {
 
     @Test func viewModelAcceptsCustomSettings() {
         let mockSettings = MockSettings()
-        let viewModel = GeneralSettingsViewModel(settings: mockSettings)
+        let viewModel = makeGeneralSettingsViewModel(settings: mockSettings)
 
         #expect(viewModel.settings === mockSettings)
     }
 
     @Test func viewModelUsesDefaultSettingsWhenNotProvided() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
 
         // Should use Settings.shared by default
         #expect(viewModel.settings is Settings)

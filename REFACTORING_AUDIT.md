@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:38  
+Последнее обновление: 2026-02-09 15:42  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -727,3 +727,23 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - исключен класс потенциальных runtime-crash из-за неинициализированных IUO в menu-bar lifecycle.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`.
+
+### 10.27 GeneralSettingsViewModel init: убрать default singleton-зависимости
+
+- В `GeneralSettingsViewModel` удалены default singleton-параметры из designated init:
+  - теперь все зависимости (`whisperKit/openAI/gemini/settings/path closures`) передаются явно.
+- Для сохранения удобства тестов добавлен единый тестовый helper:
+  - `makeGeneralSettingsViewModel(...)` в `MurmurixTests/Mocks.swift`.
+- Обновлены call-sites в тестах с прямого `GeneralSettingsViewModel(...)` на helper:
+  - `MurmurixTests/Phase3Tests.swift`
+  - `MurmurixTests/NewFunctionalityTests.swift`
+- Изменены файлы:
+  - `Murmurix/ViewModels/GeneralSettingsViewModel.swift`
+  - `MurmurixTests/Mocks.swift`
+  - `MurmurixTests/NewFunctionalityTests.swift`
+  - `MurmurixTests/Phase3Tests.swift`
+- Эффект:
+  - в прод-коде исключены скрытые singleton defaults в VM initializer,
+  - тестовая инициализация централизована и стала явно управляемой.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests -only-testing:MurmurixTests/Phase3GeneralSettingsViewModelTests` -> `** TEST SUCCEEDED **`.

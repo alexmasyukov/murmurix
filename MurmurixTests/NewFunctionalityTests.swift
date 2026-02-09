@@ -235,7 +235,7 @@ struct GeneralSettingsViewModelModelTests {
     // MARK: - isModelInstalled
 
     @Test func isModelInstalledReturnsTrueForInstalled() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
         viewModel.installedModels = ["small", "tiny"]
 
         #expect(viewModel.isModelInstalled("small") == true)
@@ -243,14 +243,14 @@ struct GeneralSettingsViewModelModelTests {
     }
 
     @Test func isModelInstalledReturnsFalseForNotInstalled() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
         viewModel.installedModels = ["small"]
 
         #expect(viewModel.isModelInstalled("tiny") == false)
     }
 
     @Test func isModelInstalledWithEmptySet() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
 
         #expect(viewModel.isModelInstalled("small") == false)
     }
@@ -258,7 +258,7 @@ struct GeneralSettingsViewModelModelTests {
     // MARK: - cancelDownload
 
     @Test func cancelDownloadResetsToIdle() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
         viewModel.downloadStatuses["small"] = .downloading(progress: 0.75)
 
         viewModel.cancelDownload(for: "small")
@@ -270,7 +270,7 @@ struct GeneralSettingsViewModelModelTests {
     }
 
     @Test func cancelDownloadFromCompiling() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
         viewModel.downloadStatuses["small"] = .compiling
 
         viewModel.cancelDownload(for: "small")
@@ -285,7 +285,7 @@ struct GeneralSettingsViewModelModelTests {
 
     @Test func startDownloadSetsDownloadingStatus() {
         let mockWhisperKit = MockWhisperKitService()
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let viewModel = makeGeneralSettingsViewModel(whisperKitService: mockWhisperKit)
 
         viewModel.startDownload(for: "small")
 
@@ -303,7 +303,7 @@ struct GeneralSettingsViewModelModelTests {
     @Test func startDownloadCallsWhisperKitService() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
@@ -322,7 +322,7 @@ struct GeneralSettingsViewModelModelTests {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
         // keepLoaded defaults to false in WhisperModelSettings.default
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
@@ -339,7 +339,7 @@ struct GeneralSettingsViewModelModelTests {
         let mockSettings = MockSettings()
         // Set keepLoaded=true for tiny
         mockSettings.saveWhisperModelSettings(["tiny": WhisperModelSettings(hotkey: nil, keepLoaded: true)])
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
@@ -355,7 +355,7 @@ struct GeneralSettingsViewModelModelTests {
     @Test func startDownloadCompletesSuccessfully() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
@@ -376,7 +376,7 @@ struct GeneralSettingsViewModelModelTests {
         let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
         try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
 
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             modelDirectory: { modelName in
                 repoDir.appendingPathComponent("openai_whisper-\(modelName)")
@@ -400,7 +400,7 @@ struct GeneralSettingsViewModelModelTests {
         defer { try? FileManager.default.removeItem(at: repoDir) }
         let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
         try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             modelDirectory: { modelName in
                 repoDir.appendingPathComponent("openai_whisper-\(modelName)")
@@ -420,7 +420,7 @@ struct GeneralSettingsViewModelModelTests {
         defer { try? FileManager.default.removeItem(at: repoDir) }
         let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
         try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             modelDirectory: { modelName in
                 repoDir.appendingPathComponent("openai_whisper-\(modelName)")
@@ -447,7 +447,7 @@ struct GeneralSettingsViewModelModelTests {
         try? FileManager.default.createDirectory(at: smallDir, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(at: tinyDir, withIntermediateDirectories: true)
         try? Data("keep".utf8).write(to: keepFile)
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             modelDirectory: { modelName in
                 repoDir.appendingPathComponent("openai_whisper-\(modelName)")
@@ -469,7 +469,7 @@ struct GeneralSettingsViewModelModelTests {
         defer { try? FileManager.default.removeItem(at: repoDir) }
         let smallDir = tempModelDir(repoDir: repoDir, modelName: "small")
         try? FileManager.default.createDirectory(at: smallDir, withIntermediateDirectories: true)
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             modelDirectory: { modelName in
                 repoDir.appendingPathComponent("openai_whisper-\(modelName)")

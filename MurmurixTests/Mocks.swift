@@ -472,3 +472,26 @@ final class MockURLSession: URLSessionProtocol, @unchecked Sendable {
         error = nil
     }
 }
+
+// MARK: - Test Helpers
+
+@MainActor
+func makeGeneralSettingsViewModel(
+    whisperKitService: WhisperKitServiceProtocol = MockWhisperKitService(),
+    openAIService: OpenAITranscriptionServiceProtocol = MockOpenAITranscriptionService(),
+    geminiService: GeminiTranscriptionServiceProtocol = MockGeminiTranscriptionService(),
+    transcriptionServiceFactory: (() -> TranscriptionServiceProtocol)? = nil,
+    modelDirectory: @escaping (String) -> URL = { ModelPaths.modelDir(for: $0) },
+    modelsRepositoryDirectory: @escaping () -> URL = { ModelPaths.repoDir },
+    settings: SettingsStorageProtocol = MockSettings()
+) -> GeneralSettingsViewModel {
+    GeneralSettingsViewModel(
+        whisperKitService: whisperKitService,
+        openAIService: openAIService,
+        geminiService: geminiService,
+        transcriptionServiceFactory: transcriptionServiceFactory,
+        modelDirectory: modelDirectory,
+        modelsRepositoryDirectory: modelsRepositoryDirectory,
+        settings: settings
+    )
+}

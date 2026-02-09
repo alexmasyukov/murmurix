@@ -62,13 +62,13 @@ final class GeneralSettingsViewModel: ObservableObject {
     }
 
     init(
-        whisperKitService: WhisperKitServiceProtocol = WhisperKitService.shared,
-        openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
-        geminiService: GeminiTranscriptionServiceProtocol = GeminiTranscriptionService.shared,
+        whisperKitService: WhisperKitServiceProtocol,
+        openAIService: OpenAITranscriptionServiceProtocol,
+        geminiService: GeminiTranscriptionServiceProtocol,
         transcriptionServiceFactory: (() -> TranscriptionServiceProtocol)? = nil,
-        modelDirectory: @escaping (String) -> URL = { ModelPaths.modelDir(for: $0) },
-        modelsRepositoryDirectory: @escaping () -> URL = { ModelPaths.repoDir },
-        settings: SettingsStorageProtocol = Settings.shared
+        modelDirectory: @escaping (String) -> URL,
+        modelsRepositoryDirectory: @escaping () -> URL,
+        settings: SettingsStorageProtocol
     ) {
         self.whisperKitService = whisperKitService
         self.openAIService = openAIService
