@@ -173,28 +173,7 @@ final class RecordingCoordinator {
             guard let self = self else { return }
 
             do {
-                // For cloud mode, compress WAV to M4A for faster upload
-                let transcriptionURL: URL
-
-                if mode.isCloud {
-                    let compressedURL: URL?
-                    do {
-                        compressedURL = try await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
-                    } catch {
-                        Logger.Transcription.error("Audio compression failed, fallback to WAV: \(error.localizedDescription)")
-                        compressedURL = nil
-                    }
-
-                    if let compressed = compressedURL {
-                        self.currentCompressedAudioURL = compressed
-                        transcriptionURL = compressed
-                        Logger.Transcription.info("Using M4A for cloud transcription (\(mode.logName))")
-                    } else {
-                        transcriptionURL = audioURL
-                    }
-                } else {
-                    transcriptionURL = audioURL
-                }
+                let transcriptionURL = await self.transcriptionInputURL(audioURL: audioURL, mode: mode)
 
                 let transcribedText = try await service.transcribe(
                     audioURL: transcriptionURL,
@@ -202,33 +181,16 @@ final class RecordingCoordinator {
                     mode: mode
                 )
 
-                // Check if cancelled
                 if Task.isCancelled { return }
-
-                self.resetTranscriptionState()
-
-                // Save to history
-                let record = TranscriptionRecord(
+                self.completeTranscriptionSuccess(
                     text: transcribedText,
                     language: language,
-                    duration: duration
+                    duration: duration,
+                    sourceAudioURL: audioURL
                 )
-                self.historyService.save(record: record)
-
-                // Delete audio files
-                self.cleanupTranscriptionFiles(audioURL: audioURL, phase: "successful transcription")
-
-                self.delegate?.transcriptionDidComplete(text: transcribedText, duration: duration, recordId: record.id)
             } catch {
-                // Check if cancelled
                 if Task.isCancelled { return }
-
-                self.resetTranscriptionState()
-
-                // Delete audio files even on error
-                self.cleanupTranscriptionFiles(audioURL: audioURL, phase: "failed transcription")
-
-                self.delegate?.transcriptionDidFail(error: error)
+                self.completeTranscriptionFailure(error, sourceAudioURL: audioURL)
             }
         }
     }
@@ -305,6 +267,45 @@ final class RecordingCoordinator {
             removeFileIfExists(compressedURL, context: "\(phase) (compressed)")
         }
         currentCompressedAudioURL = nil
+    }
+
+    private func transcriptionInputURL(audioURL: URL, mode: TranscriptionMode) async -> URL {
+        guard mode.isCloud else { return audioURL }
+
+        do {
+            let compressedURL = try await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
+            currentCompressedAudioURL = compressedURL
+            Logger.Transcription.info("Using M4A for cloud transcription (\(mode.logName))")
+            return compressedURL
+        } catch {
+            Logger.Transcription.error("Audio compression failed, fallback to WAV: \(error.localizedDescription)")
+            return audioURL
+        }
+    }
+
+    private func completeTranscriptionSuccess(
+        text: String,
+        language: String,
+        duration: TimeInterval,
+        sourceAudioURL: URL
+    ) {
+        resetTranscriptionState()
+
+        let record = TranscriptionRecord(
+            text: text,
+            language: language,
+            duration: duration
+        )
+        historyService.save(record: record)
+
+        cleanupTranscriptionFiles(audioURL: sourceAudioURL, phase: "successful transcription")
+        delegate?.transcriptionDidComplete(text: text, duration: duration, recordId: record.id)
+    }
+
+    private func completeTranscriptionFailure(_ error: Error, sourceAudioURL: URL) {
+        resetTranscriptionState()
+        cleanupTranscriptionFiles(audioURL: sourceAudioURL, phase: "failed transcription")
+        delegate?.transcriptionDidFail(error: error)
     }
 
     private func loadModelWithLogging(name: String, action: String) async {
