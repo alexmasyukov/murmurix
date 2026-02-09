@@ -12,7 +12,7 @@ struct WhisperModelSettings: Codable, Equatable {
     static let `default` = WhisperModelSettings(hotkey: nil, keepLoaded: false)
 }
 
-final class Settings: SettingsStorageProtocol {
+final class Settings: SettingsStorageProtocol, @unchecked Sendable {
     static let shared = Settings()
 
     private let defaults: UserDefaults

@@ -129,7 +129,7 @@ final class MockHistoryService: HistoryServiceProtocol {
 
 // MARK: - Mock Settings
 
-final class MockSettings: SettingsStorageProtocol {
+final class MockSettings: SettingsStorageProtocol, @unchecked Sendable {
     var language: String = "ru"
     var appLanguage: String = "en"
     var openaiApiKey: String = ""

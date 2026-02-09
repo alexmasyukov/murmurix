@@ -50,7 +50,7 @@ extension URLSession: URLSessionProtocol {}
 
 // MARK: - Settings Storage
 
-protocol SettingsStorageProtocol: AnyObject {
+protocol SettingsStorageProtocol: AnyObject, Sendable {
     var language: String { get set }
     var appLanguage: String { get set }
     var openaiApiKey: String { get set }
