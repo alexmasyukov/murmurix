@@ -167,7 +167,7 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
 
         guard let statement = database.prepareStatement(sql) else { return }
         database.bindText(statement, index: 1, value: id.uuidString)
-        database.step(statement)
+        _ = database.step(statement)
         database.finalize(statement)
     }
 
