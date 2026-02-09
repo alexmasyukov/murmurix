@@ -320,7 +320,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 ## Фаза 1 (конкурентность и state machine)
 
-- [ ] `RecordingCoordinator` -> `@MainActor`.
+- [x] `RecordingCoordinator` -> `@MainActor`.
 - [ ] Заменить `Task.detached` на structured concurrency.
 - [ ] Вынести transitions в отдельный reducer.
 - [ ] Добавить tests для toggle/cancel гонок.
@@ -407,3 +407,50 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 6. `fe6c09d` `refactor: log whisper model directory read failures`
 7. `3a41282` `refactor: deduplicate settings serialization helpers`
 8. `0be8d56` `refactor: log audio compressor file ops failures`
+
+### 10.4 Продолжение (текущий цикл рефакторинга)
+
+- Уменьшена связность и дубли в orchestration-слое:
+  - `Murmurix/Services/RecordingCoordinator.swift`
+  - выделены отдельные этапы подготовки входного аудио и завершения транскрибации (success/failure).
+- Нормализован `MenuBarManager`:
+  - `Murmurix/App/MenuBarManager.swift`
+  - переиспользуемые builders для local/cloud menu items и базовых пунктов меню.
+- Упрощены сервисы API и модели:
+  - `Murmurix/Services/OpenAITranscriptionService.swift` (общие multipart request/body builders),
+  - `Murmurix/Services/TranscriptionService.swift` (единая проверка API key для cloud-провайдеров),
+  - `Murmurix/Services/WhisperKitService.swift` (единый helper для unload pipeline),
+  - `Murmurix/Services/Logger.swift` (централизация dispatch по уровням логирования).
+- Усилена тестопригодность выбора пути моделей:
+  - `Murmurix/App/AppConstants.swift`
+  - `MurmurixTests/RefactoringTests.swift`
+  - добавлены предметные тесты приоритета path selection:
+    - `custom path` имеет приоритет над temp/debug,
+    - `MURMURIX_USE_TEMP_MODEL_REPO=1` форсирует temp repo,
+    - `MURMURIX_USE_TEMP_MODEL_REPO=0` форсирует persistent documents path.
+
+### 10.5 Проверка стабильности (текущий цикл)
+
+- Все прогоны выполнялись с:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1`
+- Успешные targeted прогоны:
+  - `AppConstantsTests`
+  - `RefactoringTests`
+  - `RecordingCoordinatorTests`
+  - `GeneralSettingsViewModelModelTests`
+  - `AudioCompressorErrorTests`
+  - `OpenAITranscriptionServiceDITests`
+  - `MockURLSessionTests`
+  - `IntegrationTests`
+  - `NewFunctionalityTests`
+
+### 10.6 Последние коммиты (актуальная серия)
+
+1. `464dbdf` `refactor: make model repo path resolution testable`
+2. `4a7de44` `refactor: share whisper pipeline unload helper`
+3. `2144c60` `refactor: deduplicate cloud api key checks in transcription service`
+4. `a92efad` `refactor: share openai multipart request builders`
+5. `0b8c9b1` `refactor: reuse local menu item builders in menu bar manager`
+6. `9468a2d` `refactor: split transcription path resolution and completion handlers`
+7. `abd4b5d` `refactor: centralize logger level dispatch helpers`
+8. `27bc48f` `refactor: simplify model base path derivation`
