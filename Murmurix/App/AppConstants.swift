@@ -114,25 +114,15 @@ enum ModelPaths {
     }
 
     static var repoDir: URL {
-        let environment = ProcessInfo.processInfo.environment
-
-        if let customPath = environment[customRepoDirEnv], !customPath.isEmpty {
-            return URL(fileURLWithPath: customPath).standardizedFileURL
+        if let customRepoDir {
+            return customRepoDir
         }
 
-        if environment[useTempRepoEnv] == "1" {
+        if shouldUseTempRepo {
             return tempRepoDir
         }
 
-#if DEBUG
-        if environment[useTempRepoEnv] != "0" {
-            return tempRepoDir
-        }
-#endif
-
-        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
-        return documentsDir.appendingPathComponent(repoSubpath)
+        return persistentRepoDir
     }
 
     static var downloadBaseDir: URL {
@@ -145,5 +135,31 @@ enum ModelPaths {
 
     static func modelDir(for name: String) -> URL {
         repoDir.appendingPathComponent("openai_whisper-\(name)")
+    }
+
+    private static var environment: [String: String] {
+        ProcessInfo.processInfo.environment
+    }
+
+    private static var customRepoDir: URL? {
+        guard let customPath = environment[customRepoDirEnv], !customPath.isEmpty else { return nil }
+        return URL(fileURLWithPath: customPath).standardizedFileURL
+    }
+
+    private static var shouldUseTempRepo: Bool {
+        if environment[useTempRepoEnv] == "1" {
+            return true
+        }
+#if DEBUG
+        return environment[useTempRepoEnv] != "0"
+#else
+        return false
+#endif
+    }
+
+    private static var persistentRepoDir: URL {
+        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
+        return documentsDir.appendingPathComponent(repoSubpath)
     }
 }
