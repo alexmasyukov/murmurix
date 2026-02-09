@@ -20,7 +20,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
@@ -38,7 +40,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
@@ -60,7 +64,8 @@ struct TranscriptionServiceIntegrationTests {
         let service = TranscriptionService(
             whisperKitService: MockWhisperKitService(),
             settings: mockSettings,
-            openAIService: mockOpenAI
+            openAIService: mockOpenAI,
+            geminiService: MockGeminiTranscriptionService()
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
@@ -79,7 +84,8 @@ struct TranscriptionServiceIntegrationTests {
         let service = TranscriptionService(
             whisperKitService: MockWhisperKitService(),
             settings: mockSettings,
-            openAIService: mockOpenAI
+            openAIService: mockOpenAI,
+            geminiService: MockGeminiTranscriptionService()
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
@@ -102,6 +108,7 @@ struct TranscriptionServiceIntegrationTests {
         let service = TranscriptionService(
             whisperKitService: MockWhisperKitService(),
             settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
             geminiService: mockGemini
         )
 
@@ -121,6 +128,7 @@ struct TranscriptionServiceIntegrationTests {
         let service = TranscriptionService(
             whisperKitService: MockWhisperKitService(),
             settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
             geminiService: mockGemini
         )
 
@@ -140,7 +148,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         try await service.loadModel(name: "tiny")
@@ -157,7 +167,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         await service.unloadModel(name: "tiny")
@@ -172,7 +184,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         #expect(service.isModelLoaded(name: "base") == false)
@@ -190,7 +204,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         #expect(service.loadedModelNames().isEmpty)

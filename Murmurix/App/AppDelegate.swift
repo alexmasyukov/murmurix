@@ -18,7 +18,7 @@ struct AppDependencies {
             settings: Settings.shared,
             makeAudioRecorder: { AudioRecorder() },
             makeTranscriptionService: { settings in
-                TranscriptionService(settings: settings)
+                TranscriptionService.live(settings: settings)
             }
         )
     }

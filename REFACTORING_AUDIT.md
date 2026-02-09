@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:14  
+Последнее обновление: 2026-02-09 15:17  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -564,3 +564,20 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - снижена вероятность накопления лишних подписок при повторных открытиях.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/MurmurixTests -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/NewFunctionalityTests` -> `** TEST SUCCEEDED **`.
+
+### 10.15 TranscriptionService: явная DI-конфигурация без скрытых singleton-дефолтов
+
+- Убран singleton-based default init у `TranscriptionService`:
+  - `Murmurix/Services/TranscriptionService.swift`
+  - новый фабричный entry-point `TranscriptionService.live(settings:)`.
+- Обновлен composition root и view-model fallback:
+  - `Murmurix/App/AppDelegate.swift` (использует `TranscriptionService.live(settings:)`),
+  - `Murmurix/ViewModels/GeneralSettingsViewModel.swift` (default factory теперь строится от переданного `settings`).
+- Обновлены DI/интеграционные тесты на явные зависимости:
+  - `MurmurixTests/IntegrationTests.swift`
+  - `MurmurixTests/RefactoringTests.swift`
+- Эффект:
+  - меньше скрытых зависимостей от `shared`,
+  - прозрачнее граница production wiring vs тестовые doubles.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests -only-testing:MurmurixTests/DependencyInjectionTests -only-testing:MurmurixTests/Phase3Tests` -> `** TEST SUCCEEDED **`.

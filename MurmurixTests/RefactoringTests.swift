@@ -720,7 +720,12 @@ struct DependencyInjectionTests {
         let mockSettings = MockSettings()
 
         let mockWhisperKit = MockWhisperKitService()
-        let service = TranscriptionService(whisperKitService: mockWhisperKit, settings: mockSettings)
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
+        )
 
         #expect(type(of: service) == TranscriptionService.self)
     }
