@@ -60,14 +60,7 @@ final class MenuBarManager {
         var insertIndex = 0
         for model in WhisperModel.allCases {
             guard let hotkey = hotkeys[model.rawValue] else { continue }
-            let item = NSMenuItem(
-                title: L10n.localModel(model.rawValue),
-                action: #selector(handleToggleLocalRecording(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = model.rawValue
-            applyHotkeyToMenuItem(item, hotkey: hotkey)
+            let item = makeLocalModelMenuItem(modelName: model.rawValue, hotkey: hotkey)
             menu.insertItem(item, at: insertIndex)
             localModelMenuItems[model.rawValue] = item
             insertIndex += 1
@@ -91,17 +84,8 @@ final class MenuBarManager {
         // Add local model items from settings
         let modelSettings = settings.loadWhisperModelSettings()
         for model in WhisperModel.allCases {
-            guard let ms = modelSettings[model.rawValue], ms.hotkey != nil else { continue }
-            let item = NSMenuItem(
-                title: L10n.localModel(model.rawValue),
-                action: #selector(handleToggleLocalRecording(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = model.rawValue
-            if let hotkey = ms.hotkey {
-                applyHotkeyToMenuItem(item, hotkey: hotkey)
-            }
+            guard let hotkey = modelSettings[model.rawValue]?.hotkey else { continue }
+            let item = makeLocalModelMenuItem(modelName: model.rawValue, hotkey: hotkey)
             menu.addItem(item)
             localModelMenuItems[model.rawValue] = item
         }
@@ -172,6 +156,18 @@ final class MenuBarManager {
         if hotkey.modifiers & UInt32(controlKey) != 0 { modifiers.insert(.control) }
         if hotkey.modifiers & UInt32(shiftKey) != 0 { modifiers.insert(.shift) }
         menuItem.keyEquivalentModifierMask = modifiers
+    }
+
+    private func makeLocalModelMenuItem(modelName: String, hotkey: Hotkey) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: L10n.localModel(modelName),
+            action: #selector(handleToggleLocalRecording(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = modelName
+        applyHotkeyToMenuItem(item, hotkey: hotkey)
+        return item
     }
 
     // MARK: - Actions
