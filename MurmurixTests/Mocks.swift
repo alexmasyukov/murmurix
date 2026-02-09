@@ -49,6 +49,7 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
     var transcribeCallCount = 0
     var lastLanguage: String?
     var lastMode: TranscriptionMode?
+    var lastAudioURL: URL?
 
     var transcriptionResult: Result<String, Error> = .success("Test transcription")
     var transcriptionDelay: TimeInterval = 0
@@ -78,6 +79,7 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
         mode: TranscriptionMode = .local(model: "small")
     ) async throws -> String {
         transcribeCallCount += 1
+        lastAudioURL = audioURL
         lastLanguage = language
         lastMode = mode
 

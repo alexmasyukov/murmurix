@@ -394,6 +394,25 @@ struct RecordingCoordinatorTests {
 
     // MARK: - Transcription Modes
 
+    @Test func cloudTranscriptionFallsBackToWavWhenCompressionFails() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+        let missingAudioURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("missing-audio-\(UUID().uuidString).wav")
+        audioRecorder.recordingURL = missingAudioURL
+
+        #expect(FileManager.default.fileExists(atPath: missingAudioURL.path) == false)
+
+        coordinator.toggleRecording(mode: .openai)
+        coordinator.toggleRecording(mode: .openai)
+
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        #expect(coordinator.state == .idle)
+        #expect(transcriptionService.transcribeCallCount == 1)
+        #expect(transcriptionService.lastAudioURL == missingAudioURL)
+        #expect(delegate.transcriptionDidCompleteCallCount == 1)
+    }
+
     @Test func toggleRecordingWithOpenAIMode() async throws {
         let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
 

@@ -316,7 +316,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 - [x] Исправить propagation языка в транскрибации.
 - [x] Убрать `print` из Lottie и перевести в `Logger`.
 - [ ] Убрать silent `try?` в критичных ветках cleanup/compress.
-- [ ] Добавить тест на fallback при ошибке компрессии.
+- [x] Добавить тест на fallback при ошибке компрессии.
 
 ## Фаза 1 (конкурентность и state machine)
 
