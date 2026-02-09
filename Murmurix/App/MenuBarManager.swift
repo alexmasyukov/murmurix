@@ -41,12 +41,8 @@ final class MenuBarManager {
     }
 
     func updateHotkeyDisplay() {
-        if let menuItem = toggleCloudMenuItem, let hotkey = settings.loadToggleCloudHotkey() {
-            applyHotkeyToMenuItem(menuItem, hotkey: hotkey)
-        }
-        if let menuItem = toggleGeminiMenuItem, let hotkey = settings.loadToggleGeminiHotkey() {
-            applyHotkeyToMenuItem(menuItem, hotkey: hotkey)
-        }
+        applyHotkeyIfPresent(to: toggleCloudMenuItem, hotkey: settings.loadToggleCloudHotkey())
+        applyHotkeyIfPresent(to: toggleGeminiMenuItem, hotkey: settings.loadToggleGeminiHotkey())
     }
 
     func updateLocalModelMenuItems(hotkeys: [String: Hotkey]) {
@@ -90,27 +86,19 @@ final class MenuBarManager {
             localModelMenuItems[model.rawValue] = item
         }
 
-        let cloudMenuItem = NSMenuItem(
+        let cloudMenuItem = makeCloudMenuItem(
             title: L10n.cloudRecordingOpenAI,
             action: #selector(handleToggleCloudRecording),
-            keyEquivalent: ""
+            hotkey: settings.loadToggleCloudHotkey()
         )
-        cloudMenuItem.target = self
-        if let hotkey = settings.loadToggleCloudHotkey() {
-            applyHotkeyToMenuItem(cloudMenuItem, hotkey: hotkey)
-        }
         toggleCloudMenuItem = cloudMenuItem
         menu.addItem(cloudMenuItem)
 
-        let geminiMenuItem = NSMenuItem(
+        let geminiMenuItem = makeCloudMenuItem(
             title: L10n.geminiRecording,
             action: #selector(handleToggleGeminiRecording),
-            keyEquivalent: ""
+            hotkey: settings.loadToggleGeminiHotkey()
         )
-        geminiMenuItem.target = self
-        if let hotkey = settings.loadToggleGeminiHotkey() {
-            applyHotkeyToMenuItem(geminiMenuItem, hotkey: hotkey)
-        }
         toggleGeminiMenuItem = geminiMenuItem
         menu.addItem(geminiMenuItem)
 
@@ -158,6 +146,11 @@ final class MenuBarManager {
         menuItem.keyEquivalentModifierMask = modifiers
     }
 
+    private func applyHotkeyIfPresent(to menuItem: NSMenuItem?, hotkey: Hotkey?) {
+        guard let menuItem, let hotkey else { return }
+        applyHotkeyToMenuItem(menuItem, hotkey: hotkey)
+    }
+
     private func makeLocalModelMenuItem(modelName: String, hotkey: Hotkey) -> NSMenuItem {
         let item = NSMenuItem(
             title: L10n.localModel(modelName),
@@ -167,6 +160,13 @@ final class MenuBarManager {
         item.target = self
         item.representedObject = modelName
         applyHotkeyToMenuItem(item, hotkey: hotkey)
+        return item
+    }
+
+    private func makeCloudMenuItem(title: String, action: Selector, hotkey: Hotkey?) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        applyHotkeyIfPresent(to: item, hotkey: hotkey)
         return item
     }
 
