@@ -10,18 +10,19 @@ struct AppDependencies {
     let historyService: HistoryServiceProtocol
     let settings: SettingsStorageProtocol
     let makeAudioRecorder: () -> any AudioRecorderProtocol
-    let makeTranscriptionService: (SettingsStorageProtocol) -> any TranscriptionServiceProtocol
-    let makeGeneralSettingsViewModel: @MainActor (SettingsStorageProtocol) -> GeneralSettingsViewModel
+    let makeTranscriptionService: () -> any TranscriptionServiceProtocol
+    let makeGeneralSettingsViewModel: @MainActor () -> GeneralSettingsViewModel
 
     static func live() -> AppDependencies {
-        AppDependencies(
+        let settings = Settings.shared
+        return AppDependencies(
             historyService: HistoryService.shared,
-            settings: Settings.shared,
+            settings: settings,
             makeAudioRecorder: { AudioRecorder() },
-            makeTranscriptionService: { settings in
+            makeTranscriptionService: {
                 TranscriptionService.live(settings: settings)
             },
-            makeGeneralSettingsViewModel: { settings in
+            makeGeneralSettingsViewModel: {
                 GeneralSettingsViewModel.live(settings: settings)
             }
         )
@@ -44,8 +45,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let historyService: HistoryServiceProtocol
     private let settings: SettingsStorageProtocol
     private let makeAudioRecorder: () -> any AudioRecorderProtocol
-    private let makeTranscriptionService: (SettingsStorageProtocol) -> any TranscriptionServiceProtocol
-    private let makeGeneralSettingsViewModel: @MainActor (SettingsStorageProtocol) -> GeneralSettingsViewModel
+    private let makeTranscriptionService: () -> any TranscriptionServiceProtocol
+    private let makeGeneralSettingsViewModel: @MainActor () -> GeneralSettingsViewModel
 
     init(dependencies: AppDependencies) {
         self.historyService = dependencies.historyService
@@ -121,7 +122,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     private func setupServices() {
         audioRecorder = makeAudioRecorder()
-        transcriptionService = makeTranscriptionService(settings)
+        transcriptionService = makeTranscriptionService()
 
         guard let audioRecorder, let transcriptionService else { return }
 

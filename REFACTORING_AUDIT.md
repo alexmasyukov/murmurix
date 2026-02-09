@@ -858,3 +858,22 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - снижены риски побочных эффектов на рабочие данные во время разработки.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.35 Settings flow factories: убрать лишний проброс settings через AppDelegate -> Window layer
+
+- Упрощены фабрики в `AppDependencies`:
+  - `makeTranscriptionService` теперь `() -> TranscriptionServiceProtocol`,
+  - `makeGeneralSettingsViewModel` теперь `@MainActor () -> GeneralSettingsViewModel`.
+- В `AppDependencies.live()` обе фабрики захватывают `settings` из composition root напрямую.
+- Соответственно обновлены сигнатуры в window-layer:
+  - `WindowManager.showSettingsWindow(... makeGeneralSettingsViewModel: @MainActor () -> GeneralSettingsViewModel, ...)`
+  - `SettingsWindowController` вызывает `makeGeneralSettingsViewModel()` без повторного проброса `settings`.
+- Изменены файлы:
+  - `Murmurix/App/AppDelegate.swift`
+  - `Murmurix/App/WindowManager.swift`
+  - `Murmurix/Views/SettingsWindowController.swift`
+- Эффект:
+  - устранен лишний plumbing одного и того же `settings` по нескольким слоям,
+  - уменьшена вероятность рассинхронизации настроек между сервисным и window-слоем.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/SettingsTests` -> `** TEST SUCCEEDED **`.
