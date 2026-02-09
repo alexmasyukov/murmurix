@@ -83,13 +83,7 @@ struct HotkeyRecorderView: View {
 
     private func handleKeyEvent(_ event: NSEvent) {
         let keyCode = UInt32(event.keyCode)
-
-        // Convert NSEvent modifiers to Carbon modifiers
-        var carbonModifiers: UInt32 = 0
-        if event.modifierFlags.contains(.command) { carbonModifiers |= UInt32(cmdKey) }
-        if event.modifierFlags.contains(.option) { carbonModifiers |= UInt32(optionKey) }
-        if event.modifierFlags.contains(.control) { carbonModifiers |= UInt32(controlKey) }
-        if event.modifierFlags.contains(.shift) { carbonModifiers |= UInt32(shiftKey) }
+        let carbonModifiers = carbonModifiers(from: event.modifierFlags)
 
         DispatchQueue.main.async {
             self.hotkey = Hotkey(keyCode: keyCode, modifiers: carbonModifiers)
@@ -101,7 +95,7 @@ struct HotkeyRecorderView: View {
         isRecording = true
 
         // Disable global hotkey interception while recording new hotkey
-        GlobalHotkeyManager.isRecordingHotkey = true
+        setGlobalHotkeyInterception(enabled: false)
 
         // Local monitor - when app is in focus
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -119,16 +113,34 @@ struct HotkeyRecorderView: View {
         isRecording = false
 
         // Re-enable global hotkey interception
-        GlobalHotkeyManager.isRecordingHotkey = false
+        setGlobalHotkeyInterception(enabled: true)
+        removeLocalMonitorIfNeeded()
+        removeGlobalMonitorIfNeeded()
+    }
 
-        if let monitor = localMonitor {
-            NSEvent.removeMonitor(monitor)
-            localMonitor = nil
-        }
-        if let monitor = globalMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalMonitor = nil
-        }
+    private func setGlobalHotkeyInterception(enabled: Bool) {
+        GlobalHotkeyManager.isRecordingHotkey = !enabled
+    }
+
+    private func removeLocalMonitorIfNeeded() {
+        guard let monitor = localMonitor else { return }
+        NSEvent.removeMonitor(monitor)
+        localMonitor = nil
+    }
+
+    private func removeGlobalMonitorIfNeeded() {
+        guard let monitor = globalMonitor else { return }
+        NSEvent.removeMonitor(monitor)
+        globalMonitor = nil
+    }
+
+    private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
+        var result: UInt32 = 0
+        if flags.contains(.command) { result |= UInt32(cmdKey) }
+        if flags.contains(.option) { result |= UInt32(optionKey) }
+        if flags.contains(.control) { result |= UInt32(controlKey) }
+        if flags.contains(.shift) { result |= UInt32(shiftKey) }
+        return result
     }
 }
 
