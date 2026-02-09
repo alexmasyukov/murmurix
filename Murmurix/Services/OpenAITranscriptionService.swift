@@ -15,9 +15,7 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
 
     private let baseURL = "https://api.openai.com/v1/audio/transcriptions"
     private let session: URLSessionProtocol
-
-    // Промпт для улучшения распознавания технических терминов
-    private let defaultPrompt = "Диалог на темы программирования. Технические термины: Anthropic, Claude, Bun, React, Docker, Kubernetes, Golang, Python, Swift, Xcode, GitHub, API, JSON, REST, GraphQL, PostgreSQL, MongoDB, Redis, AWS, Azure, GCP и так далее."
+    private let promptPolicy: any TranscriptionPromptPolicy
 
     private struct TranscriptionResponse: Decodable {
         let text: String
@@ -31,8 +29,12 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
         let error: APIError
     }
 
-    init(session: URLSessionProtocol = URLSession.shared) {
+    init(
+        session: URLSessionProtocol = URLSession.shared,
+        promptPolicy: any TranscriptionPromptPolicy = DefaultTranscriptionPromptPolicy.shared
+    ) {
         self.session = session
+        self.promptPolicy = promptPolicy
     }
 
     // MARK: - Transcription
@@ -164,6 +166,7 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
         language: String,
         boundary: String
     ) -> Data {
+        let prompt = promptPolicy.openAIPrompt(language: language)
         var body = Data()
         appendFileField(
             name: "file",
@@ -175,7 +178,7 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
         )
         appendFormField(name: "model", value: model, boundary: boundary, to: &body)
         appendFormField(name: "language", value: language, boundary: boundary, to: &body)
-        appendFormField(name: "prompt", value: defaultPrompt, boundary: boundary, to: &body)
+        appendFormField(name: "prompt", value: prompt, boundary: boundary, to: &body)
         appendFormField(name: "response_format", value: "json", boundary: boundary, to: &body)
         closeBoundary(boundary, to: &body)
         return body

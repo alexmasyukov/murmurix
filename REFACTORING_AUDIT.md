@@ -336,7 +336,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 - [x] Ввести порт `CloudTranscriptionClient` и адаптеры OpenAI/Gemini.
 - [x] Нормализовать транспортные ошибки в доменные.
-- [ ] Вынести language/prompt policy из сервисов API.
+- [x] Вынести language/prompt policy из сервисов API.
 
 ## Фаза 4 (data layer hardening)
 

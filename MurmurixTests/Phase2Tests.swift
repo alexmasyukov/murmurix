@@ -165,4 +165,41 @@ struct OpenAITranscriptionServiceDITests {
 
         #expect(errorMessage?.contains("Invalid") == true)
     }
+
+    @Test func serviceUsesInjectedPromptPolicyForMultipartPrompt() async throws {
+        let mockSession = MockURLSession()
+        mockSession.setSuccessResponse(json: ["text": "ok"])
+        let promptPolicy = StubTranscriptionPromptPolicy(
+            openAIPromptValue: "CUSTOM_OPENAI_PROMPT",
+            geminiPromptValue: "unused"
+        )
+        let service = OpenAITranscriptionService(session: mockSession, promptPolicy: promptPolicy)
+
+        let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
+        try AudioTestUtility.createSilentWavFile(at: tempURL)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        _ = try await service.transcribe(
+            audioURL: tempURL,
+            language: "en",
+            model: "gpt-4o-transcribe",
+            apiKey: "sk-mytestkey123456"
+        )
+
+        let bodyData = mockSession.lastRequest?.httpBody ?? Data()
+        #expect(bodyData.range(of: Data("CUSTOM_OPENAI_PROMPT".utf8)) != nil)
+    }
+}
+
+private struct StubTranscriptionPromptPolicy: TranscriptionPromptPolicy {
+    let openAIPromptValue: String
+    let geminiPromptValue: String
+
+    func openAIPrompt(language: String) -> String {
+        openAIPromptValue
+    }
+
+    func geminiPrompt(language: String) -> String {
+        geminiPromptValue
+    }
 }
