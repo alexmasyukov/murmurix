@@ -67,7 +67,7 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
 
         // Migrate old local hotkey
         let oldHotkey = defaults.data(forKey: Keys.legacyToggleLocalHotkey).flatMap { data in
-            decode(Hotkey.self, from: data)
+            decode(Hotkey.self, from: data, context: "legacy local hotkey migration")
         }
 
         let modelSettings = WhisperModelSettings(hotkey: oldHotkey, keepLoaded: oldKeepLoaded)
@@ -99,14 +99,14 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
 
     func loadWhisperModelSettings() -> [String: WhisperModelSettings] {
         guard let data = defaults.data(forKey: Keys.whisperModelSettings),
-              let map = decode([String: WhisperModelSettings].self, from: data) else {
+              let map = decode([String: WhisperModelSettings].self, from: data, context: "whisper model settings load") else {
             return [:]
         }
         return map
     }
 
     func saveWhisperModelSettings(_ settings: [String: WhisperModelSettings]) {
-        if let data = encode(settings) {
+        if let data = encode(settings, context: "whisper model settings save") {
             defaults.set(data, forKey: Keys.whisperModelSettings)
         }
     }
@@ -115,26 +115,36 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
 
     private func loadHotkey(key: String) -> Hotkey? {
         guard let data = defaults.data(forKey: key),
-              let hotkey = decode(Hotkey.self, from: data) else {
+              let hotkey = decode(Hotkey.self, from: data, context: "hotkey load: \(key)") else {
             return nil
         }
         return hotkey
     }
 
     private func saveHotkey(key: String, hotkey: Hotkey?) {
-        if let hotkey, let data = encode(hotkey) {
+        if let hotkey, let data = encode(hotkey, context: "hotkey save: \(key)") {
             defaults.set(data, forKey: key)
         } else {
             defaults.removeObject(forKey: key)
         }
     }
 
-    private func decode<T: Decodable>(_ type: T.Type, from data: Data) -> T? {
-        try? JSONDecoder().decode(type, from: data)
+    private func decode<T: Decodable>(_ type: T.Type, from data: Data, context: String) -> T? {
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch {
+            Logger.Settings.debug("Failed to decode \(String(describing: type)) (\(context)): \(error.localizedDescription)")
+            return nil
+        }
     }
 
-    private func encode<T: Encodable>(_ value: T) -> Data? {
-        try? JSONEncoder().encode(value)
+    private func encode<T: Encodable>(_ value: T, context: String) -> Data? {
+        do {
+            return try JSONEncoder().encode(value)
+        } catch {
+            Logger.Settings.debug("Failed to encode \(String(describing: T.self)) (\(context)): \(error.localizedDescription)")
+            return nil
+        }
     }
 
     func loadToggleCloudHotkey() -> Hotkey? {
