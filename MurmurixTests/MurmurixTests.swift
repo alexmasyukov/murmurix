@@ -454,16 +454,13 @@ struct GlobalHotkeyManagerTests {
         #expect(manager.isRecording == false)
     }
 
-    @Test func hotkeyManagerIsRecordingHotkeyStaticFlag() {
-        // Test the static flag used to disable hotkey interception during recording
-        GlobalHotkeyManager.isRecordingHotkey = false
-        #expect(GlobalHotkeyManager.isRecordingHotkey == false)
+    @Test func hotkeyManagerPauseResumeDoNotCrashWithoutActiveTap() {
+        let manager = GlobalHotkeyManager()
 
-        GlobalHotkeyManager.isRecordingHotkey = true
-        #expect(GlobalHotkeyManager.isRecordingHotkey == true)
+        manager.pause()
+        manager.resume()
 
-        // Clean up
-        GlobalHotkeyManager.isRecordingHotkey = false
+        #expect(manager.isRecording == false)
     }
 }
 

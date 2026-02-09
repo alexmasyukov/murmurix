@@ -94,9 +94,6 @@ struct HotkeyRecorderView: View {
     private func startRecording() {
         isRecording = true
 
-        // Disable global hotkey interception while recording new hotkey
-        setGlobalHotkeyInterception(enabled: false)
-
         // Local monitor - when app is in focus
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             self.handleKeyEvent(event)
@@ -112,14 +109,8 @@ struct HotkeyRecorderView: View {
     private func stopRecording() {
         isRecording = false
 
-        // Re-enable global hotkey interception
-        setGlobalHotkeyInterception(enabled: true)
         removeLocalMonitorIfNeeded()
         removeGlobalMonitorIfNeeded()
-    }
-
-    private func setGlobalHotkeyInterception(enabled: Bool) {
-        GlobalHotkeyManager.isRecordingHotkey = !enabled
     }
 
     private func removeLocalMonitorIfNeeded() {

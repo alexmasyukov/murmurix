@@ -16,12 +16,6 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     // Only intercept cancel hotkey when recording is active
     var isRecording: Bool = false
 
-    // Disable hotkey interception while user is recording a new hotkey in settings
-    static var isRecordingHotkey: Bool = false
-
-    // Disable hotkey interception while settings window is open
-    static var isSettingsWindowActive: Bool = false
-
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
@@ -115,11 +109,6 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     }
 
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Skip interception while user is recording a new hotkey or settings window is active
-        if Self.isInterceptionDisabled {
-            return Unmanaged.passUnretained(event)
-        }
-
         guard type == .keyDown else {
             return Unmanaged.passUnretained(event)
         }
@@ -143,10 +132,6 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private static func matches(hotkey: Hotkey?, keyCode: UInt32, modifiers: UInt32) -> Bool {
         guard let hotkey else { return false }
         return hotkey.keyCode == keyCode && hotkey.modifiers == modifiers
-    }
-
-    private static var isInterceptionDisabled: Bool {
-        isRecordingHotkey || isSettingsWindowActive
     }
 
     private func matchedHotkeyAction(for keyCode: UInt32, modifiers: UInt32) -> MatchedHotkeyAction? {
