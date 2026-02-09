@@ -22,30 +22,43 @@ final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
     @Published var selectedRecord: TranscriptionRecord?
 
     private let historyService: HistoryServiceProtocol
+    private var pendingSelectionUpdate: DispatchWorkItem?
 
     init(historyService: HistoryServiceProtocol = HistoryService.shared) {
         self.historyService = historyService
     }
 
     func loadRecords() {
+        pendingSelectionUpdate?.cancel()
+        pendingSelectionUpdate = nil
+
         let fetched = historyService.fetchAll()
         records = fetched
 
         // Defer selection update to next run loop to avoid multiple updates per frame
         if selectedRecord == nil, let first = fetched.first {
-            DispatchQueue.main.async {
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self = self else { return }
+                guard self.selectedRecord == nil else { return }
+                guard self.records.first?.id == first.id else { return }
                 self.selectedRecord = first
             }
+            pendingSelectionUpdate = workItem
+            DispatchQueue.main.async(execute: workItem)
         }
     }
 
     func clearHistory() {
+        pendingSelectionUpdate?.cancel()
+        pendingSelectionUpdate = nil
         historyService.deleteAll()
         records = []
         selectedRecord = nil
     }
 
     func deleteRecord(_ record: TranscriptionRecord) {
+        pendingSelectionUpdate?.cancel()
+        pendingSelectionUpdate = nil
         historyService.delete(id: record.id)
         records.removeAll { $0.id == record.id }
         if selectedRecord?.id == record.id {

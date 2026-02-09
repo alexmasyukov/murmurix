@@ -8,7 +8,7 @@ import Carbon
 
 struct HotkeyRecorderView: View {
     let title: String
-    let description: String
+    let description: String?
     @Binding var hotkey: Hotkey?
     @State private var isRecording = false
     @State private var localMonitor: Any?
@@ -21,9 +21,11 @@ struct HotkeyRecorderView: View {
                 Text(title)
                     .font(Typography.label)
                     .foregroundColor(.white)
-                Text(description)
-                    .font(Typography.description)
-                    .foregroundColor(.gray)
+                if let description, !description.isEmpty {
+                    Text(description)
+                        .font(Typography.description)
+                        .foregroundColor(.gray)
+                }
             }
 
             Spacer()
