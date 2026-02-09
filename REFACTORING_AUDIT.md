@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:27  
+Последнее обновление: 2026-02-09 15:29  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -664,3 +664,18 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - исключен класс потенциальных runtime-ошибок из-за implicitly-unwrapped optional в recording window-layer.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/RecordingCoordinatorModelControlTests` -> `** TEST SUCCEEDED **`.
+
+### 10.23 AppDelegate runtime safety: убрать IUO-поля и token-based observer lifecycle
+
+- В `AppDelegate` заменены IUO-поля runtime-объектов (`menuBarManager`, `windowManager`, `hotkeyManager`, `audioRecorder`, `transcriptionService`, `coordinator`) на безопасные optional-ссылки.
+- Добавлен явный token lifecycle для language observer:
+  - регистрация через `addObserver(forName:queue:using:)`,
+  - удаление через `removeObserver(token)` в `applicationWillTerminate`.
+- Все вызовы к runtime-сервисам переведены на безопасный доступ без implicit unwrap.
+- Изменен файл:
+  - `Murmurix/App/AppDelegate.swift`
+- Эффект:
+  - исключен класс потенциальных crash из-за IUO при ранних/поздних lifecycle-callbacks,
+  - observer lifecycle стал детерминированным и локализованным в одном token.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.

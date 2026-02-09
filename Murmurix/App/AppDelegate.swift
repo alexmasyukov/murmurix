@@ -25,13 +25,14 @@ struct AppDependencies {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private var menuBarManager: MenuBarManager!
-    private var windowManager: WindowManager!
-    private var hotkeyManager: GlobalHotkeyManager!
+    private var menuBarManager: MenuBarManager?
+    private var windowManager: WindowManager?
+    private var hotkeyManager: GlobalHotkeyManager?
 
-    private var audioRecorder: (any AudioRecorderProtocol)!
-    private var transcriptionService: (any TranscriptionServiceProtocol)!
-    private var coordinator: RecordingCoordinator!
+    private var audioRecorder: (any AudioRecorderProtocol)?
+    private var transcriptionService: (any TranscriptionServiceProtocol)?
+    private var coordinator: RecordingCoordinator?
+    private var languageObserver: NSObjectProtocol?
 
     private var lastRecordId: UUID?
     private var shouldPasteDirectly = false
@@ -58,21 +59,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupManagers()
         setupHotkeys()
 
-        coordinator.loadModelsIfNeeded()
+        coordinator?.loadModelsIfNeeded()
 
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleLanguageChange),
-            name: .appLanguageDidChange,
-            object: nil
-        )
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
+                appDelegate.handleLanguageChange()
+            }
+        }
     }
 
     @MainActor
     func applicationWillTerminate(_ notification: Notification) {
-        coordinator.unloadAllModels()
-        hotkeyManager.stop()
-        NotificationCenter.default.removeObserver(self, name: .appLanguageDidChange, object: nil)
+        coordinator?.unloadAllModels()
+        hotkeyManager?.stop()
+        if let languageObserver {
+            NotificationCenter.default.removeObserver(languageObserver)
+            self.languageObserver = nil
+        }
     }
 
     // MARK: - Setup
@@ -109,20 +117,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         audioRecorder = makeAudioRecorder()
         transcriptionService = makeTranscriptionService(settings)
 
+        guard let audioRecorder, let transcriptionService else { return }
+
         coordinator = RecordingCoordinator(
             audioRecorder: audioRecorder,
             transcriptionService: transcriptionService,
             historyService: historyService,
             settings: settings
         )
-        coordinator.delegate = self
+        coordinator?.delegate = self
     }
 
     @MainActor
     private func setupManagers() {
         menuBarManager = MenuBarManager(settings: settings)
-        menuBarManager.delegate = self
-        menuBarManager.setup()
+        menuBarManager?.delegate = self
+        menuBarManager?.setup()
 
         windowManager = WindowManager(historyService: historyService)
     }
@@ -133,7 +143,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupHotkeys() {
         hotkeyManager = GlobalHotkeyManager(settings: settings)
         bindHotkeyHandlers()
-        hotkeyManager.start()
+        hotkeyManager?.start()
     }
 
     private func runOnMain(_ action: @escaping @MainActor (AppDelegate) -> Void) {
@@ -144,6 +154,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func bindHotkeyHandlers() {
+        guard let hotkeyManager else { return }
+
         hotkeyManager.onToggleLocalRecording = { [weak self] modelName in
             self?.toggleRecordingOnMain(.local(model: modelName))
         }
@@ -167,15 +179,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @MainActor
-    @objc private func handleLanguageChange() {
+    private func handleLanguageChange() {
         setupMainMenu()
-        menuBarManager.rebuildMenu()
+        menuBarManager?.rebuildMenu()
     }
 
     // MARK: - Recording Actions
 
     @MainActor
     private func toggleRecording(mode: TranscriptionMode) {
+        guard let coordinator else { return }
+
         if coordinator.state == .idle {
             shouldPasteDirectly = TextPaster.isTextFieldFocused()
             currentRecordingMode = mode
@@ -185,14 +199,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func cancelRecording() {
-        coordinator.cancelRecording()
-        hotkeyManager.isRecording = false
-        windowManager.dismissRecordingWindow()
+        coordinator?.cancelRecording()
+        hotkeyManager?.isRecording = false
+        windowManager?.dismissRecordingWindow()
     }
 
     @MainActor
     private func dismissRecordingUI() {
-        windowManager.dismissRecordingWindow()
+        windowManager?.dismissRecordingWindow()
         shouldPasteDirectly = false
     }
 
@@ -213,7 +227,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func showResultWindow(text: String, duration: TimeInterval, onDelete: @escaping () -> Void = {}) {
-        windowManager.showResultWindow(
+        windowManager?.showResultWindow(
             text: text,
             duration: duration,
             onDelete: onDelete
@@ -229,7 +243,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func showSettingsWindow() {
-        windowManager.showSettingsWindow(
+        guard let transcriptionService else { return }
+
+        windowManager?.showSettingsWindow(
             settings: settings,
             loadedModels: Set(transcriptionService.loadedModelNames()),
             onModelToggle: { [weak self] model, enabled in
@@ -242,29 +258,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.handleCloudHotkeysChanged(toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
             },
             onWindowOpen: { [weak self] in
-                self?.hotkeyManager.pause()
+                self?.hotkeyManager?.pause()
             },
             onWindowClose: { [weak self] in
-                self?.hotkeyManager.resume()
+                self?.hotkeyManager?.resume()
             }
         )
     }
 
     @MainActor
     private func handleModelToggle(_ model: String, enabled: Bool) {
-        coordinator.setModelLoaded(enabled, model: model)
+        coordinator?.setModelLoaded(enabled, model: model)
     }
 
     @MainActor
     private func handleLocalHotkeysChanged(_ hotkeys: [String: Hotkey]) {
-        hotkeyManager.updateLocalModelHotkeys(hotkeys)
-        menuBarManager.updateLocalModelMenuItems(hotkeys: hotkeys)
+        hotkeyManager?.updateLocalModelHotkeys(hotkeys)
+        menuBarManager?.updateLocalModelMenuItems(hotkeys: hotkeys)
     }
 
     @MainActor
     private func handleCloudHotkeysChanged(toggleCloud: Hotkey?, toggleGemini: Hotkey?, cancel: Hotkey?) {
-        hotkeyManager.updateCloudHotkeys(toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
-        menuBarManager.updateHotkeyDisplay()
+        hotkeyManager?.updateCloudHotkeys(toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
+        menuBarManager?.updateHotkeyDisplay()
     }
 }
 
@@ -285,7 +301,7 @@ extension AppDelegate: MenuBarManagerDelegate {
     }
 
     func menuBarDidRequestOpenHistory() {
-        windowManager.showHistoryWindow()
+        windowManager?.showHistoryWindow()
     }
 
     func menuBarDidRequestOpenSettings() {
@@ -302,25 +318,27 @@ extension AppDelegate: MenuBarManagerDelegate {
 @MainActor
 extension AppDelegate: RecordingCoordinatorDelegate {
     func recordingDidStart() {
-        hotkeyManager.isRecording = true
-        windowManager.showRecordingWindow(
+        guard let audioRecorder else { return }
+
+        hotkeyManager?.isRecording = true
+        windowManager?.showRecordingWindow(
             audioRecorder: audioRecorder,
             onStop: { [weak self] in
-                guard let self = self else { return }
-                self.coordinator.toggleRecording(mode: self.currentRecordingMode)
+                guard let self else { return }
+                self.coordinator?.toggleRecording(mode: self.currentRecordingMode)
             },
             onCancelTranscription: { [weak self] in
-                self?.coordinator.cancelTranscription()
+                self?.coordinator?.cancelTranscription()
             }
         )
     }
 
     func recordingDidStop() {
-        hotkeyManager.isRecording = false
+        hotkeyManager?.isRecording = false
     }
 
     func transcriptionDidStart() {
-        windowManager.showTranscribing()
+        windowManager?.showTranscribing()
     }
 
     func recordingDidStopWithoutVoice() {
