@@ -43,7 +43,7 @@ final class AudioCompressor {
         let outputURL = sourceURL.deletingPathExtension().appendingPathExtension("m4a")
 
         // Remove existing file if present
-        try? FileManager.default.removeItem(at: outputURL)
+        removeFileIfExists(outputURL, context: "prepare compression output")
 
         // Create export session
         guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
@@ -61,15 +61,16 @@ final class AudioCompressor {
             Logger.Audio.info("Compressed audio: \(sourceURL.lastPathComponent) -> \(outputURL.lastPathComponent)")
 
             // Log size reduction
-            if let originalSize = try? FileManager.default.attributesOfItem(atPath: sourceURL.path)[.size] as? Int,
-               let compressedSize = try? FileManager.default.attributesOfItem(atPath: outputURL.path)[.size] as? Int {
+            if let originalSize = fileSize(at: sourceURL),
+               let compressedSize = fileSize(at: outputURL),
+               compressedSize > 0 {
                 let ratio = Double(originalSize) / Double(compressedSize)
                 Logger.Audio.info("Compression ratio: \(String(format: "%.1fx", ratio)) (\(originalSize/1024)KB -> \(compressedSize/1024)KB)")
             }
 
             // Delete original if requested
             if deleteOriginal {
-                try? FileManager.default.removeItem(at: sourceURL)
+                removeFileIfExists(sourceURL, context: "delete original after compression")
             }
 
             return outputURL
@@ -83,6 +84,27 @@ final class AudioCompressor {
 
         default:
             throw CompressionError.exportFailed("Unexpected export status: \(exportSession.status.rawValue)")
+        }
+    }
+
+    private static func fileSize(at url: URL) -> Int? {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            return attributes[.size] as? Int
+        } catch {
+            Logger.Audio.debug("Failed to read file size at \(url.lastPathComponent): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private static func removeFileIfExists(_ url: URL, context: String) {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: url.path) else { return }
+
+        do {
+            try fileManager.removeItem(at: url)
+        } catch {
+            Logger.Audio.error("Failed to remove file during \(context): \(url.path), error: \(error.localizedDescription)")
         }
     }
 }
