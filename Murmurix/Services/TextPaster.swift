@@ -12,7 +12,7 @@ final class TextPaster {
     /// Check if the current focused element is a text input field
     static func isTextFieldFocused() -> Bool {
         let systemWide = AXUIElementCreateSystemWide()
-        var focusedElement: AnyObject?
+        var focusedElement: CFTypeRef?
 
         let result = AXUIElementCopyAttributeValue(
             systemWide,
@@ -24,10 +24,15 @@ final class TextPaster {
             return false
         }
 
+        guard CFGetTypeID(element) == AXUIElementGetTypeID() else {
+            return false
+        }
+        let axElement = unsafeBitCast(element, to: AXUIElement.self)
+
         // Get the role of the focused element
         var role: AnyObject?
         let roleResult = AXUIElementCopyAttributeValue(
-            element as! AXUIElement,
+            axElement,
             kAXRoleAttribute as CFString,
             &role
         )
@@ -52,7 +57,7 @@ final class TextPaster {
         // This catches custom text fields in apps like Electron
         var isEditable: AnyObject?
         let editableResult = AXUIElementCopyAttributeValue(
-            element as! AXUIElement,
+            axElement,
             "AXEditable" as CFString,
             &isEditable
         )
