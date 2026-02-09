@@ -18,8 +18,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastRecordId: UUID?
     private var shouldPasteDirectly = false
 
-    private let historyService = HistoryService.shared
-    private let settings = Settings.shared
+    private let historyService: HistoryServiceProtocol
+    private let settings: SettingsStorageProtocol
+
+    override init() {
+        self.historyService = HistoryService.shared
+        self.settings = Settings.shared
+        super.init()
+    }
 
     // MARK: - App Lifecycle
 
@@ -79,7 +85,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     private func setupServices() {
         audioRecorder = AudioRecorder()
-        transcriptionService = TranscriptionService()
+        transcriptionService = TranscriptionService(settings: settings)
 
         coordinator = RecordingCoordinator(
             audioRecorder: audioRecorder,
@@ -103,7 +109,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func setupHotkeys() {
-        hotkeyManager = GlobalHotkeyManager()
+        hotkeyManager = GlobalHotkeyManager(settings: settings)
         bindHotkeyHandlers()
         hotkeyManager.start()
     }
@@ -202,6 +208,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     private func showSettingsWindow() {
         windowManager.showSettingsWindow(
+            settings: settings,
             loadedModels: Set(WhisperKitService.shared.loadedModels),
             onModelToggle: { [weak self] model, enabled in
                 self?.handleModelToggle(model, enabled: enabled)

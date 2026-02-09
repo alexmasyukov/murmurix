@@ -18,7 +18,7 @@ struct GeneralSettingsView: View {
     @AppStorage("geminiModel") private var geminiModel = GeminiTranscriptionModel.flash2.rawValue
     @State private var showDeleteAllConfirmation = false
 
-    @StateObject private var viewModel = GeneralSettingsViewModel()
+    @StateObject private var viewModel: GeneralSettingsViewModel
     @Binding var loadedModels: Set<String>
 
     var onModelToggle: ((String, Bool) -> Void)?
@@ -26,20 +26,23 @@ struct GeneralSettingsView: View {
     var onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)?
 
     init(
+        settings: SettingsStorageProtocol = Settings.shared,
         loadedModels: Binding<Set<String>>,
         onModelToggle: ((String, Bool) -> Void)? = nil,
         onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
         onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)? = nil
     ) {
+        let viewModel = GeneralSettingsViewModel(settings: settings)
         self._loadedModels = loadedModels
         self.onModelToggle = onModelToggle
         self.onLocalHotkeysChanged = onLocalHotkeysChanged
         self.onCloudHotkeysChanged = onCloudHotkeysChanged
-        _toggleCloudHotkey = State(initialValue: Settings.shared.loadToggleCloudHotkey())
-        _toggleGeminiHotkey = State(initialValue: Settings.shared.loadToggleGeminiHotkey())
-        _cancelHotkey = State(initialValue: Settings.shared.loadCancelHotkey())
-        _openaiApiKey = State(initialValue: Settings.shared.openaiApiKey)
-        _geminiApiKey = State(initialValue: Settings.shared.geminiApiKey)
+        _viewModel = StateObject(wrappedValue: viewModel)
+        _toggleCloudHotkey = State(initialValue: settings.loadToggleCloudHotkey())
+        _toggleGeminiHotkey = State(initialValue: settings.loadToggleGeminiHotkey())
+        _cancelHotkey = State(initialValue: settings.loadCancelHotkey())
+        _openaiApiKey = State(initialValue: settings.openaiApiKey)
+        _geminiApiKey = State(initialValue: settings.geminiApiKey)
     }
 
     var body: some View {
