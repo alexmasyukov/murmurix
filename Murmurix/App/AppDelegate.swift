@@ -102,26 +102,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupHotkeys() {
         hotkeyManager = GlobalHotkeyManager()
         hotkeyManager.onToggleLocalRecording = { [weak self] modelName in
-            DispatchQueue.main.async {
-                self?.toggleRecording(mode: .local(model: modelName))
+            self?.runOnMain { delegate in
+                delegate.toggleRecording(mode: .local(model: modelName))
             }
         }
         hotkeyManager.onToggleCloudRecording = { [weak self] in
-            DispatchQueue.main.async {
-                self?.toggleRecording(mode: .openai)
+            self?.runOnMain { delegate in
+                delegate.toggleRecording(mode: .openai)
             }
         }
         hotkeyManager.onToggleGeminiRecording = { [weak self] in
-            DispatchQueue.main.async {
-                self?.toggleRecording(mode: .gemini)
+            self?.runOnMain { delegate in
+                delegate.toggleRecording(mode: .gemini)
             }
         }
         hotkeyManager.onCancelRecording = { [weak self] in
-            DispatchQueue.main.async {
-                self?.cancelRecording()
+            self?.runOnMain { delegate in
+                delegate.cancelRecording()
             }
         }
         hotkeyManager.start()
+    }
+
+    private func runOnMain(_ action: @escaping @MainActor (AppDelegate) -> Void) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            action(self)
+        }
     }
 
     @MainActor
