@@ -294,6 +294,31 @@ struct RecordingCoordinatorTests {
         #expect(transcriptionService.transcribeCallCount <= 1)
     }
 
+    @Test func cancelTranscriptionThenSecondCycleCompletesWithoutLeakingFirstResult() async throws {
+        let (coordinator, _, transcriptionService, historyService, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 0.4
+
+        // First cycle: start transcription and cancel it.
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .transcribing)
+        coordinator.cancelTranscription()
+        #expect(delegate.transcriptionDidCancelCallCount == 1)
+
+        // Second cycle: complete successfully.
+        transcriptionService.transcriptionDelay = 0
+        transcriptionService.transcriptionResult = .success("Second result")
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+
+        try await Task.sleep(nanoseconds: 700_000_000)
+
+        #expect(coordinator.state == .idle)
+        #expect(delegate.transcriptionDidCompleteCallCount == 1)
+        #expect(delegate.lastCompletedText == "Second result")
+        #expect(historyService.saveCallCount == 1)
+    }
+
     @Test func cancelTranscriptionWhenIdleDoesNothing() {
         let (coordinator, _, _, _, _, delegate) = createCoordinator()
 
@@ -447,15 +472,23 @@ struct RecordingCoordinatorTests {
         #expect(delegate.transcriptionDidCompleteCallCount == 1)
     }
 
-    @Test func transcriptionModeIsCloudReturnsCorrectValue() {
-        #expect(TranscriptionMode.local(model: "small").isCloud == false)
-        #expect(TranscriptionMode.openai.isCloud == true)
-        #expect(TranscriptionMode.gemini.isCloud == true)
-    }
+    @Test func modeSwitchAttemptDuringCloudTranscriptionDoesNotStartSecondFlow() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, _) = createCoordinator()
+        transcriptionService.transcriptionDelay = 0.6
 
-    @Test func transcriptionModeDisplayName() {
-        #expect(TranscriptionMode.local(model: "small").displayName == "Local (small)")
-        #expect(TranscriptionMode.openai.displayName == "Cloud (OpenAI)")
-        #expect(TranscriptionMode.gemini.displayName == "Cloud (Gemini)")
+        coordinator.toggleRecording(mode: .openai)
+        coordinator.toggleRecording(mode: .openai)
+        #expect(coordinator.state == .transcribing)
+
+        // Try switching to local flow while cloud transcription is still running.
+        coordinator.toggleRecording(mode: .local(model: "small"))
+
+        #expect(coordinator.state == .transcribing)
+        #expect(audioRecorder.startRecordingCallCount == 1)
+        #expect(transcriptionService.transcribeCallCount <= 1)
+
+        coordinator.cancelTranscription()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(coordinator.state == .idle)
     }
 }

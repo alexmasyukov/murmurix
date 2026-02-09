@@ -315,7 +315,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 - [x] Исправить propagation языка в транскрибации.
 - [x] Убрать `print` из Lottie и перевести в `Logger`.
-- [ ] Убрать silent `try?` в критичных ветках cleanup/compress.
+- [x] Убрать silent `try?` в критичных ветках cleanup/compress.
 - [x] Добавить тест на fallback при ошибке компрессии.
 
 ## Фаза 1 (конкурентность и state machine)
@@ -346,9 +346,9 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 ## Фаза 5 (test suite value shift)
 
-- [ ] Сократить дубли low-value тестов.
-- [ ] Добавить high-value сценарии orchestration.
-- [ ] Сохранить smoke UI tests и добавить 1-2 реальных пользовательских сценария.
+- [x] Сократить дубли low-value тестов.
+- [x] Добавить high-value сценарии orchestration.
+- [x] Сохранить smoke UI tests и добавить 1-2 реальных пользовательских сценария.
 
 ## 8. Definition of Done
 
