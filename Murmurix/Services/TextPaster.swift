@@ -118,7 +118,13 @@ final class TextPaster {
         pasteboard.setString(text, forType: .string)
     }
 
-    private static func scheduleMain(after delay: TimeInterval, execute: @escaping () -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: execute)
+    private static func scheduleMain(after delay: TimeInterval, execute: @MainActor @escaping () -> Void) {
+        let delayNanoseconds = UInt64(delay * 1_000_000_000)
+        Task { @MainActor in
+            if delayNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: delayNanoseconds)
+            }
+            execute()
+        }
     }
 }

@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:21  
+Последнее обновление: 2026-02-09 15:22  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -620,3 +620,13 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - сохранено прежнее поведение доставки key events на main actor.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HotkeyCaptureServiceTests -only-testing:MurmurixTests/GlobalHotkeyManagerTests` -> `** TEST SUCCEEDED **`.
+
+### 10.19 TextPaster: delayed paste-steps через Task.sleep
+
+- В `TextPaster` helper `scheduleMain` переведен с `DispatchQueue.main.asyncAfter` на `Task { @MainActor } + Task.sleep`.
+- Изменен файл:
+  - `Murmurix/Services/TextPaster.swift`
+- Эффект:
+  - единый async-подход для delayed UI side-effects в paste flow.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TextPasterTests -only-testing:MurmurixTests/MurmurixTests` -> `** TEST SUCCEEDED **`.
