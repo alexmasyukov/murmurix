@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:22  
+Последнее обновление: 2026-02-09 15:23  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -630,3 +630,15 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - единый async-подход для delayed UI side-effects в paste flow.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TextPasterTests -only-testing:MurmurixTests/MurmurixTests` -> `** TEST SUCCEEDED **`.
+
+### 10.20 AudioRecorder: устранен последний main-dispatch через GCD
+
+- В `AudioRecorder.runOnMain` заменен `DispatchQueue.main.async` на `Task { @MainActor ... }`.
+- Изменен файл:
+  - `Murmurix/Services/AudioRecorder.swift`
+- Эффект:
+  - единый подход доставки UI-bound обновлений через structured concurrency.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AudioRecorderTests -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`.
+- Текущее состояние after-pass:
+  - в прод-коде не осталось вхождений `DispatchQueue.main.async` и `DispatchQueue.main.asyncAfter`.

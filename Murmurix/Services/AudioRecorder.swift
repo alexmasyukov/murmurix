@@ -140,7 +140,9 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
         if Thread.isMainThread {
             block()
         } else {
-            DispatchQueue.main.async(execute: block)
+            Task { @MainActor in
+                block()
+            }
         }
     }
 }
