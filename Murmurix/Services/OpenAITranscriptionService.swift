@@ -60,38 +60,21 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
 
         // Собираем body
         var body = Data()
-
-        // file
         let filename = audioURL.lastPathComponent
         let mimeType = MIMETypeResolver.mimeType(for: audioURL.pathExtension)
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
-        body.append(audioData)
-        body.append("\r\n".data(using: .utf8)!)
-
-        // model
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(model)\r\n".data(using: .utf8)!)
-
-        // language (обязательно для русского!)
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"language\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(language)\r\n".data(using: .utf8)!)
-
-        // prompt
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"prompt\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(defaultPrompt)\r\n".data(using: .utf8)!)
-
-        // response_format
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"response_format\"\r\n\r\n".data(using: .utf8)!)
-        body.append("json\r\n".data(using: .utf8)!)
-
-        // Закрываем boundary
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        appendFileField(
+            name: "file",
+            filename: filename,
+            mimeType: mimeType,
+            fileData: audioData,
+            boundary: boundary,
+            to: &body
+        )
+        appendFormField(name: "model", value: model, boundary: boundary, to: &body)
+        appendFormField(name: "language", value: language, boundary: boundary, to: &body)
+        appendFormField(name: "prompt", value: defaultPrompt, boundary: boundary, to: &body)
+        appendFormField(name: "response_format", value: "json", boundary: boundary, to: &body)
+        closeBoundary(boundary, to: &body)
 
         request.httpBody = body
 
@@ -145,20 +128,16 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
         request.timeoutInterval = 30
 
         var body = Data()
-
-        // file
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"test.wav\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
-        body.append(testAudioData)
-        body.append("\r\n".data(using: .utf8)!)
-
-        // model
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
-        body.append("gpt-4o-mini-transcribe\r\n".data(using: .utf8)!)
-
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        appendFileField(
+            name: "file",
+            filename: "test.wav",
+            mimeType: "audio/wav",
+            fileData: testAudioData,
+            boundary: boundary,
+            to: &body
+        )
+        appendFormField(name: "model", value: "gpt-4o-mini-transcribe", boundary: boundary, to: &body)
+        closeBoundary(boundary, to: &body)
         request.httpBody = body
 
         let (data, response) = try await session.data(for: request)
@@ -204,5 +183,34 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
             Logger.Transcription.debug("Failed to decode OpenAI error response: \(error.localizedDescription)")
             return nil
         }
+    }
+
+    private func appendFormField(name: String, value: String, boundary: String, to body: inout Data) {
+        appendUTF8("--\(boundary)\r\n", to: &body)
+        appendUTF8("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n", to: &body)
+        appendUTF8("\(value)\r\n", to: &body)
+    }
+
+    private func appendFileField(
+        name: String,
+        filename: String,
+        mimeType: String,
+        fileData: Data,
+        boundary: String,
+        to body: inout Data
+    ) {
+        appendUTF8("--\(boundary)\r\n", to: &body)
+        appendUTF8("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n", to: &body)
+        appendUTF8("Content-Type: \(mimeType)\r\n\r\n", to: &body)
+        body.append(fileData)
+        appendUTF8("\r\n", to: &body)
+    }
+
+    private func closeBoundary(_ boundary: String, to body: inout Data) {
+        appendUTF8("--\(boundary)--\r\n", to: &body)
+    }
+
+    private func appendUTF8(_ value: String, to body: inout Data) {
+        body.append(Data(value.utf8))
     }
 }
