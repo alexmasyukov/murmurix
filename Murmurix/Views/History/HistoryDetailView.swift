@@ -12,6 +12,7 @@ struct HistoryDetailView: View {
 
     @State private var copied = false
     @AppStorage("appLanguage") private var appLanguage = "en"
+    private let copyIndicatorResetDelay: TimeInterval = 2
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -68,7 +69,11 @@ struct HistoryDetailView: View {
     private func copyText() {
         onCopy(record.text)
         copied = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        scheduleCopyIndicatorReset()
+    }
+
+    private func scheduleCopyIndicatorReset() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + copyIndicatorResetDelay) {
             copied = false
         }
     }
