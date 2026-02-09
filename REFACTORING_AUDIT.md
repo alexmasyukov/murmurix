@@ -843,3 +843,18 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - контракт инициализации settings стал полностью явным и стабильным для тестов/DI.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/Phase4Tests` -> `** TEST SUCCEEDED **`.
+
+### 10.34 Preview isolation: убрать shared storage/services из SwiftUI previews
+
+- В `SettingsView` preview убрана привязка к `Settings.shared`:
+  - preview теперь использует отдельный `UserDefaults` suite и `Settings(defaults:)`.
+- В `HistoryView` preview убрана привязка к `HistoryService.shared`:
+  - preview теперь использует отдельный временный SQLite-файл и локальный `HistoryService(repository:)`.
+- Изменены файлы:
+  - `Murmurix/Views/SettingsView.swift`
+  - `Murmurix/Views/HistoryView.swift`
+- Эффект:
+  - SwiftUI previews перестали опираться на production shared storage/history,
+  - снижены риски побочных эффектов на рабочие данные во время разработки.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.

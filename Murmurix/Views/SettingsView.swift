@@ -45,9 +45,13 @@ struct SettingsView: View {
 }
 
 #Preview {
+    let previewSuite = "Murmurix.SettingsView.Preview.\(UUID().uuidString)"
+    let previewDefaults = UserDefaults(suiteName: previewSuite) ?? .standard
+    let previewSettings = Settings(defaults: previewDefaults)
+
     SettingsView(
-        settings: Settings.shared,
-        generalSettingsViewModel: GeneralSettingsViewModel.live(settings: Settings.shared),
+        settings: previewSettings,
+        generalSettingsViewModel: GeneralSettingsViewModel.live(settings: previewSettings),
         loadedModels: .constant([])
     )
 }

@@ -112,6 +112,11 @@ struct HistoryView: View {
 }
 
 #Preview {
-    HistoryView(viewModel: HistoryViewModel(historyService: HistoryService.shared))
+    let previewDatabaseURL = FileManager.default.temporaryDirectory
+        .appendingPathComponent("murmurix-history-preview-\(UUID().uuidString).sqlite")
+    let previewRepository = SQLiteTranscriptionRepository(dbPath: previewDatabaseURL.path)
+    let previewHistoryService = HistoryService(repository: previewRepository)
+
+    HistoryView(viewModel: HistoryViewModel(historyService: previewHistoryService))
         .preferredColorScheme(.dark)
 }
