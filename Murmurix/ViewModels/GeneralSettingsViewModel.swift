@@ -65,7 +65,7 @@ final class GeneralSettingsViewModel: ObservableObject {
         whisperKitService: WhisperKitServiceProtocol,
         openAIService: OpenAITranscriptionServiceProtocol,
         geminiService: GeminiTranscriptionServiceProtocol,
-        transcriptionServiceFactory: (() -> TranscriptionServiceProtocol)? = nil,
+        transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol,
         modelDirectory: @escaping (String) -> URL,
         modelsRepositoryDirectory: @escaping () -> URL,
         settings: SettingsStorageProtocol
@@ -73,9 +73,7 @@ final class GeneralSettingsViewModel: ObservableObject {
         self.whisperKitService = whisperKitService
         self.openAIService = openAIService
         self.geminiService = geminiService
-        self.transcriptionServiceFactory = transcriptionServiceFactory ?? {
-            TranscriptionService.live(settings: settings)
-        }
+        self.transcriptionServiceFactory = transcriptionServiceFactory
         self.modelDirectory = modelDirectory
         self.modelsRepositoryDirectory = modelsRepositoryDirectory
         self.settings = settings

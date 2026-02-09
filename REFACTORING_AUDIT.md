@@ -767,3 +767,18 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - конструкторы сервисов стали полностью явными и тесто-дружелюбными.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/OpenAITranscriptionServiceDITests -only-testing:MurmurixTests/GeminiModelTests` -> `** TEST SUCCEEDED **`.
+
+### 10.29 GeneralSettingsViewModel: сделать transcriptionServiceFactory обязательной зависимостью
+
+- В `GeneralSettingsViewModel` убран optional-fallback для `transcriptionServiceFactory`:
+  - сигнатура init теперь принимает `@escaping () -> TranscriptionServiceProtocol` без `?` и без скрытого `TranscriptionService.live(...)`.
+- В тестовом helper `makeGeneralSettingsViewModel(...)` задан явный default:
+  - `transcriptionServiceFactory: { MockTranscriptionService() }`.
+- Изменены файлы:
+  - `Murmurix/ViewModels/GeneralSettingsViewModel.swift`
+  - `MurmurixTests/Mocks.swift`
+- Эффект:
+  - устранен еще один скрытый singleton/live-fallback в VM-конструкторе,
+  - контракт зависимостей VM полностью явный как в prod, так и в tests.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests -only-testing:MurmurixTests/Phase3GeneralSettingsViewModelTests` -> `** TEST SUCCEEDED **`.

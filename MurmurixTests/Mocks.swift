@@ -480,7 +480,7 @@ func makeGeneralSettingsViewModel(
     whisperKitService: WhisperKitServiceProtocol = MockWhisperKitService(),
     openAIService: OpenAITranscriptionServiceProtocol = MockOpenAITranscriptionService(),
     geminiService: GeminiTranscriptionServiceProtocol = MockGeminiTranscriptionService(),
-    transcriptionServiceFactory: (() -> TranscriptionServiceProtocol)? = nil,
+    transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol = { MockTranscriptionService() },
     modelDirectory: @escaping (String) -> URL = { ModelPaths.modelDir(for: $0) },
     modelsRepositoryDirectory: @escaping () -> URL = { ModelPaths.repoDir },
     settings: SettingsStorageProtocol = MockSettings()
