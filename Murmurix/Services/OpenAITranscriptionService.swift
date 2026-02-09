@@ -19,6 +19,18 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
     // Промпт для улучшения распознавания технических терминов
     private let defaultPrompt = "Диалог на темы программирования. Технические термины: Anthropic, Claude, Bun, React, Docker, Kubernetes, Golang, Python, Swift, Xcode, GitHub, API, JSON, REST, GraphQL, PostgreSQL, MongoDB, Redis, AWS, Azure, GCP и так далее."
 
+    private struct TranscriptionResponse: Decodable {
+        let text: String
+    }
+
+    private struct ErrorResponse: Decodable {
+        struct APIError: Decodable {
+            let message: String
+        }
+
+        let error: APIError
+    }
+
     init(session: URLSessionProtocol = URLSession.shared) {
         self.session = session
     }
@@ -175,19 +187,22 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
     // MARK: - Helpers
 
     private func parseTranscriptionResponse(_ data: Data) throws -> String {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let text = json["text"] as? String else {
+        do {
+            let response = try JSONDecoder().decode(TranscriptionResponse.self, from: data)
+            return response.text
+        } catch {
+            Logger.Transcription.error("Failed to decode OpenAI transcription response: \(error.localizedDescription)")
             throw MurmurixError.transcription(.failed("Failed to parse response"))
         }
-        return text
     }
 
     private func parseErrorResponse(_ data: Data) -> String? {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let error = json["error"] as? [String: Any],
-              let message = error["message"] as? String else {
+        do {
+            let response = try JSONDecoder().decode(ErrorResponse.self, from: data)
+            return response.error.message
+        } catch {
+            Logger.Transcription.debug("Failed to decode OpenAI error response: \(error.localizedDescription)")
             return nil
         }
-        return message
     }
 }
