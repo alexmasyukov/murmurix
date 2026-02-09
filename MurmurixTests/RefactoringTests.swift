@@ -387,6 +387,12 @@ struct LoggerTests {
 
         #expect(true)
     }
+
+    @Test func settingsLoggerDoesNotCrash() {
+        Logger.Settings.debug("Test debug message")
+
+        #expect(true)
+    }
 }
 
 // MARK: - WhisperModel Tests
