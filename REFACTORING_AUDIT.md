@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:18  
+Последнее обновление: 2026-02-09 15:20  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -592,3 +592,20 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - единый structured-concurrency стиль в view-model слое.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests -only-testing:MurmurixTests/GeneralSettingsViewModelSettingsDITests` -> `** TEST SUCCEEDED **`.
+
+### 10.17 UI delayed updates: перевод на cancellable Task
+
+- `SettingsWindowController`:
+  - убран `DispatchQueue.main.asyncAfter` для delayed model-status update,
+  - добавлены cancellable задачи по модели (`modelStatusUpdateTasks`) и отмена pending tasks при закрытии окна/перезагрузке состояния.
+- `HistoryDetailView`:
+  - reset индикатора `copied` переведен с `DispatchQueue.main.asyncAfter` на `Task.sleep`,
+  - добавлена отмена pending reset-task в `onDisappear`.
+- Изменены файлы:
+  - `Murmurix/Views/SettingsWindowController.swift`
+  - `Murmurix/Views/History/HistoryDetailView.swift`
+- Эффект:
+  - меньше риска stale UI-апдейтов при быстрых повторных действиях,
+  - более единообразный structured-concurrency подход в UI-слое.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/MurmurixTests` -> `** TEST SUCCEEDED **`.

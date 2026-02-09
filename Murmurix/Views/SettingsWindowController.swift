@@ -21,6 +21,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let modelStatus = ModelStatusModel()
     private let modelStatusUpdateDelay: TimeInterval = 1
     private var languageObserver: NSObjectProtocol?
+    private var modelStatusUpdateTasks: [String: Task<Void, Never>] = [:]
 
     convenience init(
         settings: SettingsStorageProtocol,
@@ -66,15 +67,28 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func updateLoadedModels(_ models: Set<String>) {
+        cancelAllModelStatusUpdates()
         modelStatus.loadedModels = models
     }
 
     private func scheduleModelStatusUpdate(model: String, enabled: Bool) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + modelStatusUpdateDelay) { [weak self] in
+        cancelModelStatusUpdate(for: model)
+        let delayNanoseconds = UInt64(modelStatusUpdateDelay * 1_000_000_000)
+
+        modelStatusUpdateTasks[model] = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            } catch {
+                return
+            }
+
+            guard let self, !Task.isCancelled else { return }
+            defer { self.modelStatusUpdateTasks[model] = nil }
+
             if enabled {
-                self?.modelStatus.loadedModels.insert(model)
+                self.modelStatus.loadedModels.insert(model)
             } else {
-                self?.modelStatus.loadedModels.remove(model)
+                self.modelStatus.loadedModels.remove(model)
             }
         }
     }
@@ -90,11 +104,16 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        cancelAllModelStatusUpdates()
         stopObservingLanguageChanges()
         onWindowClose?()
     }
 
     deinit {
+        for task in modelStatusUpdateTasks.values {
+            task.cancel()
+        }
+        modelStatusUpdateTasks.removeAll()
         if let languageObserver {
             NotificationCenter.default.removeObserver(languageObserver)
             self.languageObserver = nil
@@ -114,5 +133,17 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         guard let languageObserver else { return }
         NotificationCenter.default.removeObserver(languageObserver)
         self.languageObserver = nil
+    }
+
+    private func cancelModelStatusUpdate(for model: String) {
+        modelStatusUpdateTasks[model]?.cancel()
+        modelStatusUpdateTasks[model] = nil
+    }
+
+    private func cancelAllModelStatusUpdates() {
+        for task in modelStatusUpdateTasks.values {
+            task.cancel()
+        }
+        modelStatusUpdateTasks.removeAll()
     }
 }

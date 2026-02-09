@@ -11,6 +11,7 @@ struct HistoryDetailView: View {
     let onDelete: () -> Void
 
     @State private var copied = false
+    @State private var copyIndicatorResetTask: Task<Void, Never>?
     @AppStorage("appLanguage") private var appLanguage = "en"
     private let copyIndicatorResetDelay: TimeInterval = 2
 
@@ -20,6 +21,10 @@ struct HistoryDetailView: View {
             textContent
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onDisappear {
+            copyIndicatorResetTask?.cancel()
+            copyIndicatorResetTask = nil
+        }
     }
 
     private var toolbar: some View {
@@ -73,8 +78,18 @@ struct HistoryDetailView: View {
     }
 
     private func scheduleCopyIndicatorReset() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + copyIndicatorResetDelay) {
+        copyIndicatorResetTask?.cancel()
+        let delayNanoseconds = UInt64(copyIndicatorResetDelay * 1_000_000_000)
+
+        copyIndicatorResetTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
             copied = false
+            copyIndicatorResetTask = nil
         }
     }
 }
