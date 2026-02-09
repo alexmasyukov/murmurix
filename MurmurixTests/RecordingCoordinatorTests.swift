@@ -121,6 +121,24 @@ struct RecordingCoordinatorTests {
         #expect(audioRecorder.stopRecordingCallCount == 0)
     }
 
+    @Test func cancelRecordingWhileTranscribingDoesNothing() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 1.0
+
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .transcribing)
+
+        coordinator.cancelRecording()
+
+        #expect(coordinator.state == .transcribing)
+        #expect(delegate.transcriptionDidCancelCallCount == 0)
+        #expect(audioRecorder.stopRecordingCallCount == 1)
+
+        coordinator.cancelTranscription()
+        #expect(coordinator.state == .idle)
+    }
+
     // MARK: - Transcription
 
     @Test func successfulTranscriptionSavesToHistory() async throws {
@@ -244,6 +262,18 @@ struct RecordingCoordinatorTests {
         coordinator.cancelTranscription()
 
         #expect(coordinator.state == .idle)
+        #expect(delegate.transcriptionDidCancelCallCount == 0)
+    }
+
+    @Test func cancelTranscriptionWhileRecordingDoesNothing() {
+        let (coordinator, _, _, _, _, delegate) = createCoordinator()
+
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .recording)
+
+        coordinator.cancelTranscription()
+
+        #expect(coordinator.state == .recording)
         #expect(delegate.transcriptionDidCancelCallCount == 0)
     }
 

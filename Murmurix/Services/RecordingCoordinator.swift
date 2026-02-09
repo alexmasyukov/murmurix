@@ -67,9 +67,17 @@ final class RecordingCoordinator {
     private let historyService: HistoryServiceProtocol
     private let settings: SettingsStorageProtocol
 
-    private enum ToggleTransition {
+    private enum CoordinatorEvent {
+        case toggle(mode: TranscriptionMode)
+        case cancelRecording
+        case cancelTranscription
+    }
+
+    private enum Transition {
         case startRecording(mode: TranscriptionMode)
         case stopRecording
+        case cancelRecording
+        case cancelTranscription
         case ignore
     }
 
@@ -88,29 +96,41 @@ final class RecordingCoordinator {
     // MARK: - Recording Control
 
     func toggleRecording(mode: TranscriptionMode) {
-        switch Self.reduceToggleTransition(from: state, mode: mode) {
+        executeTransition(Self.reduce(event: .toggle(mode: mode), from: state))
+    }
+
+    func cancelRecording() {
+        executeTransition(Self.reduce(event: .cancelRecording, from: state))
+    }
+
+    func cancelTranscription() {
+        executeTransition(Self.reduce(event: .cancelTranscription, from: state))
+    }
+
+    private func executeTransition(_ transition: Transition) {
+        switch transition {
         case .startRecording(let selectedMode):
             currentTranscriptionMode = selectedMode
             startRecording()
         case .stopRecording:
             stopRecording()
+        case .cancelRecording:
+            cancelActiveRecording()
+        case .cancelTranscription:
+            cancelActiveTranscription()
         case .ignore:
             break
         }
     }
 
-    func cancelRecording() {
-        guard state == .recording else { return }
-
+    private func cancelActiveRecording() {
         let audioURL = audioRecorder.stopRecording()
         removeFileIfExists(audioURL, context: "cancel recording")
         state = .idle
         recordingStartTime = nil
     }
 
-    func cancelTranscription() {
-        guard state == .transcribing else { return }
-
+    private func cancelActiveTranscription() {
         transcriptionTask?.cancel()
         transcriptionTask = nil
 
@@ -244,13 +264,19 @@ final class RecordingCoordinator {
         }
     }
 
-    private static func reduceToggleTransition(from state: RecordingState, mode: TranscriptionMode) -> ToggleTransition {
-        switch state {
-        case .idle:
+    private static func reduce(event: CoordinatorEvent, from state: RecordingState) -> Transition {
+        switch (state, event) {
+        case (.idle, .toggle(let mode)):
             return .startRecording(mode: mode)
-        case .recording:
+        case (.recording, .toggle):
             return .stopRecording
-        case .transcribing:
+        case (.recording, .cancelRecording):
+            return .cancelRecording
+        case (.transcribing, .cancelTranscription):
+            return .cancelTranscription
+        case (.transcribing, .toggle):
+            return .ignore
+        default:
             return .ignore
         }
     }
