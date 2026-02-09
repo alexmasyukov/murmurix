@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:36  
+Последнее обновление: 2026-02-09 15:38  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -711,3 +711,19 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - тесты проверяют наблюдаемое поведение позиционирования окна, а не только отсутствие падения.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/WindowPositionerTests` -> `** TEST SUCCEEDED **`.
+
+### 10.26 MenuBarManager: убрать IUO у status item/menu
+
+- В `MenuBarManager` убраны IUO-поля:
+  - `statusItem: NSStatusItem!` -> `NSStatusItem?`
+  - `menu: NSMenu!` -> `NSMenu?`
+- Логика сборки меню переведена на безопасный доступ:
+  - `setupMenu` собирает локальный `NSMenu` и атомарно присваивает `self.menu`,
+  - `updateLocalModelMenuItems` работает только если меню уже инициализировано (`guard let menu`),
+  - назначение меню для status item через optional chaining.
+- Изменен файл:
+  - `Murmurix/App/MenuBarManager.swift`
+- Эффект:
+  - исключен класс потенциальных runtime-crash из-за неинициализированных IUO в menu-bar lifecycle.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`.

@@ -20,8 +20,8 @@ protocol MenuBarManagerDelegate: AnyObject {
 final class MenuBarManager {
     weak var delegate: MenuBarManagerDelegate?
 
-    private var statusItem: NSStatusItem!
-    private var menu: NSMenu!
+    private var statusItem: NSStatusItem?
+    private var menu: NSMenu?
     private var localModelMenuItems: [String: NSMenuItem] = [:]
     private var toggleCloudMenuItem: NSMenuItem?
     private var toggleGeminiMenuItem: NSMenuItem?
@@ -46,6 +46,8 @@ final class MenuBarManager {
     }
 
     func updateLocalModelMenuItems(hotkeys: [String: Hotkey]) {
+        guard let menu else { return }
+
         // Remove existing local model items
         for (_, item) in localModelMenuItems {
             menu.removeItem(item)
@@ -66,13 +68,14 @@ final class MenuBarManager {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
-        if let button = statusItem.button {
+        if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Murmurix")
         }
     }
 
     private func setupMenu() {
-        menu = NSMenu()
+        let menu = NSMenu()
+        self.menu = menu
         localModelMenuItems.removeAll()
 
         // Add local model items from settings
@@ -106,7 +109,7 @@ final class MenuBarManager {
 
         menu.addItem(makeMenuItem(title: L10n.quit, action: #selector(handleQuit), keyEquivalent: "q"))
 
-        statusItem.menu = menu
+        statusItem?.menu = menu
     }
 
     private func applyHotkeyToMenuItem(_ menuItem: NSMenuItem, hotkey: Hotkey) {
