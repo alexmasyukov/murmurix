@@ -198,6 +198,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         historyService.delete(id: recordId)
         lastRecordId = nil
     }
+
+    @MainActor
+    private func showSettingsWindow() {
+        windowManager.showSettingsWindow(
+            loadedModels: Set(WhisperKitService.shared.loadedModels),
+            onModelToggle: { [weak self] model, enabled in
+                self?.handleModelToggle(model, enabled: enabled)
+            },
+            onLocalHotkeysChanged: { [weak self] hotkeys in
+                self?.handleLocalHotkeysChanged(hotkeys)
+            },
+            onCloudHotkeysChanged: { [weak self] toggleCloud, toggleGemini, cancel in
+                self?.handleCloudHotkeysChanged(toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
+            },
+            onWindowOpen: { [weak self] in
+                self?.hotkeyManager.pause()
+            },
+            onWindowClose: { [weak self] in
+                self?.hotkeyManager.resume()
+            }
+        )
+    }
+
+    @MainActor
+    private func handleModelToggle(_ model: String, enabled: Bool) {
+        coordinator.setModelLoaded(enabled, model: model)
+    }
+
+    @MainActor
+    private func handleLocalHotkeysChanged(_ hotkeys: [String: Hotkey]) {
+        hotkeyManager.updateLocalModelHotkeys(hotkeys)
+        menuBarManager.updateLocalModelMenuItems(hotkeys: hotkeys)
+    }
+
+    @MainActor
+    private func handleCloudHotkeysChanged(toggleCloud: Hotkey?, toggleGemini: Hotkey?, cancel: Hotkey?) {
+        hotkeyManager.updateCloudHotkeys(toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
+        menuBarManager.updateHotkeyDisplay()
+    }
 }
 
 // MARK: - MenuBarManagerDelegate
@@ -221,26 +260,7 @@ extension AppDelegate: MenuBarManagerDelegate {
     }
 
     func menuBarDidRequestOpenSettings() {
-        windowManager.showSettingsWindow(
-            loadedModels: Set(WhisperKitService.shared.loadedModels),
-            onModelToggle: { [weak self] model, enabled in
-                self?.coordinator.setModelLoaded(enabled, model: model)
-            },
-            onLocalHotkeysChanged: { [weak self] hotkeys in
-                self?.hotkeyManager.updateLocalModelHotkeys(hotkeys)
-                self?.menuBarManager.updateLocalModelMenuItems(hotkeys: hotkeys)
-            },
-            onCloudHotkeysChanged: { [weak self] toggleCloud, toggleGemini, cancel in
-                self?.hotkeyManager.updateCloudHotkeys(toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
-                self?.menuBarManager.updateHotkeyDisplay()
-            },
-            onWindowOpen: { [weak self] in
-                self?.hotkeyManager.pause()
-            },
-            onWindowClose: { [weak self] in
-                self?.hotkeyManager.resume()
-            }
-        )
+        showSettingsWindow()
     }
 
     func menuBarDidRequestQuit() {
