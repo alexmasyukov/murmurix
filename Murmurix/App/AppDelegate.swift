@@ -11,8 +11,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowManager: WindowManager!
     private var hotkeyManager: GlobalHotkeyManager!
 
-    private var audioRecorder: AudioRecorder!
-    private var transcriptionService: TranscriptionService!
+    private var audioRecorder: (any AudioRecorderProtocol)!
+    private var transcriptionService: (any TranscriptionServiceProtocol)!
     private var coordinator: RecordingCoordinator!
 
     private var lastRecordId: UUID?
@@ -20,10 +20,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let historyService: HistoryServiceProtocol
     private let settings: SettingsStorageProtocol
+    private let makeAudioRecorder: () -> any AudioRecorderProtocol
+    private let makeTranscriptionService: (SettingsStorageProtocol) -> any TranscriptionServiceProtocol
 
-    override init() {
-        self.historyService = HistoryService.shared
-        self.settings = Settings.shared
+    init(
+        historyService: HistoryServiceProtocol = HistoryService.shared,
+        settings: SettingsStorageProtocol = Settings.shared,
+        makeAudioRecorder: @escaping () -> any AudioRecorderProtocol = { AudioRecorder() },
+        makeTranscriptionService: @escaping (SettingsStorageProtocol) -> any TranscriptionServiceProtocol = {
+            settings in TranscriptionService(settings: settings)
+        }
+    ) {
+        self.historyService = historyService
+        self.settings = settings
+        self.makeAudioRecorder = makeAudioRecorder
+        self.makeTranscriptionService = makeTranscriptionService
         super.init()
     }
 
@@ -84,8 +95,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func setupServices() {
-        audioRecorder = AudioRecorder()
-        transcriptionService = TranscriptionService(settings: settings)
+        audioRecorder = makeAudioRecorder()
+        transcriptionService = makeTranscriptionService(settings)
 
         coordinator = RecordingCoordinator(
             audioRecorder: audioRecorder,

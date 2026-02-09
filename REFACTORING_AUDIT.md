@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 14:30  
+Последнее обновление: 2026-02-09 14:32  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -469,3 +469,17 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`,
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests/loadedModelNamesReflectWhisperKitState` -> `** TEST SUCCEEDED **`.
+
+### 10.8 AppDelegate как composition root (incremental)
+
+- `AppDelegate` переведен на фабрики зависимостей:
+  - `Murmurix/App/AppDelegate.swift`
+  - добавлены `makeAudioRecorder` и `makeTranscriptionService`,
+  - `init(...)` теперь принимает DI-параметры с безопасными дефолтами.
+- Ослаблена связность по concrete types:
+  - `audioRecorder` хранится как `any AudioRecorderProtocol`,
+  - `transcriptionService` хранится как `any TranscriptionServiceProtocol`.
+- `WindowManager` принимает протокол вместо concrete recorder:
+  - `Murmurix/App/WindowManager.swift` (`showRecordingWindow(audioRecorder: any AudioRecorderProtocol, ...)`).
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests/loadedModelNamesReflectWhisperKitState` -> `** TEST SUCCEEDED **`.

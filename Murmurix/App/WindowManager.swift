@@ -14,7 +14,7 @@ final class WindowManager {
     // MARK: - Recording Window
 
     func showRecordingWindow(
-        audioRecorder: AudioRecorder,
+        audioRecorder: any AudioRecorderProtocol,
         onStop: @escaping () -> Void,
         onCancelTranscription: @escaping () -> Void
     ) {
