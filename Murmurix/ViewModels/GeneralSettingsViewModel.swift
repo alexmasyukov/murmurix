@@ -240,23 +240,21 @@ final class GeneralSettingsViewModel: ObservableObject {
         onLocalHotkeysChanged?(hotkeys)
     }
 
-    private func removeItemIfExists(_ url: URL, context: String) {
+    private func removeItemIfExists(_ url: URL, context: String, logError: (String) -> Void = Logger.Model.error) {
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: url.path) else { return }
         do {
             try fileManager.removeItem(at: url)
         } catch {
-            Logger.Model.error("Failed to remove item (\(context)): \(url.path), error: \(error.localizedDescription)")
+            logError("Failed to remove item (\(context)): \(url.path), error: \(error.localizedDescription)")
         }
     }
 
     private func removeTransientAudioIfNeeded(_ url: URL) {
-        let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: url.path) else { return }
-        do {
-            try fileManager.removeItem(at: url)
-        } catch {
-            Logger.Transcription.error("Failed to remove temporary test audio: \(url.path), error: \(error.localizedDescription)")
-        }
+        removeItemIfExists(
+            url,
+            context: "remove temporary test audio",
+            logError: Logger.Transcription.error
+        )
     }
 }
