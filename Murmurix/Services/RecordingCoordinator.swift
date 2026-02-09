@@ -65,6 +65,12 @@ final class RecordingCoordinator {
     private let historyService: HistoryServiceProtocol
     private let settings: SettingsStorageProtocol
 
+    private enum ToggleTransition {
+        case startRecording(mode: TranscriptionMode)
+        case stopRecording
+        case ignore
+    }
+
     init(
         audioRecorder: AudioRecorderProtocol,
         transcriptionService: TranscriptionServiceProtocol,
@@ -80,14 +86,14 @@ final class RecordingCoordinator {
     // MARK: - Recording Control
 
     func toggleRecording(mode: TranscriptionMode) {
-        switch state {
-        case .idle:
-            currentTranscriptionMode = mode
+        switch Self.reduceToggleTransition(from: state, mode: mode) {
+        case .startRecording(let selectedMode):
+            currentTranscriptionMode = selectedMode
             startRecording()
-        case .recording:
+        case .stopRecording:
             stopRecording()
-        case .transcribing:
-            break // Ignore while transcribing
+        case .ignore:
+            break
         }
     }
 
@@ -197,9 +203,7 @@ final class RecordingCoordinator {
                 // Check if cancelled
                 if Task.isCancelled { return }
 
-                self.state = .idle
-                self.currentAudioURL = nil
-                self.transcriptionTask = nil
+                self.resetTranscriptionState()
 
                 // Save to history
                 let record = TranscriptionRecord(
@@ -210,27 +214,17 @@ final class RecordingCoordinator {
                 self.historyService.save(record: record)
 
                 // Delete audio files
-                self.removeFileIfExists(audioURL, context: "successful transcription")
-                if let compressedURL = self.currentCompressedAudioURL {
-                    self.removeFileIfExists(compressedURL, context: "successful transcription (compressed)")
-                }
-                self.currentCompressedAudioURL = nil
+                self.cleanupTranscriptionFiles(audioURL: audioURL, phase: "successful transcription")
 
                 self.delegate?.transcriptionDidComplete(text: transcribedText, duration: duration, recordId: record.id)
             } catch {
                 // Check if cancelled
                 if Task.isCancelled { return }
 
-                self.state = .idle
-                self.currentAudioURL = nil
-                self.transcriptionTask = nil
+                self.resetTranscriptionState()
 
                 // Delete audio files even on error
-                self.removeFileIfExists(audioURL, context: "failed transcription")
-                if let compressedURL = self.currentCompressedAudioURL {
-                    self.removeFileIfExists(compressedURL, context: "failed transcription (compressed)")
-                }
-                self.currentCompressedAudioURL = nil
+                self.cleanupTranscriptionFiles(audioURL: audioURL, phase: "failed transcription")
 
                 self.delegate?.transcriptionDidFail(error: error)
             }
@@ -296,5 +290,30 @@ final class RecordingCoordinator {
         } catch {
             Logger.Transcription.error("Failed to remove file (\(context)): \(url.path), error: \(error.localizedDescription)")
         }
+    }
+
+    private static func reduceToggleTransition(from state: RecordingState, mode: TranscriptionMode) -> ToggleTransition {
+        switch state {
+        case .idle:
+            return .startRecording(mode: mode)
+        case .recording:
+            return .stopRecording
+        case .transcribing:
+            return .ignore
+        }
+    }
+
+    private func resetTranscriptionState() {
+        state = .idle
+        currentAudioURL = nil
+        transcriptionTask = nil
+    }
+
+    private func cleanupTranscriptionFiles(audioURL: URL, phase: String) {
+        removeFileIfExists(audioURL, context: phase)
+        if let compressedURL = currentCompressedAudioURL {
+            removeFileIfExists(compressedURL, context: "\(phase) (compressed)")
+        }
+        currentCompressedAudioURL = nil
     }
 }
