@@ -17,19 +17,31 @@ enum Logger {
     private static let history = OSLog(subsystem: subsystem, category: "History")
     private static let settings = OSLog(subsystem: subsystem, category: "Settings")
 
+    private static func logInfo(_ message: String, to log: OSLog) {
+        os_log(.info, log: log, "%{public}@", message)
+    }
+
+    private static func logError(_ message: String, to log: OSLog) {
+        os_log(.error, log: log, "%{public}@", message)
+    }
+
+    private static func logDebug(_ message: String, to log: OSLog) {
+        os_log(.debug, log: log, "%{public}@", message)
+    }
+
     // MARK: - Audio
 
     enum Audio {
         static func info(_ message: String) {
-            os_log(.info, log: Logger.audio, "%{public}@", message)
+            Logger.logInfo(message, to: Logger.audio)
         }
 
         static func error(_ message: String) {
-            os_log(.error, log: Logger.audio, "%{public}@", message)
+            Logger.logError(message, to: Logger.audio)
         }
 
         static func debug(_ message: String) {
-            os_log(.debug, log: Logger.audio, "%{public}@", message)
+            Logger.logDebug(message, to: Logger.audio)
         }
     }
 
@@ -37,15 +49,15 @@ enum Logger {
 
     enum Transcription {
         static func info(_ message: String) {
-            os_log(.info, log: Logger.transcription, "%{public}@", message)
+            Logger.logInfo(message, to: Logger.transcription)
         }
 
         static func error(_ message: String) {
-            os_log(.error, log: Logger.transcription, "%{public}@", message)
+            Logger.logError(message, to: Logger.transcription)
         }
 
         static func debug(_ message: String) {
-            os_log(.debug, log: Logger.transcription, "%{public}@", message)
+            Logger.logDebug(message, to: Logger.transcription)
         }
     }
 
@@ -53,11 +65,11 @@ enum Logger {
 
     enum Model {
         static func info(_ message: String) {
-            os_log(.info, log: Logger.model, "%{public}@", message)
+            Logger.logInfo(message, to: Logger.model)
         }
 
         static func error(_ message: String) {
-            os_log(.error, log: Logger.model, "%{public}@", message)
+            Logger.logError(message, to: Logger.model)
         }
 
         static func warning(_ message: String) {
@@ -65,7 +77,7 @@ enum Logger {
         }
 
         static func debug(_ message: String) {
-            os_log(.debug, log: Logger.model, "%{public}@", message)
+            Logger.logDebug(message, to: Logger.model)
         }
     }
 
@@ -73,11 +85,11 @@ enum Logger {
 
     enum Hotkey {
         static func info(_ message: String) {
-            os_log(.info, log: Logger.hotkey, "%{public}@", message)
+            Logger.logInfo(message, to: Logger.hotkey)
         }
 
         static func error(_ message: String) {
-            os_log(.error, log: Logger.hotkey, "%{public}@", message)
+            Logger.logError(message, to: Logger.hotkey)
         }
     }
 
@@ -85,11 +97,11 @@ enum Logger {
 
     enum History {
         static func error(_ message: String) {
-            os_log(.error, log: Logger.history, "%{public}@", message)
+            Logger.logError(message, to: Logger.history)
         }
 
         static func debug(_ message: String) {
-            os_log(.debug, log: Logger.history, "%{public}@", message)
+            Logger.logDebug(message, to: Logger.history)
         }
     }
 
@@ -97,7 +109,7 @@ enum Logger {
 
     enum Settings {
         static func debug(_ message: String) {
-            os_log(.debug, log: Logger.settings, "%{public}@", message)
+            Logger.logDebug(message, to: Logger.settings)
         }
     }
 
