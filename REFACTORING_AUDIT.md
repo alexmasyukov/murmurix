@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:24  
+Последнее обновление: 2026-02-09 15:27  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -653,3 +653,14 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - исключен класс потенциальных runtime-ошибок из-за implicitly-unwrapped optional в window-layer.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/HistoryServiceTests -only-testing:MurmurixTests/MurmurixTests` -> `** TEST SUCCEEDED **`.
+
+### 10.22 RecordingWindowController: убрать IUO у audio observer
+
+- В `RecordingWindowController` удалён `AudioLevelObserver!` и введён строго инициализируемый `let audioLevelObserver`.
+- Создание observer перенесено в инициализацию свойства до `super.init`, чтобы исключить окно неконсистентного состояния.
+- Изменен файл:
+  - `Murmurix/Views/RecordingWindowController.swift`
+- Эффект:
+  - исключен класс потенциальных runtime-ошибок из-за implicitly-unwrapped optional в recording window-layer.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/RecordingCoordinatorModelControlTests` -> `** TEST SUCCEEDED **`.
