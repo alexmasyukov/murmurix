@@ -24,7 +24,7 @@ final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
     private let historyService: HistoryServiceProtocol
     private var pendingSelectionUpdate: DispatchWorkItem?
 
-    init(historyService: HistoryServiceProtocol = HistoryService.shared) {
+    init(historyService: HistoryServiceProtocol) {
         self.historyService = historyService
     }
 

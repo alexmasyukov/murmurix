@@ -22,7 +22,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private var languageObserver: NSObjectProtocol?
 
     convenience init(
-        settings: SettingsStorageProtocol = Settings.shared,
+        settings: SettingsStorageProtocol,
         loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,

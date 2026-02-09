@@ -27,7 +27,7 @@ final class MenuBarManager {
     private var toggleGeminiMenuItem: NSMenuItem?
     private let settings: SettingsStorageProtocol
 
-    init(settings: SettingsStorageProtocol = Settings.shared) {
+    init(settings: SettingsStorageProtocol) {
         self.settings = settings
     }
 

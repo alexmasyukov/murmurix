@@ -73,7 +73,7 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    init(settings: SettingsStorageProtocol = Settings.shared) {
+    init(settings: SettingsStorageProtocol) {
         self.settings = settings
         self.language = settings.language
         self.appLanguage = settings.appLanguage

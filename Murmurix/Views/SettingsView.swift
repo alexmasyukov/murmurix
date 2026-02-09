@@ -14,7 +14,7 @@ struct SettingsView: View {
     var onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)?
 
     init(
-        settings: SettingsStorageProtocol = Settings.shared,
+        settings: SettingsStorageProtocol,
         loadedModels: Binding<Set<String>>,
         onModelToggle: ((String, Bool) -> Void)? = nil,
         onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
@@ -41,5 +41,8 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(loadedModels: .constant([]))
+    SettingsView(
+        settings: Settings.shared,
+        loadedModels: .constant([])
+    )
 }

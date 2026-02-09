@@ -8,10 +8,10 @@ import SwiftUI
 
 class HistoryWindowController: NSWindowController, NSWindowDelegate {
 
-    private var historyViewModel = HistoryViewModel()
+    private var historyViewModel: HistoryViewModel!
     private var languageObserver: NSObjectProtocol?
 
-    convenience init() {
+    convenience init(historyService: HistoryServiceProtocol = HistoryService.shared) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
             styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
@@ -25,6 +25,7 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
         window.appearance = NSAppearance(named: .darkAqua)
 
         self.init(window: window)
+        historyViewModel = HistoryViewModel(historyService: historyService)
         window.delegate = self
 
         languageObserver = NotificationCenter.default.addObserver(

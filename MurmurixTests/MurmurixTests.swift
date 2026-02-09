@@ -394,7 +394,7 @@ struct AudioRecorderTests {
 struct GlobalHotkeyManagerTests {
 
     @Test func hotkeyManagerInitialState() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
 
         #expect(manager.isRecording == false)
         #expect(manager.onToggleLocalRecording == nil)
@@ -403,7 +403,7 @@ struct GlobalHotkeyManagerTests {
     }
 
     @Test func hotkeyManagerUpdatesHotkeys() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
         let newToggleLocal = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey))
         let newToggleCloud = Hotkey(keyCode: 2, modifiers: UInt32(cmdKey))
         let newToggleGemini = Hotkey(keyCode: 5, modifiers: UInt32(cmdKey))
@@ -417,7 +417,7 @@ struct GlobalHotkeyManagerTests {
     }
 
     @Test func hotkeyManagerCallbacksCanBeSet() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
         var toggleLocalCalled = false
         var toggleCloudCalled = false
         var toggleGeminiCalled = false
@@ -445,7 +445,7 @@ struct GlobalHotkeyManagerTests {
     }
 
     @Test func hotkeyManagerIsRecordingFlag() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
 
         manager.isRecording = true
         #expect(manager.isRecording == true)
@@ -455,7 +455,7 @@ struct GlobalHotkeyManagerTests {
     }
 
     @Test func hotkeyManagerPauseResumeDoNotCrashWithoutActiveTap() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
 
         manager.pause()
         manager.resume()

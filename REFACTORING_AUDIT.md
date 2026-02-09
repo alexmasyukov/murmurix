@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 14:32  
+Последнее обновление: 2026-02-09 14:36  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -483,3 +483,21 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - `Murmurix/App/WindowManager.swift` (`showRecordingWindow(audioRecorder: any AudioRecorderProtocol, ...)`).
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests/loadedModelNamesReflectWhisperKitState` -> `** TEST SUCCEEDED **`.
+
+### 10.9 Убраны singleton-дефолты в UI/ViewModel/Manager слоях
+
+- Удалены скрытые `Settings.shared/HistoryService.shared` из default init-параметров:
+  - `Murmurix/App/MenuBarManager.swift`
+  - `Murmurix/Services/GlobalHotkeyManager.swift`
+  - `Murmurix/ViewModels/SettingsStore.swift`
+  - `Murmurix/ViewModels/HistoryViewModel.swift`
+  - `Murmurix/Views/GeneralSettingsView.swift`
+  - `Murmurix/Views/SettingsView.swift`
+  - `Murmurix/Views/SettingsWindowController.swift`
+  - `Murmurix/Views/HistoryView.swift`
+  - `Murmurix/Views/HistoryWindowController.swift`
+- Обновлены тесты, где раньше использовались неявные дефолтные зависимости:
+  - `MurmurixTests/MurmurixTests.swift` (`GlobalHotkeyManagerTests` теперь используют `MockSettings`).
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/MurmurixTests -only-testing:MurmurixTests/SettingsStoreTests` -> `** TEST SUCCEEDED **`,
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GlobalHotkeyManagerTests` -> `** TEST SUCCEEDED **`.

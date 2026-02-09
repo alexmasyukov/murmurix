@@ -10,7 +10,7 @@ struct HistoryView: View {
     @State private var showingClearConfirmation = false
     @AppStorage("appLanguage") private var appLanguage = "en"
 
-    init(viewModel: HistoryViewModel = HistoryViewModel()) {
+    init(viewModel: HistoryViewModel) {
         self.viewModel = viewModel
     }
 
@@ -112,6 +112,6 @@ struct HistoryView: View {
 }
 
 #Preview {
-    HistoryView()
+    HistoryView(viewModel: HistoryViewModel(historyService: HistoryService.shared))
         .preferredColorScheme(.dark)
 }

@@ -32,7 +32,7 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
         case cancel
     }
 
-    init(settings: SettingsStorageProtocol = Settings.shared) {
+    init(settings: SettingsStorageProtocol) {
         self.settings = settings
         toggleCloudHotkey = settings.loadToggleCloudHotkey()
         toggleGeminiHotkey = settings.loadToggleGeminiHotkey()
