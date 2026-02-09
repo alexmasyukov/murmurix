@@ -35,6 +35,7 @@ class CatLoadingState: ObservableObject {
     @Published var state: LoadingState = .transcribing
 }
 
+@MainActor
 class RecordingWindowController: NSWindowController {
     private var audioRecorder: any AudioRecorderProtocol
     private var onStop: () -> Void

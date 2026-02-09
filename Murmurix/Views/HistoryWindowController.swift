@@ -6,6 +6,7 @@
 import Cocoa
 import SwiftUI
 
+@MainActor
 class HistoryWindowController: NSWindowController, NSWindowDelegate {
 
     private var historyViewModel: HistoryViewModel!

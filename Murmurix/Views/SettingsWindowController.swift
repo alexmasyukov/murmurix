@@ -10,6 +10,7 @@ class ModelStatusModel: ObservableObject {
     @Published var loadedModels: Set<String> = []
 }
 
+@MainActor
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onModelToggle: ((String, Bool) -> Void)?
     var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?

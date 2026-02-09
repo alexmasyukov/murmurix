@@ -5,6 +5,7 @@
 
 import AppKit
 
+@MainActor
 final class WindowManager {
     private let historyService: HistoryServiceProtocol
     private var recordingController: RecordingWindowController?

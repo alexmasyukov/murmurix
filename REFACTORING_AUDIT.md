@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:08  
+Последнее обновление: 2026-02-09 15:12  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -535,3 +535,18 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - более явная отмена pending update без GCD work item.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/HistoryServiceTests` -> `** TEST SUCCEEDED **`.
+
+### 10.13 Window layer: явная main-thread изоляция
+
+- UI-оркестратор и window controllers зафиксированы как `@MainActor`:
+  - `Murmurix/App/WindowManager.swift`
+  - `Murmurix/Views/SettingsWindowController.swift`
+  - `Murmurix/Views/HistoryWindowController.swift`
+  - `Murmurix/Views/RecordingWindowController.swift`
+  - `Murmurix/Views/ResultWindowController.swift`
+- Эффект:
+  - compile-time защита от случайных вызовов UI API вне main thread,
+  - более явная actor-boundary для AppKit/SwiftUI окна слоя.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/MurmurixTests` -> `** TEST SUCCEEDED **`.
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/NewFunctionalityTests -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`.
