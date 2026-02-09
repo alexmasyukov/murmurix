@@ -43,6 +43,7 @@ final class GeneralSettingsViewModel: ObservableObject {
     private let transcriptionServiceFactory: () -> TranscriptionServiceProtocol
     private let modelDirectory: (String) -> URL
     private let modelsRepositoryDirectory: () -> URL
+    private let completedStatusResetDelay: TimeInterval = 2
     let settings: SettingsStorageProtocol
 
     init(
@@ -119,7 +120,7 @@ final class GeneralSettingsViewModel: ObservableObject {
     }
 
     private func scheduleStatusReset(for modelName: String) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + completedStatusResetDelay) { [weak self] in
             guard let self = self else { return }
             if case .completed = self.downloadStatuses[modelName] {
                 self.downloadStatuses[modelName] = .idle
