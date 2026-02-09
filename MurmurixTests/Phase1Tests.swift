@@ -392,25 +392,25 @@ struct MockTranscriptionRepositoryTests {
         #expect(mock.deleteAllCallCount == 0)
     }
 
-    @Test func saveAddsRecord() {
+    @Test func saveAddsRecord() throws {
         let mock = MockTranscriptionRepository()
         let record = TranscriptionRecord(text: "Test", language: "en", duration: 5)
 
-        mock.save(record)
+        try mock.save(record)
 
         #expect(mock.saveCallCount == 1)
         #expect(mock.records.count == 1)
         #expect(mock.records.first?.text == "Test")
     }
 
-    @Test func saveUpdatesExistingRecord() {
+    @Test func saveUpdatesExistingRecord() throws {
         let mock = MockTranscriptionRepository()
         let id = UUID()
         let original = TranscriptionRecord(id: id, text: "Original", language: "en", duration: 5)
         let updated = TranscriptionRecord(id: id, text: "Updated", language: "ru", duration: 10)
 
-        mock.save(original)
-        mock.save(updated)
+        try mock.save(original)
+        try mock.save(updated)
 
         #expect(mock.saveCallCount == 2)
         #expect(mock.records.count == 1)
@@ -418,7 +418,7 @@ struct MockTranscriptionRepositoryTests {
         #expect(mock.records.first?.language == "ru")
     }
 
-    @Test func fetchAllReturnsRecordsInReverseChronologicalOrder() {
+    @Test func fetchAllReturnsRecordsInReverseChronologicalOrder() throws {
         let mock = MockTranscriptionRepository()
 
         let old = TranscriptionRecord(
@@ -434,10 +434,10 @@ struct MockTranscriptionRepositoryTests {
             createdAt: Date(timeIntervalSince1970: 2000)
         )
 
-        mock.save(old)
-        mock.save(new)
+        try mock.save(old)
+        try mock.save(new)
 
-        let fetched = mock.fetchAll()
+        let fetched = try mock.fetchAll()
 
         #expect(mock.fetchAllCallCount == 1)
         #expect(fetched.count == 2)
@@ -445,50 +445,50 @@ struct MockTranscriptionRepositoryTests {
         #expect(fetched[1].text == "Old")
     }
 
-    @Test func deleteRemovesRecord() {
+    @Test func deleteRemovesRecord() throws {
         let mock = MockTranscriptionRepository()
         let record = TranscriptionRecord(text: "Delete me", language: "en", duration: 5)
 
-        mock.save(record)
+        try mock.save(record)
         #expect(mock.records.count == 1)
 
-        mock.delete(id: record.id)
+        try mock.delete(id: record.id)
 
         #expect(mock.deleteCallCount == 1)
         #expect(mock.records.isEmpty)
     }
 
-    @Test func deleteDoesNothingForNonexistentID() {
+    @Test func deleteDoesNothingForNonexistentID() throws {
         let mock = MockTranscriptionRepository()
         let record = TranscriptionRecord(text: "Keep me", language: "en", duration: 5)
-        mock.save(record)
+        try mock.save(record)
 
-        mock.delete(id: UUID())
+        try mock.delete(id: UUID())
 
         #expect(mock.deleteCallCount == 1)
         #expect(mock.records.count == 1)
     }
 
-    @Test func deleteAllRemovesAllRecords() {
+    @Test func deleteAllRemovesAllRecords() throws {
         let mock = MockTranscriptionRepository()
-        mock.save(TranscriptionRecord(text: "One", language: "en", duration: 5))
-        mock.save(TranscriptionRecord(text: "Two", language: "en", duration: 5))
-        mock.save(TranscriptionRecord(text: "Three", language: "en", duration: 5))
+        try mock.save(TranscriptionRecord(text: "One", language: "en", duration: 5))
+        try mock.save(TranscriptionRecord(text: "Two", language: "en", duration: 5))
+        try mock.save(TranscriptionRecord(text: "Three", language: "en", duration: 5))
 
         #expect(mock.records.count == 3)
 
-        mock.deleteAll()
+        try mock.deleteAll()
 
         #expect(mock.deleteAllCallCount == 1)
         #expect(mock.records.isEmpty)
     }
 
-    @Test func conformsToTranscriptionRepositoryProtocol() {
+    @Test func conformsToTranscriptionRepositoryProtocol() throws {
         let mock: TranscriptionRepositoryProtocol = MockTranscriptionRepository()
 
         // Just verify it compiles and works
-        mock.save(TranscriptionRecord(text: "Test", language: "en", duration: 5))
-        let fetched = mock.fetchAll()
+        try mock.save(TranscriptionRecord(text: "Test", language: "en", duration: 5))
+        let fetched = try mock.fetchAll()
         #expect(fetched.count == 1)
     }
 }

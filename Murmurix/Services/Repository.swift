@@ -10,10 +10,27 @@ import SQLite3
 
 /// Specific protocol for TranscriptionRecord repository, easier to mock
 protocol TranscriptionRepositoryProtocol {
-    func save(_ item: TranscriptionRecord)
-    func fetchAll() -> [TranscriptionRecord]
-    func delete(id: UUID)
-    func deleteAll()
+    func save(_ item: TranscriptionRecord) throws
+    func fetchAll() throws -> [TranscriptionRecord]
+    func delete(id: UUID) throws
+    func deleteAll() throws
+}
+
+enum TranscriptionRepositoryError: LocalizedError {
+    case statementPreparationFailed(operation: String)
+    case statementExecutionFailed(operation: String)
+    case rowDecodingFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .statementPreparationFailed(let operation):
+            return "Failed to prepare SQLite statement for operation: \(operation)"
+        case .statementExecutionFailed(let operation):
+            return "Failed to execute SQLite statement for operation: \(operation)"
+        case .rowDecodingFailed:
+            return "Failed to decode transcription row from SQLite"
+        }
+    }
 }
 
 // MARK: - SQLite Helper
@@ -113,10 +130,13 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
         database.execute(sql)
     }
 
-    func save(_ item: TranscriptionRecord) {
+    func save(_ item: TranscriptionRecord) throws {
         let sql = "INSERT OR REPLACE INTO transcriptions (id, text, language, duration, created_at) VALUES (?, ?, ?, ?, ?)"
-
-        guard let statement = database.prepareStatement(sql) else { return }
+        let operation = "save"
+        guard let statement = database.prepareStatement(sql) else {
+            throw TranscriptionRepositoryError.statementPreparationFailed(operation: operation)
+        }
+        defer { database.finalize(statement) }
 
         database.bindText(statement, index: 1, value: item.id.uuidString)
         database.bindText(statement, index: 2, value: item.text)
@@ -125,15 +145,17 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
         database.bindDouble(statement, index: 5, value: item.createdAt.timeIntervalSince1970)
 
         if !database.step(statement) {
-            Logger.History.error("Failed to save record")
+            throw TranscriptionRepositoryError.statementExecutionFailed(operation: operation)
         }
-        database.finalize(statement)
     }
 
-    func fetchAll() -> [TranscriptionRecord] {
+    func fetchAll() throws -> [TranscriptionRecord] {
         let sql = "SELECT id, text, language, duration, created_at FROM transcriptions ORDER BY created_at DESC"
-
-        guard let statement = database.prepareStatement(sql) else { return [] }
+        let operation = "fetchAll"
+        guard let statement = database.prepareStatement(sql) else {
+            throw TranscriptionRepositoryError.statementPreparationFailed(operation: operation)
+        }
+        defer { database.finalize(statement) }
 
         var records: [TranscriptionRecord] = []
 
@@ -141,10 +163,12 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
             guard let idString = database.columnText(statement, index: 0),
                   let text = database.columnText(statement, index: 1),
                   let language = database.columnText(statement, index: 2) else {
-                continue
+                throw TranscriptionRepositoryError.rowDecodingFailed
             }
 
-            let id = UUID(uuidString: idString) ?? UUID()
+            guard let id = UUID(uuidString: idString) else {
+                throw TranscriptionRepositoryError.rowDecodingFailed
+            }
             let duration = database.columnDouble(statement, index: 3)
             let createdAt = Date(timeIntervalSince1970: database.columnDouble(statement, index: 4))
 
@@ -158,20 +182,31 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
             records.append(record)
         }
 
-        database.finalize(statement)
         return records
     }
 
-    func delete(id: UUID) {
+    func delete(id: UUID) throws {
         let sql = "DELETE FROM transcriptions WHERE id = ?"
-
-        guard let statement = database.prepareStatement(sql) else { return }
+        let operation = "delete"
+        guard let statement = database.prepareStatement(sql) else {
+            throw TranscriptionRepositoryError.statementPreparationFailed(operation: operation)
+        }
+        defer { database.finalize(statement) }
         database.bindText(statement, index: 1, value: id.uuidString)
-        _ = database.step(statement)
-        database.finalize(statement)
+        guard database.step(statement) else {
+            throw TranscriptionRepositoryError.statementExecutionFailed(operation: operation)
+        }
     }
 
-    func deleteAll() {
-        database.execute("DELETE FROM transcriptions")
+    func deleteAll() throws {
+        let sql = "DELETE FROM transcriptions"
+        let operation = "deleteAll"
+        guard let statement = database.prepareStatement(sql) else {
+            throw TranscriptionRepositoryError.statementPreparationFailed(operation: operation)
+        }
+        defer { database.finalize(statement) }
+        guard database.step(statement) else {
+            throw TranscriptionRepositoryError.statementExecutionFailed(operation: operation)
+        }
     }
 }

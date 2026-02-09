@@ -400,7 +400,7 @@ final class MockTranscriptionRepository: TranscriptionRepositoryProtocol {
     var deleteCallCount = 0
     var deleteAllCallCount = 0
 
-    func save(_ item: TranscriptionRecord) {
+    func save(_ item: TranscriptionRecord) throws {
         saveCallCount += 1
         if let index = records.firstIndex(where: { $0.id == item.id }) {
             records[index] = item
@@ -409,17 +409,17 @@ final class MockTranscriptionRepository: TranscriptionRepositoryProtocol {
         }
     }
 
-    func fetchAll() -> [TranscriptionRecord] {
+    func fetchAll() throws -> [TranscriptionRecord] {
         fetchAllCallCount += 1
         return records.sorted { $0.createdAt > $1.createdAt }
     }
 
-    func delete(id: UUID) {
+    func delete(id: UUID) throws {
         deleteCallCount += 1
         records.removeAll { $0.id == id }
     }
 
-    func deleteAll() {
+    func deleteAll() throws {
         deleteAllCallCount += 1
         records.removeAll()
     }

@@ -340,7 +340,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 ## Фаза 4 (data layer hardening)
 
-- [ ] `throws`-based repository API.
+- [x] `throws`-based repository API.
 - [ ] SQLite migrations (`user_version`).
 - [ ] Полная диагностика SQLite-кодов в логах.
 

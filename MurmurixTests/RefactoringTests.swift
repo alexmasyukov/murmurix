@@ -582,19 +582,19 @@ struct SQLiteTranscriptionRepositoryTests {
         return SQLiteTranscriptionRepository(dbPath: dbPath)
     }
 
-    @Test func saveAndFetchRecord() {
+    @Test func saveAndFetchRecord() throws {
         let repo = createTempRepository()
         let record = TranscriptionRecord(text: "Hello", language: "en", duration: 5)
 
-        repo.save(record)
-        let fetched = repo.fetchAll()
+        try repo.save(record)
+        let fetched = try repo.fetchAll()
 
         #expect(fetched.count == 1)
         #expect(fetched.first?.text == "Hello")
         #expect(fetched.first?.id == record.id)
     }
 
-    @Test func fetchAllReturnsInReverseChronologicalOrder() {
+    @Test func fetchAllReturnsInReverseChronologicalOrder() throws {
         let repo = createTempRepository()
 
         let old = TranscriptionRecord(
@@ -610,51 +610,51 @@ struct SQLiteTranscriptionRepositoryTests {
             createdAt: Date(timeIntervalSince1970: 2000)
         )
 
-        repo.save(old)
-        repo.save(new)
+        try repo.save(old)
+        try repo.save(new)
 
-        let fetched = repo.fetchAll()
+        let fetched = try repo.fetchAll()
 
         #expect(fetched.count == 2)
         #expect(fetched[0].text == "New")
         #expect(fetched[1].text == "Old")
     }
 
-    @Test func deleteRemovesRecord() {
+    @Test func deleteRemovesRecord() throws {
         let repo = createTempRepository()
         let record = TranscriptionRecord(text: "Delete me", language: "en", duration: 5)
 
-        repo.save(record)
-        #expect(repo.fetchAll().count == 1)
+        try repo.save(record)
+        #expect(try repo.fetchAll().count == 1)
 
-        repo.delete(id: record.id)
-        #expect(repo.fetchAll().count == 0)
+        try repo.delete(id: record.id)
+        #expect(try repo.fetchAll().count == 0)
     }
 
-    @Test func deleteAllClearsAllRecords() {
+    @Test func deleteAllClearsAllRecords() throws {
         let repo = createTempRepository()
 
-        repo.save(TranscriptionRecord(text: "One", language: "en", duration: 5))
-        repo.save(TranscriptionRecord(text: "Two", language: "en", duration: 5))
-        repo.save(TranscriptionRecord(text: "Three", language: "en", duration: 5))
+        try repo.save(TranscriptionRecord(text: "One", language: "en", duration: 5))
+        try repo.save(TranscriptionRecord(text: "Two", language: "en", duration: 5))
+        try repo.save(TranscriptionRecord(text: "Three", language: "en", duration: 5))
 
-        #expect(repo.fetchAll().count == 3)
+        #expect(try repo.fetchAll().count == 3)
 
-        repo.deleteAll()
-        #expect(repo.fetchAll().count == 0)
+        try repo.deleteAll()
+        #expect(try repo.fetchAll().count == 0)
     }
 
-    @Test func saveUpdatesExistingRecord() {
+    @Test func saveUpdatesExistingRecord() throws {
         let repo = createTempRepository()
         let id = UUID()
 
         let original = TranscriptionRecord(id: id, text: "Original", language: "en", duration: 5)
-        repo.save(original)
+        try repo.save(original)
 
         let updated = TranscriptionRecord(id: id, text: "Updated", language: "ru", duration: 10)
-        repo.save(updated)
+        try repo.save(updated)
 
-        let fetched = repo.fetchAll()
+        let fetched = try repo.fetchAll()
         #expect(fetched.count == 1)
         #expect(fetched.first?.text == "Updated")
         #expect(fetched.first?.language == "ru")
