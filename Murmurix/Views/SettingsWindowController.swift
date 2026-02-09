@@ -49,12 +49,6 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.modelStatus.loadedModels = loadedModels
         window.delegate = self
 
-        languageObserver = NotificationCenter.default.addObserver(
-            forName: .appLanguageDidChange, object: nil, queue: .main
-        ) { [weak window] _ in
-            window?.title = L10n.settingsTitle
-        }
-
         let settingsView = SettingsView(
             settings: settings,
             loadedModels: Binding(
@@ -86,6 +80,8 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     override func showWindow(_ sender: Any?) {
+        window?.title = L10n.settingsTitle
+        startObservingLanguageChangesIfNeeded()
         window?.center()
         super.showWindow(sender)
         window?.makeKeyAndOrderFront(nil)
@@ -94,12 +90,29 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        stopObservingLanguageChanges()
         onWindowClose?()
     }
 
     deinit {
         if let languageObserver {
             NotificationCenter.default.removeObserver(languageObserver)
+            self.languageObserver = nil
         }
+    }
+
+    private func startObservingLanguageChangesIfNeeded() {
+        guard languageObserver == nil else { return }
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange, object: nil, queue: .main
+        ) { [weak window] _ in
+            window?.title = L10n.settingsTitle
+        }
+    }
+
+    private func stopObservingLanguageChanges() {
+        guard let languageObserver else { return }
+        NotificationCenter.default.removeObserver(languageObserver)
+        self.languageObserver = nil
     }
 }

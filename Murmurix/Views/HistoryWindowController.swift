@@ -29,26 +29,42 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
         historyViewModel = HistoryViewModel(historyService: historyService)
         window.delegate = self
 
-        languageObserver = NotificationCenter.default.addObserver(
-            forName: .appLanguageDidChange, object: nil, queue: .main
-        ) { [weak window] _ in
-            window?.title = L10n.historyTitle
-        }
-
         let contentView = HistoryView(viewModel: historyViewModel)
         window.contentView = NSHostingView(rootView: contentView)
     }
 
     override func showWindow(_ sender: Any?) {
+        window?.title = L10n.historyTitle
+        startObservingLanguageChangesIfNeeded()
         historyViewModel.loadRecords()
         window?.center()
         super.showWindow(sender)
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    func windowWillClose(_ notification: Notification) {
+        stopObservingLanguageChanges()
+    }
+
     deinit {
         if let languageObserver {
             NotificationCenter.default.removeObserver(languageObserver)
+            self.languageObserver = nil
         }
+    }
+
+    private func startObservingLanguageChangesIfNeeded() {
+        guard languageObserver == nil else { return }
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange, object: nil, queue: .main
+        ) { [weak window] _ in
+            window?.title = L10n.historyTitle
+        }
+    }
+
+    private func stopObservingLanguageChanges() {
+        guard let languageObserver else { return }
+        NotificationCenter.default.removeObserver(languageObserver)
+        self.languageObserver = nil
     }
 }

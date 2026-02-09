@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:12  
+Последнее обновление: 2026-02-09 15:14  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -550,3 +550,17 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/MurmurixTests` -> `** TEST SUCCEEDED **`.
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/NewFunctionalityTests -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`.
+
+### 10.14 Observer lifecycle в window controllers
+
+- Подписки на `appLanguageDidChange` в window-layer переведены на lifecycle окна:
+  - подписка стартует в `showWindow`,
+  - подписка снимается в `windowWillClose`.
+- Изменены файлы:
+  - `Murmurix/Views/SettingsWindowController.swift`
+  - `Murmurix/Views/HistoryWindowController.swift`
+- Эффект:
+  - observer не живет дольше, чем открытое окно,
+  - снижена вероятность накопления лишних подписок при повторных открытиях.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/MurmurixTests -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/NewFunctionalityTests` -> `** TEST SUCCEEDED **`.
