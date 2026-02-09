@@ -47,18 +47,19 @@ struct KeychainKeyEnumTests {
 struct KeychainServiceTypeSafeAPITests {
 
     @Test func typeSafeAPICallsStringAPI() {
-        // Test that type-safe methods delegate to string-based methods correctly
-        // We verify this by checking the method signatures compile and can be called
-        // The actual Keychain operations may fail in test sandbox, so we don't assert results
+        let key = KeychainKey.openaiApiKey
+        _ = KeychainService.save(key, value: "test")
 
-        // These calls verify the API exists and compiles correctly
-        _ = KeychainService.save(KeychainKey.openaiApiKey, value: "test")
-        _ = KeychainService.load(KeychainKey.openaiApiKey)
-        _ = KeychainService.delete(KeychainKey.openaiApiKey)
-        _ = KeychainService.exists(KeychainKey.openaiApiKey)
+        let loaded = KeychainService.load(key)
+        let exists = KeychainService.exists(key)
 
-        // If we got here without compile errors, the API is correctly implemented
-        #expect(true)
+        if exists {
+            #expect(loaded != nil)
+        } else {
+            #expect(loaded == nil)
+        }
+
+        _ = KeychainService.delete(key)
     }
 
     @Test func deleteWithKeychainKeyReturnsTrue() {
@@ -84,11 +85,8 @@ struct KeychainServiceTypeSafeAPITests {
         let defaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!
         let settings = Settings(defaults: defaults)
 
-        // These operations use KeychainService with KeychainKey internally
-        // We just verify they can be called without crashing
-        _ = settings.openaiApiKey
-        _ = settings.geminiApiKey
-
-        #expect(true)
+        // These operations use KeychainService with KeychainKey internally.
+        #expect(type(of: settings.openaiApiKey) == String.self)
+        #expect(type(of: settings.geminiApiKey) == String.self)
     }
 }

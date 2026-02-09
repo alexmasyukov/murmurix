@@ -479,9 +479,8 @@ struct TextPasterTests {
     }
 
     @Test func pasteMethodDoesNotCrash() {
-        // Test that paste() can be called without crashing
-        // Actual clipboard/keyboard simulation tested manually
-        TextPaster.paste("Test text")
-        #expect(true) // If we get here, no crash occurred
+        let marker = "Test text \(UUID().uuidString)"
+        TextPaster.paste(marker)
+        #expect(NSPasteboard.general.string(forType: .string) == marker)
     }
 }
