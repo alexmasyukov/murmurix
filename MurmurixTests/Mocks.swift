@@ -285,16 +285,20 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
 final class MockOpenAITranscriptionService: OpenAITranscriptionServiceProtocol, @unchecked Sendable {
     var transcribeCallCount = 0
     var validateAPIKeyCallCount = 0
+    var lastAudioURL: URL?
     var lastLanguage: String?
     var lastModel: String?
+    var lastApiKey: String?
 
     var transcribeResult: Result<String, Error> = .success("Transcribed text")
     var validateAPIKeyResult: Result<Bool, Error> = .success(true)
 
     func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
         transcribeCallCount += 1
+        lastAudioURL = audioURL
         lastLanguage = language
         lastModel = model
+        lastApiKey = apiKey
         switch transcribeResult {
         case .success(let result):
             return result
@@ -319,16 +323,20 @@ final class MockOpenAITranscriptionService: OpenAITranscriptionServiceProtocol, 
 final class MockGeminiTranscriptionService: GeminiTranscriptionServiceProtocol, @unchecked Sendable {
     var transcribeCallCount = 0
     var validateAPIKeyCallCount = 0
+    var lastAudioURL: URL?
     var lastLanguage: String?
     var lastModel: String?
+    var lastApiKey: String?
 
     var transcribeResult: Result<String, Error> = .success("Gemini transcribed text")
     var validateAPIKeyResult: Result<Bool, Error> = .success(true)
 
     func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
         transcribeCallCount += 1
+        lastAudioURL = audioURL
         lastLanguage = language
         lastModel = model
+        lastApiKey = apiKey
         switch transcribeResult {
         case .success(let result):
             return result

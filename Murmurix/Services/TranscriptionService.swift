@@ -74,12 +74,14 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
         let model = settings.openaiTranscriptionModel
         logCloudMode("OpenAI", model: model, audioURL: audioURL)
 
-        return try await openAIService.transcribe(
+        let request = CloudTranscriptionRequest(
+            provider: .openAI,
             audioURL: audioURL,
             language: language,
             model: model,
             apiKey: apiKey
         )
+        return try await OpenAICloudTranscriptionClient(service: openAIService).transcribe(request: request)
     }
 
     // MARK: - Gemini Transcription
@@ -90,12 +92,14 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
         let model = settings.geminiModel
         logCloudMode("Gemini", model: model, audioURL: audioURL)
 
-        return try await geminiService.transcribe(
+        let request = CloudTranscriptionRequest(
+            provider: .gemini,
             audioURL: audioURL,
             language: language,
             model: model,
             apiKey: apiKey
         )
+        return try await GeminiCloudTranscriptionClient(service: geminiService).transcribe(request: request)
     }
 
     private func requireAPIKey(_ apiKey: String, providerName: String) throws -> String {
