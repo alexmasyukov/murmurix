@@ -321,16 +321,16 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 ## Фаза 1 (конкурентность и state machine)
 
 - [x] `RecordingCoordinator` -> `@MainActor`.
-- [ ] Заменить `Task.detached` на structured concurrency.
+- [x] Заменить `Task.detached` на structured concurrency.
 - [ ] Вынести transitions в отдельный reducer.
 - [ ] Добавить tests для toggle/cancel гонок.
 
 ## Фаза 2 (settings + hotkeys)
 
 - [ ] Внедрить `SettingsStore`.
-- [ ] Вынести единый `HotkeyCaptureService`.
-- [ ] Убрать global mutable flags из `GlobalHotkeyManager`.
-- [ ] Свести hotkey capture к одному reusable компоненту.
+- [x] Вынести единый `HotkeyCaptureService`.
+- [x] Убрать global mutable flags из `GlobalHotkeyManager`.
+- [x] Свести hotkey capture к одному reusable компоненту.
 
 ## Фаза 3 (cloud/domain boundaries)
 

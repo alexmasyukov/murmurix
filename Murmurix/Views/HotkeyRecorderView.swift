@@ -11,9 +11,7 @@ struct HotkeyRecorderView: View {
     let description: String?
     @Binding var hotkey: Hotkey?
     @State private var isRecording = false
-    @State private var localMonitor: Any?
-    @State private var globalMonitor: Any?
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @State private var captureService = HotkeyCaptureService()
 
     var body: some View {
         HStack {
@@ -71,6 +69,9 @@ struct HotkeyRecorderView: View {
             }
         }
         .padding(.vertical, 4)
+        .onDisappear {
+            stopRecording()
+        }
     }
 
     private func toggleRecording() {
@@ -81,57 +82,19 @@ struct HotkeyRecorderView: View {
         }
     }
 
-    private func handleKeyEvent(_ event: NSEvent) {
-        let keyCode = UInt32(event.keyCode)
-        let carbonModifiers = carbonModifiers(from: event.modifierFlags)
+    private func startRecording() {
+        isRecording = true
 
-        DispatchQueue.main.async {
-            self.hotkey = Hotkey(keyCode: keyCode, modifiers: carbonModifiers)
+        captureService.startCapturing { capturedHotkey in
+            self.hotkey = capturedHotkey
             self.stopRecording()
         }
     }
 
-    private func startRecording() {
-        isRecording = true
-
-        // Local monitor - when app is in focus
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            self.handleKeyEvent(event)
-            return nil // consume event
-        }
-
-        // Global monitor - when app is not in focus
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
-            self.handleKeyEvent(event)
-        }
-    }
-
     private func stopRecording() {
+        guard isRecording else { return }
         isRecording = false
-
-        removeLocalMonitorIfNeeded()
-        removeGlobalMonitorIfNeeded()
-    }
-
-    private func removeLocalMonitorIfNeeded() {
-        guard let monitor = localMonitor else { return }
-        NSEvent.removeMonitor(monitor)
-        localMonitor = nil
-    }
-
-    private func removeGlobalMonitorIfNeeded() {
-        guard let monitor = globalMonitor else { return }
-        NSEvent.removeMonitor(monitor)
-        globalMonitor = nil
-    }
-
-    private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
-        var result: UInt32 = 0
-        if flags.contains(.command) { result |= UInt32(cmdKey) }
-        if flags.contains(.option) { result |= UInt32(optionKey) }
-        if flags.contains(.control) { result |= UInt32(controlKey) }
-        if flags.contains(.shift) { result |= UInt32(shiftKey) }
-        return result
+        captureService.stopCapturing()
     }
 }
 
