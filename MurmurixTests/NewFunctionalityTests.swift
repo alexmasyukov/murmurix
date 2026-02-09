@@ -24,11 +24,10 @@ struct DownloadStatusTests {
 
     @Test func downloadingTracksProgress() {
         let status: DownloadStatus = .downloading(progress: 0.5)
-        if case .downloading(let progress) = status {
-            #expect(progress == 0.5)
-        } else {
-            #expect(Bool(false), "Expected downloading status")
-        }
+        #expect({
+            if case .downloading(let progress) = status { return progress == 0.5 }
+            return false
+        }(), "Expected downloading status")
     }
 
     @Test func downloadingProgressBoundaries() {
@@ -57,11 +56,10 @@ struct DownloadStatusTests {
 
     @Test func errorStatusContainsMessage() {
         let status: DownloadStatus = .error("Network timeout")
-        if case .error(let message) = status {
-            #expect(message == "Network timeout")
-        } else {
-            #expect(Bool(false), "Expected error status")
-        }
+        #expect({
+            if case .error(let message) = status { return message == "Network timeout" }
+            return false
+        }(), "Expected error status")
     }
 }
 
