@@ -829,3 +829,17 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - убран еще один скрытый live-fallback в app entrypoint.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.33 Settings init: убрать default `.standard` из конструктора
+
+- В `Settings` удален default `UserDefaults.standard` в конструкторе:
+  - `init(defaults: UserDefaults)` теперь требует явную передачу storage.
+- `shared` сохранен через явную live-конфигурацию:
+  - `Settings(defaults: .standard)`.
+- Изменен файл:
+  - `Murmurix/Models/Settings.swift`
+- Эффект:
+  - убран скрытый fallback на `.standard` внутри init,
+  - контракт инициализации settings стал полностью явным и стабильным для тестов/DI.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/Phase4Tests` -> `** TEST SUCCEEDED **`.
