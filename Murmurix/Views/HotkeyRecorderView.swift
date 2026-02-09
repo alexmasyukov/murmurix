@@ -11,7 +11,7 @@ struct HotkeyRecorderView: View {
     let description: String?
     @Binding var hotkey: Hotkey?
     @State private var isRecording = false
-    @State private var captureService = HotkeyCaptureService()
+    @State private var captureService = HotkeyCaptureService.live()
 
     var body: some View {
         HStack {

@@ -35,7 +35,11 @@ final class HotkeyCaptureService {
 
     private(set) var isCapturing = false
 
-    init(monitorManager: HotkeyEventMonitorManaging = NSEventMonitorManager()) {
+    static func live() -> HotkeyCaptureService {
+        HotkeyCaptureService(monitorManager: NSEventMonitorManager())
+    }
+
+    init(monitorManager: HotkeyEventMonitorManaging) {
         self.monitorManager = monitorManager
     }
 

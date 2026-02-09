@@ -796,3 +796,21 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - контракт DI для history-сервиса стал полностью явным.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryServiceTests -only-testing:MurmurixTests/SQLiteTranscriptionRepositoryTests` -> `** TEST SUCCEEDED **`.
+
+### 10.31 HotkeyCaptureService: убрать скрытую default-зависимость monitor manager
+
+- В `HotkeyCaptureService` удален default-конструктор зависимости:
+  - `init(monitorManager: HotkeyEventMonitorManaging = NSEventMonitorManager())`
+  - заменен на явный `init(monitorManager:)`.
+- Добавлен явный live-factory:
+  - `HotkeyCaptureService.live()` -> `NSEventMonitorManager()`.
+- Обновлен прод call-site в UI:
+  - `HotkeyRecorderView` теперь использует `HotkeyCaptureService.live()` вместо неявного `HotkeyCaptureService()`.
+- Изменены файлы:
+  - `Murmurix/Services/HotkeyCaptureService.swift`
+  - `Murmurix/Views/HotkeyRecorderView.swift`
+- Эффект:
+  - скрытый dependency fallback убран из hotkey-capture сервиса,
+  - live wiring стало явным и согласованным с остальным DI-подходом.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HotkeyCaptureServiceTests -only-testing:MurmurixTests/GlobalHotkeyManagerTests` -> `** TEST SUCCEEDED **`.
