@@ -113,7 +113,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarManager.delegate = self
         menuBarManager.setup()
 
-        windowManager = WindowManager()
+        windowManager = WindowManager(historyService: historyService)
     }
 
     private var currentRecordingMode: TranscriptionMode = .local(model: "small")

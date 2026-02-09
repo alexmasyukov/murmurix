@@ -11,7 +11,7 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
     private var historyViewModel: HistoryViewModel!
     private var languageObserver: NSObjectProtocol?
 
-    convenience init(historyService: HistoryServiceProtocol = HistoryService.shared) {
+    convenience init(historyService: HistoryServiceProtocol) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
             styleMask: [.titled, .closable, .resizable, .fullSizeContentView],

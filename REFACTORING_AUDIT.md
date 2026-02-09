@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 14:36  
+Последнее обновление: 2026-02-09 15:05  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -501,3 +501,14 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/MurmurixTests -only-testing:MurmurixTests/SettingsStoreTests` -> `** TEST SUCCEEDED **`,
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GlobalHotkeyManagerTests` -> `** TEST SUCCEEDED **`.
+
+### 10.10 Явная DI-передача history service в window-layer
+
+- Убрана скрытая зависимость `HistoryWindowController` от `HistoryService.shared`:
+  - `Murmurix/Views/HistoryWindowController.swift` (обязательный `historyService` в init).
+- `WindowManager` теперь принимает `HistoryServiceProtocol` в конструкторе и переиспользует его:
+  - `Murmurix/App/WindowManager.swift`.
+- `AppDelegate` передает `historyService` в `WindowManager` как часть composition root:
+  - `Murmurix/App/AppDelegate.swift`.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/HistoryServiceTests` -> `** TEST SUCCEEDED **`.

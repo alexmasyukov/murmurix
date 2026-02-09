@@ -6,10 +6,15 @@
 import AppKit
 
 final class WindowManager {
+    private let historyService: HistoryServiceProtocol
     private var recordingController: RecordingWindowController?
     private var resultController: ResultWindowController?
     private var settingsController: SettingsWindowController?
     private var historyController: HistoryWindowController?
+
+    init(historyService: HistoryServiceProtocol) {
+        self.historyService = historyService
+    }
 
     // MARK: - Recording Window
 
@@ -54,7 +59,7 @@ final class WindowManager {
 
     func showHistoryWindow() {
         if historyController == nil {
-            historyController = HistoryWindowController()
+            historyController = HistoryWindowController(historyService: historyService)
         }
         historyController?.showWindow(nil)
     }
