@@ -33,8 +33,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.loadModelsIfNeeded()
 
         NotificationCenter.default.addObserver(
-            self, selector: #selector(handleLanguageChange),
-            name: .appLanguageDidChange, object: nil
+            self,
+            selector: #selector(handleLanguageChange),
+            name: .appLanguageDidChange,
+            object: nil
         )
     }
 
@@ -42,6 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         coordinator.unloadAllModels()
         hotkeyManager.stop()
+        NotificationCenter.default.removeObserver(self, name: .appLanguageDidChange, object: nil)
     }
 
     // MARK: - Setup
