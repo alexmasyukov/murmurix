@@ -73,6 +73,7 @@ struct MockGeminiTranscriptionServiceTests {
         let service = MockGeminiTranscriptionService()
         struct TestError: Error {}
         service.transcribeResult = .failure(TestError())
+        var didThrow = false
 
         do {
             _ = try await service.transcribe(
@@ -81,10 +82,12 @@ struct MockGeminiTranscriptionServiceTests {
                 model: "gemini-2.0-flash",
                 apiKey: "test-key"
             )
-            #expect(Bool(false), "Should have thrown")
         } catch {
-            #expect(service.transcribeCallCount == 1)
+            didThrow = true
         }
+
+        #expect(didThrow)
+        #expect(service.transcribeCallCount == 1)
     }
 
     @Test func validateAPIKeySuccess() async throws {

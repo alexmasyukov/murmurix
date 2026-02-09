@@ -43,14 +43,15 @@ struct MockURLSessionTests {
         mock.error = testError
 
         let request = URLRequest(url: URL(string: "https://example.com")!)
+        var receivedErrorCode: Int?
 
         do {
             _ = try await mock.data(for: request)
-            #expect(Bool(false), "Should have thrown")
         } catch let error as NSError {
-            #expect(error.code == 123)
+            receivedErrorCode = error.code
         }
 
+        #expect(receivedErrorCode == 123)
         #expect(mock.requestCallCount == 1)
     }
 
@@ -149,6 +150,7 @@ struct OpenAITranscriptionServiceDITests {
         let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
         try? AudioTestUtility.createSilentWavFile(at: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
+        var errorMessage: String?
 
         do {
             _ = try await service.transcribe(
@@ -157,9 +159,10 @@ struct OpenAITranscriptionServiceDITests {
                 model: "gpt-4o-transcribe",
                 apiKey: "sk-invalid123456789"
             )
-            #expect(Bool(false), "Should have thrown")
         } catch {
-            #expect(error.localizedDescription.contains("Invalid") == true)
+            errorMessage = error.localizedDescription
         }
+
+        #expect(errorMessage?.contains("Invalid") == true)
     }
 }
