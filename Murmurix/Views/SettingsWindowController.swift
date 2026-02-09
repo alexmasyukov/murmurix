@@ -19,6 +19,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let modelStatus = ModelStatusModel()
     private let modelStatusUpdateDelay: TimeInterval = 1
+    private var languageObserver: NSObjectProtocol?
 
     convenience init(
         loadedModels: Set<String>,
@@ -46,7 +47,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.modelStatus.loadedModels = loadedModels
         window.delegate = self
 
-        NotificationCenter.default.addObserver(
+        languageObserver = NotificationCenter.default.addObserver(
             forName: .appLanguageDidChange, object: nil, queue: .main
         ) { [weak window] _ in
             window?.title = L10n.settingsTitle
@@ -91,5 +92,11 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         onWindowClose?()
+    }
+
+    deinit {
+        if let languageObserver {
+            NotificationCenter.default.removeObserver(languageObserver)
+        }
     }
 }

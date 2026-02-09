@@ -9,6 +9,7 @@ import SwiftUI
 class HistoryWindowController: NSWindowController, NSWindowDelegate {
 
     private var historyViewModel = HistoryViewModel()
+    private var languageObserver: NSObjectProtocol?
 
     convenience init() {
         let window = NSWindow(
@@ -26,7 +27,7 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
         self.init(window: window)
         window.delegate = self
 
-        NotificationCenter.default.addObserver(
+        languageObserver = NotificationCenter.default.addObserver(
             forName: .appLanguageDidChange, object: nil, queue: .main
         ) { [weak window] _ in
             window?.title = L10n.historyTitle
@@ -41,5 +42,11 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
         window?.center()
         super.showWindow(sender)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    deinit {
+        if let languageObserver {
+            NotificationCenter.default.removeObserver(languageObserver)
+        }
     }
 }
