@@ -69,13 +69,10 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
     // MARK: - OpenAI Transcription
 
     private func transcribeViaOpenAI(audioURL: URL, language: String) async throws -> String {
-        let apiKey = settings.openaiApiKey
-        guard !apiKey.isEmpty else {
-            throw MurmurixError.transcription(.failed("OpenAI API key not set. Please add it in Settings."))
-        }
+        let apiKey = try requireAPIKey(settings.openaiApiKey, providerName: "OpenAI")
 
         let model = settings.openaiTranscriptionModel
-        Logger.Transcription.info("OpenAI mode, model=\(model), audio=\(audioURL.path)")
+        logCloudMode("OpenAI", model: model, audioURL: audioURL)
 
         return try await openAIService.transcribe(
             audioURL: audioURL,
@@ -88,13 +85,10 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
     // MARK: - Gemini Transcription
 
     private func transcribeViaGemini(audioURL: URL, language: String) async throws -> String {
-        let apiKey = settings.geminiApiKey
-        guard !apiKey.isEmpty else {
-            throw MurmurixError.transcription(.failed("Gemini API key not set. Please add it in Settings."))
-        }
+        let apiKey = try requireAPIKey(settings.geminiApiKey, providerName: "Gemini")
 
         let model = settings.geminiModel
-        Logger.Transcription.info("Gemini mode, model=\(model), audio=\(audioURL.path)")
+        logCloudMode("Gemini", model: model, audioURL: audioURL)
 
         return try await geminiService.transcribe(
             audioURL: audioURL,
@@ -102,5 +96,16 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
             model: model,
             apiKey: apiKey
         )
+    }
+
+    private func requireAPIKey(_ apiKey: String, providerName: String) throws -> String {
+        guard !apiKey.isEmpty else {
+            throw MurmurixError.transcription(.failed("\(providerName) API key not set. Please add it in Settings."))
+        }
+        return apiKey
+    }
+
+    private func logCloudMode(_ providerName: String, model: String, audioURL: URL) {
+        Logger.Transcription.info("\(providerName) mode, model=\(model), audio=\(audioURL.path)")
     }
 }
