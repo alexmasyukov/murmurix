@@ -29,6 +29,10 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
         whisperKitService.isModelLoaded(name: name)
     }
 
+    func loadedModelNames() -> [String] {
+        whisperKitService.loadedModels
+    }
+
     func loadModel(name: String) async throws {
         try await whisperKitService.loadModel(name: name)
     }

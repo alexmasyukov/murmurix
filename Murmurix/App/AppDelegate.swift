@@ -209,7 +209,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showSettingsWindow() {
         windowManager.showSettingsWindow(
             settings: settings,
-            loadedModels: Set(WhisperKitService.shared.loadedModels),
+            loadedModels: Set(transcriptionService.loadedModelNames()),
             onModelToggle: { [weak self] model, enabled in
                 self?.handleModelToggle(model, enabled: enabled)
             },

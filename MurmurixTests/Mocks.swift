@@ -58,6 +58,10 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
         loadedModels.contains(name)
     }
 
+    func loadedModelNames() -> [String] {
+        Array(loadedModels)
+    }
+
     func loadModel(name: String) async throws {
         loadModelCallCount += 1
         loadedModels.insert(name)

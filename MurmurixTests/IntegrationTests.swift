@@ -183,4 +183,22 @@ struct TranscriptionServiceIntegrationTests {
         await service.unloadModel(name: "base")
         #expect(service.isModelLoaded(name: "base") == false)
     }
+
+    @Test func loadedModelNamesReflectWhisperKitState() async throws {
+        let mockWhisperKit = MockWhisperKitService()
+        let mockSettings = MockSettings()
+
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings
+        )
+
+        #expect(service.loadedModelNames().isEmpty)
+
+        try await service.loadModel(name: "base")
+        try await service.loadModel(name: "small")
+
+        let loaded = Set(service.loadedModelNames())
+        #expect(loaded == Set(["base", "small"]))
+    }
 }

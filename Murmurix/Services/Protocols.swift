@@ -20,6 +20,7 @@ protocol AudioRecorderProtocol: AnyObject {
 
 protocol TranscriptionServiceProtocol: Sendable {
     func isModelLoaded(name: String) -> Bool
+    func loadedModelNames() -> [String]
     func loadModel(name: String) async throws
     func unloadModel(name: String) async
     func unloadAllModels() async

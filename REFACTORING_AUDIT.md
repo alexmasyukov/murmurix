@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 06:36  
+Последнее обновление: 2026-02-09 14:30  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -454,3 +454,18 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 6. `9468a2d` `refactor: split transcription path resolution and completion handlers`
 7. `abd4b5d` `refactor: centralize logger level dispatch helpers`
 8. `27bc48f` `refactor: simplify model base path derivation`
+
+### 10.7 Singleton surface reduction (дополнение)
+
+- Убрана прямая зависимость `AppDelegate` от `WhisperKitService.shared`:
+  - `Murmurix/App/AppDelegate.swift`
+  - источник loaded models теперь берется через `TranscriptionServiceProtocol`.
+- Расширен контракт транскрипционного сервиса:
+  - `Murmurix/Services/Protocols.swift` (`loadedModelNames()`),
+  - `Murmurix/Services/TranscriptionService.swift` (делегирование в `WhisperKitServiceProtocol`).
+- Обновлены test doubles и интеграционный контрактный тест:
+  - `MurmurixTests/Mocks.swift`,
+  - `MurmurixTests/IntegrationTests.swift` (`loadedModelNamesReflectWhisperKitState`).
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`,
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests/loadedModelNamesReflectWhisperKitState` -> `** TEST SUCCEEDED **`.
