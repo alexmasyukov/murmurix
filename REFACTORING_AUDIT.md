@@ -1,6 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
+Последнее обновление: 2026-02-09 06:36  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -48,10 +49,10 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 ### 3.2 Ключевые метрики техдолга
 
-- `try?` в прод-коде: `27`
-- `as!` в прод-коде: `2` (`Murmurix/Services/TextPaster.swift:30`, `Murmurix/Services/TextPaster.swift:55`)
-- `first!` в прод-коде: `2` (`Murmurix/Services/HistoryService.swift:24`, `Murmurix/App/AppConstants.swift:107`)
-- `Task.detached`: `1` (`Murmurix/Services/RecordingCoordinator.swift:158`)
+- `try?` в прод-коде: `0`
+- `as!` в прод-коде: `0`
+- `first!` в прод-коде: `0`
+- `Task.detached`: `0`
 - Singleton-паттерн `static let shared`: `5`
 
 ### 3.3 Крупнейшие файлы (hotspots по размеру)
@@ -360,7 +361,49 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 ## 9. Краткий action list на следующий коммит
 
-1. Перевести `RecordingCoordinator` на `@MainActor` + убрать `Task.detached`.
-2. Добавить helper для безопасного удаления временных файлов с логированием причин.
-3. Вынести общий hotkey capture код из `HotkeyRecorderView` и `WhisperModelCardView`.
-4. Добавить интеграционный тест на `cancel during transcribing` с проверкой cleanup.
+1. Заменить `#expect(true)`-smoke проверки в `RefactoringTests` на более предметные assertions.
+2. Добавить targeted тесты для release/debug выбора `ModelPaths.repoDir` в отдельных test runs.
+3. Продолжить уменьшение поверхностей singleton-доступа в `AppDelegate` и View-layer.
+4. Подготовить PR-пачку по конкурентности (`RecordingCoordinator` reducer/event-model).
+
+## 10. Прогресс этой сессии (после первичного аудита)
+
+### 10.1 Рефакторинг и тесты
+
+- Изолирована и упрощена логика выбора директории моделей:
+  - `Murmurix/App/AppConstants.swift`
+  - поведение сохранено: `custom env` > `temp env/debug` > `release documents`.
+- Улучшена диагностика сериализации settings:
+  - `Murmurix/Models/Settings.swift`
+  - `Murmurix/Services/Logger.swift` (добавлен `Logger.Settings`).
+- Убран silent-failure в проверке содержимого директории модели:
+  - `Murmurix/Models/WhisperModel.swift` (добавлен debug-лог).
+- Уточнены операции SQLite:
+  - `Murmurix/Services/Repository.swift` (`_ = step(...)` для явного намерения).
+- Усилены тесты и устранены test warnings:
+  - `MurmurixTests/RefactoringTests.swift` (добавлен `settingsLoggerDoesNotCrash`, исправлены `step`-вызовы).
+
+### 10.2 Проверка стабильности
+
+- Полный прогон:  
+  `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test`  
+  результат: `** TEST SUCCEEDED **`.
+- Targeted прогоны (все успешны):
+  - `SettingsTests`
+  - `GeneralSettingsViewModelModelTests`
+  - `RefactoringAppPathsAndConstantsTests`
+  - `HistoryServiceTests`
+  - `SQLiteTranscriptionRepositoryTests`
+  - `SQLiteDatabaseTests`
+  - `LoggerTests`
+
+### 10.3 Последние коммиты ветки
+
+1. `02924af` `test: make sqlite step results explicit in refactoring tests`
+2. `41c1182` `test: cover settings logger category`
+3. `3d38cc0` `refactor: simplify model repository path selection logic`
+4. `923fc06` `refactor: make sqlite delete step result explicit`
+5. `526a833` `refactor: add settings logging for serialization failures`
+6. `fe6c09d` `refactor: log whisper model directory read failures`
+7. `3a41282` `refactor: deduplicate settings serialization helpers`
+8. `0be8d56` `refactor: log audio compressor file ops failures`
