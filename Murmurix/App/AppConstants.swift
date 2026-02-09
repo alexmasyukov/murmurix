@@ -106,6 +106,7 @@ enum ModelPaths {
     static let customRepoDirEnv = "MURMURIX_MODEL_REPO_DIR"
     static let useTempRepoEnv = "MURMURIX_USE_TEMP_MODEL_REPO"
     static let debugRepoRoot = "murmurix-dev-models"
+    private static let repoSubpathDepth = 3
 
     private static var tempRepoDir: URL {
         FileManager.default.temporaryDirectory
@@ -127,10 +128,7 @@ enum ModelPaths {
 
     static var downloadBaseDir: URL {
         // HubApi expects a base path and appends "models/argmaxinc/whisperkit-coreml".
-        repoDir
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
+        basePath(forRepoDir: repoDir)
     }
 
     static func modelDir(for name: String) -> URL {
@@ -161,5 +159,13 @@ enum ModelPaths {
         let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
         return documentsDir.appendingPathComponent(repoSubpath)
+    }
+
+    private static func basePath(forRepoDir repoDir: URL) -> URL {
+        var base = repoDir
+        for _ in 0..<repoSubpathDepth {
+            base.deleteLastPathComponent()
+        }
+        return base
     }
 }
