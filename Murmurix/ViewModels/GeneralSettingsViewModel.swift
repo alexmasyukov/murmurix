@@ -133,9 +133,8 @@ final class GeneralSettingsViewModel: ObservableObject {
         if whisperKitService.isModelLoaded(name: modelName) {
             await whisperKitService.unloadModel(name: modelName)
         }
-        let fm = FileManager.default
         let modelDir = modelDirectory(modelName)
-        try? fm.removeItem(at: modelDir)
+        removeItemIfExists(modelDir, context: "delete model \(modelName)")
         loadInstalledModels()
     }
 
@@ -143,10 +142,16 @@ final class GeneralSettingsViewModel: ObservableObject {
         await whisperKitService.unloadAllModels()
         let fm = FileManager.default
         let repoDir = modelsRepositoryDirectory()
-        if let contents = try? fm.contentsOfDirectory(atPath: repoDir.path) {
+        do {
+            let contents = try fm.contentsOfDirectory(atPath: repoDir.path)
             for item in contents where item.hasPrefix("openai_whisper-") {
-                try? fm.removeItem(at: repoDir.appendingPathComponent(item))
+                removeItemIfExists(
+                    repoDir.appendingPathComponent(item),
+                    context: "delete all models (\(item))"
+                )
             }
+        } catch {
+            Logger.Model.error("Failed to list model repository \(repoDir.path): \(error.localizedDescription)")
         }
         loadInstalledModels()
     }
@@ -171,7 +176,7 @@ final class GeneralSettingsViewModel: ObservableObject {
 
             let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
             try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
-            defer { try? FileManager.default.removeItem(at: tempURL) }
+            defer { removeTransientAudioIfNeeded(tempURL) }
 
             _ = try await service.transcribe(
                 audioURL: tempURL,
@@ -233,5 +238,25 @@ final class GeneralSettingsViewModel: ObservableObject {
             }
         }
         onLocalHotkeysChanged?(hotkeys)
+    }
+
+    private func removeItemIfExists(_ url: URL, context: String) {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: url.path) else { return }
+        do {
+            try fileManager.removeItem(at: url)
+        } catch {
+            Logger.Model.error("Failed to remove item (\(context)): \(url.path), error: \(error.localizedDescription)")
+        }
+    }
+
+    private func removeTransientAudioIfNeeded(_ url: URL) {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: url.path) else { return }
+        do {
+            try fileManager.removeItem(at: url)
+        } catch {
+            Logger.Transcription.error("Failed to remove temporary test audio: \(url.path), error: \(error.localizedDescription)")
+        }
     }
 }
