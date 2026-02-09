@@ -335,7 +335,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 ## Фаза 3 (cloud/domain boundaries)
 
 - [x] Ввести порт `CloudTranscriptionClient` и адаптеры OpenAI/Gemini.
-- [ ] Нормализовать транспортные ошибки в доменные.
+- [x] Нормализовать транспортные ошибки в доменные.
 - [ ] Вынести language/prompt policy из сервисов API.
 
 ## Фаза 4 (data layer hardening)

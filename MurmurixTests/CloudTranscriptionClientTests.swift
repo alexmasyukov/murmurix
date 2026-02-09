@@ -63,7 +63,7 @@ struct CloudTranscriptionClientTests {
             _ = try await client.transcribe(request: request)
             #expect(Bool(false), "Expected provider mismatch error")
         } catch {
-            #expect(error.localizedDescription.contains("Mismatched cloud provider"))
+            #expect(error.localizedDescription.contains("provider mismatch"))
         }
     }
 
@@ -81,7 +81,63 @@ struct CloudTranscriptionClientTests {
             _ = try await client.transcribe(request: request)
             #expect(Bool(false), "Expected provider mismatch error")
         } catch {
-            #expect(error.localizedDescription.contains("Mismatched cloud provider"))
+            #expect(error.localizedDescription.contains("provider mismatch"))
+        }
+    }
+
+    @Test func openAIClientNormalizesRateLimitError() async {
+        let service = MockOpenAITranscriptionService()
+        service.transcribeResult = .failure(MurmurixError.transcription(.failed("Rate limit exceeded")))
+        let client = OpenAICloudTranscriptionClient(service: service)
+
+        let request = CloudTranscriptionRequest(
+            provider: .openAI,
+            audioURL: URL(fileURLWithPath: "/tmp/openai.wav"),
+            language: "en",
+            model: "gpt-4o-mini-transcribe",
+            apiKey: "sk-test"
+        )
+
+        do {
+            _ = try await client.transcribe(request: request)
+            #expect(Bool(false), "Expected normalized rate-limit error")
+        } catch let error as MurmurixError {
+            switch error {
+            case .transcription(.cloud(.rateLimited(let provider))):
+                #expect(provider == "OpenAI")
+            default:
+                #expect(Bool(false), "Unexpected error: \(error.localizedDescription)")
+            }
+        } catch {
+            #expect(Bool(false), "Unexpected error type: \(error.localizedDescription)")
+        }
+    }
+
+    @Test func geminiClientNormalizesNetworkError() async {
+        let service = MockGeminiTranscriptionService()
+        service.transcribeResult = .failure(URLError(.notConnectedToInternet))
+        let client = GeminiCloudTranscriptionClient(service: service)
+
+        let request = CloudTranscriptionRequest(
+            provider: .gemini,
+            audioURL: URL(fileURLWithPath: "/tmp/gemini.wav"),
+            language: "en",
+            model: "gemini-2.0-flash",
+            apiKey: "gm-key"
+        )
+
+        do {
+            _ = try await client.transcribe(request: request)
+            #expect(Bool(false), "Expected normalized network error")
+        } catch let error as MurmurixError {
+            switch error {
+            case .transcription(.cloud(.network(let provider, _))):
+                #expect(provider == "Gemini")
+            default:
+                #expect(Bool(false), "Unexpected error: \(error.localizedDescription)")
+            }
+        } catch {
+            #expect(Bool(false), "Unexpected error type: \(error.localizedDescription)")
         }
     }
 }
