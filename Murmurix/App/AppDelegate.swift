@@ -47,7 +47,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let makeTranscriptionService: (SettingsStorageProtocol) -> any TranscriptionServiceProtocol
     private let makeGeneralSettingsViewModel: @MainActor (SettingsStorageProtocol) -> GeneralSettingsViewModel
 
-    init(dependencies: AppDependencies = .live()) {
+    init(dependencies: AppDependencies) {
         self.historyService = dependencies.historyService
         self.settings = dependencies.settings
         self.makeAudioRecorder = dependencies.makeAudioRecorder

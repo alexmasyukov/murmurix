@@ -814,3 +814,18 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - live wiring стало явным и согласованным с остальным DI-подходом.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HotkeyCaptureServiceTests -only-testing:MurmurixTests/GlobalHotkeyManagerTests` -> `** TEST SUCCEEDED **`.
+
+### 10.32 AppDelegate init: сделать live-зависимости явными в main composition root
+
+- В `AppDelegate` удален default `dependencies: .live()` из конструктора:
+  - `init(dependencies: AppDependencies)` теперь требует явную передачу зависимостей.
+- В `main.swift` явная инициализация делегата:
+  - `AppDelegate(dependencies: .live())`.
+- Изменены файлы:
+  - `Murmurix/App/AppDelegate.swift`
+  - `Murmurix/main.swift`
+- Эффект:
+  - composition root стал полностью явным,
+  - убран еще один скрытый live-fallback в app entrypoint.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
