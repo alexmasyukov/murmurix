@@ -167,6 +167,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         windowManager.dismissRecordingWindow()
         shouldPasteDirectly = false
     }
+
+    @MainActor
+    private func handleCompletedTranscription(text: String, duration: TimeInterval, recordId: UUID) {
+        let pasteDirectly = shouldPasteDirectly
+        dismissRecordingUI()
+        lastRecordId = recordId
+
+        if pasteDirectly {
+            TextPaster.paste(text)
+        } else {
+            showResultWindow(text: text, duration: duration) { [weak self] in
+                self?.deleteLastHistoryRecordIfNeeded()
+            }
+        }
+    }
+
+    @MainActor
+    private func showResultWindow(text: String, duration: TimeInterval, onDelete: @escaping () -> Void = {}) {
+        windowManager.showResultWindow(
+            text: text,
+            duration: duration,
+            onDelete: onDelete
+        )
+    }
+
+    @MainActor
+    private func deleteLastHistoryRecordIfNeeded() {
+        guard let recordId = lastRecordId else { return }
+        historyService.delete(id: recordId)
+        lastRecordId = nil
+    }
 }
 
 // MARK: - MenuBarManagerDelegate
@@ -248,31 +279,14 @@ extension AppDelegate: RecordingCoordinatorDelegate {
     }
 
     func transcriptionDidComplete(text: String, duration: TimeInterval, recordId: UUID) {
-        let pasteDirectly = shouldPasteDirectly
-        dismissRecordingUI()
-        lastRecordId = recordId
-
-        if pasteDirectly {
-            TextPaster.paste(text)
-        } else {
-            windowManager.showResultWindow(
-                text: text,
-                duration: duration,
-                onDelete: { [weak self] in
-                    guard let self = self, let recordId = self.lastRecordId else { return }
-                    self.historyService.delete(id: recordId)
-                    self.lastRecordId = nil
-                }
-            )
-        }
+        handleCompletedTranscription(text: text, duration: duration, recordId: recordId)
     }
 
     func transcriptionDidFail(error: Error) {
         dismissRecordingUI()
-        windowManager.showResultWindow(
+        showResultWindow(
             text: L10n.error(error.localizedDescription),
-            duration: 0,
-            onDelete: {}
+            duration: 0
         )
     }
 
