@@ -67,8 +67,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         }
 
         if let pipe = pipe {
-            await pipe.unloadModels()
-            Logger.Model.info("WhisperKit model unloaded: \(name)")
+            await unloadPipeline(pipe, name: name)
         }
     }
 
@@ -80,8 +79,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         }
 
         for (name, pipe) in allPipelines {
-            await pipe.unloadModels()
-            Logger.Model.info("WhisperKit model unloaded: \(name)")
+            await unloadPipeline(pipe, name: name)
         }
     }
 
@@ -124,5 +122,10 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         )
 
         Logger.Model.info("WhisperKit model downloaded: \(name)")
+    }
+
+    private func unloadPipeline(_ pipeline: WhisperKit, name: String) async {
+        await pipeline.unloadModels()
+        Logger.Model.info("WhisperKit model unloaded: \(name)")
     }
 }
