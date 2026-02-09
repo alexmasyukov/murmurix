@@ -54,11 +54,9 @@ final class MenuBarManager {
 
         // Insert new local model items at the beginning
         var insertIndex = 0
-        for model in WhisperModel.allCases {
-            guard let hotkey = hotkeys[model.rawValue] else { continue }
-            let item = makeLocalModelMenuItem(modelName: model.rawValue, hotkey: hotkey)
+        for (modelName, item) in makeOrderedLocalModelMenuItems(hotkeys: hotkeys) {
             menu.insertItem(item, at: insertIndex)
-            localModelMenuItems[model.rawValue] = item
+            localModelMenuItems[modelName] = item
             insertIndex += 1
         }
     }
@@ -78,12 +76,9 @@ final class MenuBarManager {
         localModelMenuItems.removeAll()
 
         // Add local model items from settings
-        let modelSettings = settings.loadWhisperModelSettings()
-        for model in WhisperModel.allCases {
-            guard let hotkey = modelSettings[model.rawValue]?.hotkey else { continue }
-            let item = makeLocalModelMenuItem(modelName: model.rawValue, hotkey: hotkey)
+        for (modelName, item) in makeOrderedLocalModelMenuItems(hotkeys: localModelHotkeysFromSettings()) {
             menu.addItem(item)
-            localModelMenuItems[model.rawValue] = item
+            localModelMenuItems[modelName] = item
         }
 
         let cloudMenuItem = makeCloudMenuItem(
@@ -104,31 +99,12 @@ final class MenuBarManager {
 
         menu.addItem(NSMenuItem.separator())
 
-        let historyItem = NSMenuItem(
-            title: L10n.history,
-            action: #selector(handleOpenHistory),
-            keyEquivalent: "h"
-        )
-        historyItem.target = self
-        menu.addItem(historyItem)
-
-        let settingsItem = NSMenuItem(
-            title: L10n.settings,
-            action: #selector(handleOpenSettings),
-            keyEquivalent: ","
-        )
-        settingsItem.target = self
-        menu.addItem(settingsItem)
+        menu.addItem(makeMenuItem(title: L10n.history, action: #selector(handleOpenHistory), keyEquivalent: "h"))
+        menu.addItem(makeMenuItem(title: L10n.settings, action: #selector(handleOpenSettings), keyEquivalent: ","))
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(
-            title: L10n.quit,
-            action: #selector(handleQuit),
-            keyEquivalent: "q"
-        )
-        quitItem.target = self
-        menu.addItem(quitItem)
+        menu.addItem(makeMenuItem(title: L10n.quit, action: #selector(handleQuit), keyEquivalent: "q"))
 
         statusItem.menu = menu
     }
@@ -168,6 +144,23 @@ final class MenuBarManager {
         item.target = self
         applyHotkeyIfPresent(to: item, hotkey: hotkey)
         return item
+    }
+
+    private func makeMenuItem(title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.target = self
+        return item
+    }
+
+    private func localModelHotkeysFromSettings() -> [String: Hotkey] {
+        settings.loadWhisperModelSettings().compactMapValues(\.hotkey)
+    }
+
+    private func makeOrderedLocalModelMenuItems(hotkeys: [String: Hotkey]) -> [(String, NSMenuItem)] {
+        WhisperModel.allCases.compactMap { model in
+            guard let hotkey = hotkeys[model.rawValue] else { return nil }
+            return (model.rawValue, makeLocalModelMenuItem(modelName: model.rawValue, hotkey: hotkey))
+        }
     }
 
     // MARK: - Actions
