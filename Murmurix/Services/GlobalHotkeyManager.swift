@@ -31,6 +31,13 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private var cancelHotkey: Hotkey?
     private let settings: SettingsStorageProtocol
 
+    private enum MatchedHotkeyAction {
+        case local(modelName: String)
+        case cloud
+        case gemini
+        case cancel
+    }
+
     init(settings: SettingsStorageProtocol = Settings.shared) {
         self.settings = settings
         toggleCloudHotkey = settings.loadToggleCloudHotkey()
@@ -109,7 +116,7 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
 
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Skip interception while user is recording a new hotkey or settings window is active
-        if GlobalHotkeyManager.isRecordingHotkey || GlobalHotkeyManager.isSettingsWindowActive {
+        if Self.isInterceptionDisabled {
             return Unmanaged.passUnretained(event)
         }
 
@@ -120,26 +127,8 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
         let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
         let carbonModifiers = Self.carbonModifiers(from: event.flags)
 
-        if let modelName = localModelHotkeys.first(where: {
-            Self.matches(hotkey: $0.value, keyCode: keyCode, modifiers: carbonModifiers)
-        })?.key {
-            onToggleLocalRecording?(modelName)
-            return nil
-        }
-
-        if Self.matches(hotkey: toggleCloudHotkey, keyCode: keyCode, modifiers: carbonModifiers) {
-            onToggleCloudRecording?()
-            return nil
-        }
-
-        if Self.matches(hotkey: toggleGeminiHotkey, keyCode: keyCode, modifiers: carbonModifiers) {
-            onToggleGeminiRecording?()
-            return nil
-        }
-
-        // Check cancel hotkey only when recording
-        if isRecording, Self.matches(hotkey: cancelHotkey, keyCode: keyCode, modifiers: carbonModifiers) {
-            onCancelRecording?()
+        if let matchedAction = matchedHotkeyAction(for: keyCode, modifiers: carbonModifiers) {
+            dispatchMatchedHotkey(matchedAction)
             return nil
         }
 
@@ -154,6 +143,45 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private static func matches(hotkey: Hotkey?, keyCode: UInt32, modifiers: UInt32) -> Bool {
         guard let hotkey else { return false }
         return hotkey.keyCode == keyCode && hotkey.modifiers == modifiers
+    }
+
+    private static var isInterceptionDisabled: Bool {
+        isRecordingHotkey || isSettingsWindowActive
+    }
+
+    private func matchedHotkeyAction(for keyCode: UInt32, modifiers: UInt32) -> MatchedHotkeyAction? {
+        if let modelName = matchingLocalModelName(for: keyCode, modifiers: modifiers) {
+            return .local(modelName: modelName)
+        }
+        if Self.matches(hotkey: toggleCloudHotkey, keyCode: keyCode, modifiers: modifiers) {
+            return .cloud
+        }
+        if Self.matches(hotkey: toggleGeminiHotkey, keyCode: keyCode, modifiers: modifiers) {
+            return .gemini
+        }
+        if isRecording, Self.matches(hotkey: cancelHotkey, keyCode: keyCode, modifiers: modifiers) {
+            return .cancel
+        }
+        return nil
+    }
+
+    private func matchingLocalModelName(for keyCode: UInt32, modifiers: UInt32) -> String? {
+        localModelHotkeys.first(where: {
+            Self.matches(hotkey: $0.value, keyCode: keyCode, modifiers: modifiers)
+        })?.key
+    }
+
+    private func dispatchMatchedHotkey(_ action: MatchedHotkeyAction) {
+        switch action {
+        case .local(let modelName):
+            onToggleLocalRecording?(modelName)
+        case .cloud:
+            onToggleCloudRecording?()
+        case .gemini:
+            onToggleGeminiRecording?()
+        case .cancel:
+            onCancelRecording?()
+        }
     }
 
     private static func carbonModifiers(from flags: CGEventFlags) -> UInt32 {
