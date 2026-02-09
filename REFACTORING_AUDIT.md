@@ -782,3 +782,17 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - контракт зависимостей VM полностью явный как в prod, так и в tests.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests -only-testing:MurmurixTests/Phase3GeneralSettingsViewModelTests` -> `** TEST SUCCEEDED **`.
+
+### 10.30 HistoryService: убрать optional default-repository из init
+
+- В `HistoryService` убран optional-параметр конструктора:
+  - `init(repository: SQLiteTranscriptionRepository? = nil)` -> `init(repository: SQLiteTranscriptionRepository)`.
+- `shared` сохранен через явную live-конфигурацию:
+  - `HistoryService(repository: HistoryService.makeDefaultRepository())`.
+- Изменен файл:
+  - `Murmurix/Services/HistoryService.swift`
+- Эффект:
+  - убран скрытый fallback на дефолтный репозиторий из конструктора,
+  - контракт DI для history-сервиса стал полностью явным.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryServiceTests -only-testing:MurmurixTests/SQLiteTranscriptionRepositoryTests` -> `** TEST SUCCEEDED **`.
