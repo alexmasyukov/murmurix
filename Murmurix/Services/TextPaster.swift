@@ -8,6 +8,8 @@ import AppKit
 import Carbon
 
 final class TextPaster {
+    private static let pasteDelay: TimeInterval = 0.05
+    private static let clipboardRestoreDelay: TimeInterval = 0.5
 
     /// Check if the current focused element is a text input field
     static func isTextFieldFocused() -> Bool {
@@ -76,19 +78,17 @@ final class TextPaster {
         let previousContents = pasteboard.string(forType: .string)
 
         // Put new text in clipboard
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
+        setPasteboardString(text, on: pasteboard)
 
         // Small delay to ensure clipboard is ready
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+        scheduleMain(after: pasteDelay) {
             // Simulate Cmd+V
             simulatePaste()
 
             // Optionally restore previous clipboard after a delay
             if let previous = previousContents {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    pasteboard.clearContents()
-                    pasteboard.setString(previous, forType: .string)
+                scheduleMain(after: clipboardRestoreDelay) {
+                    setPasteboardString(previous, on: pasteboard)
                 }
             }
         }
@@ -111,5 +111,14 @@ final class TextPaster {
         // Post events
         keyDown?.post(tap: .cgAnnotatedSessionEventTap)
         keyUp?.post(tap: .cgAnnotatedSessionEventTap)
+    }
+
+    private static func setPasteboardString(_ text: String, on pasteboard: NSPasteboard) {
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+
+    private static func scheduleMain(after delay: TimeInterval, execute: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: execute)
     }
 }
