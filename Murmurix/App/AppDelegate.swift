@@ -104,26 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     private func setupHotkeys() {
         hotkeyManager = GlobalHotkeyManager()
-        hotkeyManager.onToggleLocalRecording = { [weak self] modelName in
-            self?.runOnMain { delegate in
-                delegate.toggleRecording(mode: .local(model: modelName))
-            }
-        }
-        hotkeyManager.onToggleCloudRecording = { [weak self] in
-            self?.runOnMain { delegate in
-                delegate.toggleRecording(mode: .openai)
-            }
-        }
-        hotkeyManager.onToggleGeminiRecording = { [weak self] in
-            self?.runOnMain { delegate in
-                delegate.toggleRecording(mode: .gemini)
-            }
-        }
-        hotkeyManager.onCancelRecording = { [weak self] in
-            self?.runOnMain { delegate in
-                delegate.cancelRecording()
-            }
-        }
+        bindHotkeyHandlers()
         hotkeyManager.start()
     }
 
@@ -131,6 +112,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor [weak self] in
             guard let self else { return }
             action(self)
+        }
+    }
+
+    private func bindHotkeyHandlers() {
+        hotkeyManager.onToggleLocalRecording = { [weak self] modelName in
+            self?.toggleRecordingOnMain(.local(model: modelName))
+        }
+        hotkeyManager.onToggleCloudRecording = { [weak self] in
+            self?.toggleRecordingOnMain(.openai)
+        }
+        hotkeyManager.onToggleGeminiRecording = { [weak self] in
+            self?.toggleRecordingOnMain(.gemini)
+        }
+        hotkeyManager.onCancelRecording = { [weak self] in
+            self?.runOnMain { delegate in
+                delegate.cancelRecording()
+            }
+        }
+    }
+
+    private func toggleRecordingOnMain(_ mode: TranscriptionMode) {
+        runOnMain { delegate in
+            delegate.toggleRecording(mode: mode)
         }
     }
 
