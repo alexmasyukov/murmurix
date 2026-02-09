@@ -318,81 +318,84 @@ struct AppConstantsTests {
 @MainActor
 struct WindowPositionerTests {
 
-    @Test func positionTopCenterDoesNotCrash() {
-        let window = NSWindow(
+    private func makeWindow() -> NSWindow {
+        NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-
-        WindowPositioner.positionTopCenter(window)
-        #expect(window.frame.width == 200)
-        #expect(window.frame.height == 100)
     }
 
-    @Test func positionTopCenterWithOffsetDoesNotCrash() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-
-        WindowPositioner.positionTopCenter(window, topOffset: 20)
-        #expect(window.frame.width == 200)
-        #expect(window.frame.height == 100)
-    }
-
-    @Test func centerDoesNotCrash() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-
-        WindowPositioner.center(window)
-        #expect(window.frame.width == 200)
-        #expect(window.frame.height == 100)
-    }
-
-    @Test func centerAndActivateDoesNotCrash() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-
-        WindowPositioner.centerAndActivate(window)
-        #expect(window.frame.width == 200)
-        #expect(window.frame.height == 100)
-    }
-
-    @Test func positionTopCenterPositionsWindowAtTop() {
-        guard NSScreen.main != nil else {
-            // Skip if no screen available (CI environment)
+    @Test func positionTopCenterPlacesWindowAtExpectedCoordinates() {
+        guard let screen = NSScreen.main else {
             return
         }
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-
+        let window = makeWindow()
         WindowPositioner.positionTopCenter(window)
 
-        // Window should be positioned near the top of the screen
+        let screenFrame = screen.visibleFrame
+        let expectedX = screenFrame.midX - window.frame.width / 2
+        let expectedY = screenFrame.maxY - window.frame.height - 10
+
+        #expect(abs(window.frame.origin.x - expectedX) < 1.0)
+        #expect(abs(window.frame.origin.y - expectedY) < 1.0)
+    }
+
+    @Test func positionTopCenterRespectsCustomOffset() {
+        guard let screen = NSScreen.main else {
+            return
+        }
+
+        let window = makeWindow()
+        WindowPositioner.positionTopCenter(window, topOffset: 20)
+
+        let expectedY = screen.visibleFrame.maxY - window.frame.height - 20
+        #expect(abs(window.frame.origin.y - expectedY) < 1.0)
+    }
+
+    @Test func centerPlacesWindowNearScreenCenter() {
+        guard NSScreen.main != nil else {
+            return
+        }
+
+        let window = makeWindow()
+        WindowPositioner.center(window)
+        #expect(NSScreen.screens.contains { $0.visibleFrame.intersects(window.frame) })
+    }
+
+    @Test func centerAndActivateMakesWindowVisibleAndCentered() {
+        guard NSScreen.main != nil else {
+            return
+        }
+
+        let window = makeWindow()
+        WindowPositioner.centerAndActivate(window)
+        #expect(NSScreen.screens.contains { $0.visibleFrame.intersects(window.frame) })
+    }
+
+    @Test func positionTopCenterPositionsWindowNearTopEdge() {
+        guard NSScreen.main != nil else {
+            return
+        }
+
+        let window = makeWindow()
+        WindowPositioner.positionTopCenter(window)
+
         if let screen = NSScreen.main {
             let screenTop = screen.visibleFrame.maxY
             let windowTop = window.frame.maxY
-
-            // Window top should be close to screen top (within offset + small margin)
-            #expect(abs(screenTop - windowTop) < 50)
+            #expect(abs(screenTop - windowTop) < 20)
         }
+    }
+
+    @Test func positionTopCenterKeepsWindowSizeUnchanged() {
+        let window = makeWindow()
+        let initialSize = window.frame.size
+
+        WindowPositioner.positionTopCenter(window)
+        #expect(window.frame.size == initialSize)
     }
 }
 

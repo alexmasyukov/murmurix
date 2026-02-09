@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:33  
+Последнее обновление: 2026-02-09 15:36  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -698,3 +698,16 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - live-конфигурация зависимостей для settings стала централизованной в composition root.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests` -> `** TEST SUCCEEDED **`.
+
+### 10.25 RefactoringTests: усилены WindowPositioner assertions
+
+- Переписан блок `WindowPositionerTests` в `RefactoringTests`:
+  - убраны smoke-тесты формата `doesNotCrash`,
+  - добавлены проверки вычисляемых координат для `positionTopCenter`,
+  - добавлены устойчивые проверки инвариантов для `center` и `centerAndActivate`.
+- Изменен файл:
+  - `MurmurixTests/RefactoringTests.swift`
+- Эффект:
+  - тесты проверяют наблюдаемое поведение позиционирования окна, а не только отсутствие падения.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/WindowPositionerTests` -> `** TEST SUCCEEDED **`.
