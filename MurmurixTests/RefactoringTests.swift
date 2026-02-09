@@ -687,6 +687,29 @@ struct SQLiteTranscriptionRepositoryTests {
         #expect(fetched.first?.text == "Persisted")
         #expect(db.userVersion() == 1)
     }
+
+    @Test func repositoryErrorIncludesSQLiteDiagnostics() {
+        let dbPath = createTempDatabasePath()
+        let db = SQLiteDatabase(path: dbPath)
+        let repo = SQLiteTranscriptionRepository(database: db)
+
+        db.execute("DROP TABLE transcriptions")
+
+        do {
+            _ = try repo.fetchAll()
+            #expect(Bool(false), "Expected SQLite diagnostics error")
+        } catch let error as TranscriptionRepositoryError {
+            switch error {
+            case .statementPreparationFailed(_, let sqliteCode, let sqliteMessage):
+                #expect(sqliteCode != 0)
+                #expect(!sqliteMessage.isEmpty)
+            default:
+                #expect(Bool(false), "Unexpected repository error type: \(error.localizedDescription)")
+            }
+        } catch {
+            #expect(Bool(false), "Unexpected error type: \(error.localizedDescription)")
+        }
+    }
 }
 
 // MARK: - Dependency Injection Tests

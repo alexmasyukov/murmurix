@@ -342,7 +342,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 - [x] `throws`-based repository API.
 - [x] SQLite migrations (`user_version`).
-- [ ] Полная диагностика SQLite-кодов в логах.
+- [x] Полная диагностика SQLite-кодов в логах.
 
 ## Фаза 5 (test suite value shift)
 

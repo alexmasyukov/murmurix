@@ -17,16 +17,16 @@ protocol TranscriptionRepositoryProtocol {
 }
 
 enum TranscriptionRepositoryError: LocalizedError {
-    case statementPreparationFailed(operation: String)
-    case statementExecutionFailed(operation: String)
+    case statementPreparationFailed(operation: String, sqliteCode: Int32, sqliteMessage: String)
+    case statementExecutionFailed(operation: String, sqliteCode: Int32, sqliteMessage: String)
     case rowDecodingFailed
 
     var errorDescription: String? {
         switch self {
-        case .statementPreparationFailed(let operation):
-            return "Failed to prepare SQLite statement for operation: \(operation)"
-        case .statementExecutionFailed(let operation):
-            return "Failed to execute SQLite statement for operation: \(operation)"
+        case .statementPreparationFailed(let operation, let sqliteCode, let sqliteMessage):
+            return "Failed to prepare SQLite statement for operation: \(operation). SQLite code \(sqliteCode): \(sqliteMessage)"
+        case .statementExecutionFailed(let operation, let sqliteCode, let sqliteMessage):
+            return "Failed to execute SQLite statement for operation: \(operation). SQLite code \(sqliteCode): \(sqliteMessage)"
         case .rowDecodingFailed:
             return "Failed to decode transcription row from SQLite"
         }
@@ -116,6 +116,17 @@ final class SQLiteDatabase {
     func setUserVersion(_ version: Int32) {
         execute("PRAGMA user_version = \(version)")
     }
+
+    func lastErrorCode() -> Int32 {
+        sqlite3_errcode(db)
+    }
+
+    func lastErrorMessage() -> String {
+        guard let message = sqlite3_errmsg(db) else {
+            return "Unknown SQLite error"
+        }
+        return String(cString: message)
+    }
 }
 
 // MARK: - Transcription Repository
@@ -163,7 +174,7 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
         let sql = "INSERT OR REPLACE INTO transcriptions (id, text, language, duration, created_at) VALUES (?, ?, ?, ?, ?)"
         let operation = "save"
         guard let statement = database.prepareStatement(sql) else {
-            throw TranscriptionRepositoryError.statementPreparationFailed(operation: operation)
+            throw makePreparationError(operation: operation)
         }
         defer { database.finalize(statement) }
 
@@ -174,7 +185,7 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
         database.bindDouble(statement, index: 5, value: item.createdAt.timeIntervalSince1970)
 
         if !database.step(statement) {
-            throw TranscriptionRepositoryError.statementExecutionFailed(operation: operation)
+            throw makeExecutionError(operation: operation)
         }
     }
 
@@ -182,7 +193,7 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
         let sql = "SELECT id, text, language, duration, created_at FROM transcriptions ORDER BY created_at DESC"
         let operation = "fetchAll"
         guard let statement = database.prepareStatement(sql) else {
-            throw TranscriptionRepositoryError.statementPreparationFailed(operation: operation)
+            throw makePreparationError(operation: operation)
         }
         defer { database.finalize(statement) }
 
@@ -218,12 +229,12 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
         let sql = "DELETE FROM transcriptions WHERE id = ?"
         let operation = "delete"
         guard let statement = database.prepareStatement(sql) else {
-            throw TranscriptionRepositoryError.statementPreparationFailed(operation: operation)
+            throw makePreparationError(operation: operation)
         }
         defer { database.finalize(statement) }
         database.bindText(statement, index: 1, value: id.uuidString)
         guard database.step(statement) else {
-            throw TranscriptionRepositoryError.statementExecutionFailed(operation: operation)
+            throw makeExecutionError(operation: operation)
         }
     }
 
@@ -231,11 +242,27 @@ final class SQLiteTranscriptionRepository: TranscriptionRepositoryProtocol {
         let sql = "DELETE FROM transcriptions"
         let operation = "deleteAll"
         guard let statement = database.prepareStatement(sql) else {
-            throw TranscriptionRepositoryError.statementPreparationFailed(operation: operation)
+            throw makePreparationError(operation: operation)
         }
         defer { database.finalize(statement) }
         guard database.step(statement) else {
-            throw TranscriptionRepositoryError.statementExecutionFailed(operation: operation)
+            throw makeExecutionError(operation: operation)
         }
+    }
+
+    private func makePreparationError(operation: String) -> TranscriptionRepositoryError {
+        .statementPreparationFailed(
+            operation: operation,
+            sqliteCode: database.lastErrorCode(),
+            sqliteMessage: database.lastErrorMessage()
+        )
+    }
+
+    private func makeExecutionError(operation: String) -> TranscriptionRepositoryError {
+        .statementExecutionFailed(
+            operation: operation,
+            sqliteCode: database.lastErrorCode(),
+            sqliteMessage: database.lastErrorMessage()
+        )
     }
 }
