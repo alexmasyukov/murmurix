@@ -64,11 +64,10 @@ struct GeneralSettingsViewModelAPITests {
         await viewModel.testModel("small")
 
         #expect(mockTranscription.transcribeCallCount == 1)
-        if case .failure = viewModel.localTestResults["small"] {
-            // Expected
-        } else {
-            #expect(Bool(false), "Expected failure result")
-        }
+        #expect({
+            if case .failure = viewModel.localTestResults["small"] { return true }
+            return false
+        }(), "Expected failure result")
         #expect(viewModel.testingModels.contains("small") == false)
     }
 
@@ -96,11 +95,12 @@ struct GeneralSettingsViewModelAPITests {
         await viewModel.testModel("small")
 
         #expect(mockTranscription.transcribeCallCount == 0)
-        if case .failure(let msg) = viewModel.localTestResults["small"] {
-            #expect(msg.contains("not installed"))
-        } else {
-            #expect(Bool(false), "Expected failure result for uninstalled model")
-        }
+        #expect({
+            if case .failure(let msg) = viewModel.localTestResults["small"] {
+                return msg.contains("not installed")
+            }
+            return false
+        }(), "Expected failure result for uninstalled model")
     }
 
     // MARK: - OpenAI Testing
@@ -143,11 +143,12 @@ struct GeneralSettingsViewModelAPITests {
         await viewModel.testOpenAI(apiKey: "sk-invalid123456789")
 
         #expect(mockOpenAI.validateAPIKeyCallCount == 1)
-        if case .failure(let message) = viewModel.openaiTestResult {
-            #expect(message == "Invalid API key")
-        } else {
-            #expect(Bool(false), "Expected failure result")
-        }
+        #expect({
+            if case .failure(let message) = viewModel.openaiTestResult {
+                return message == "Invalid API key"
+            }
+            return false
+        }(), "Expected failure result")
     }
 
     @Test func testOpenAIValidationNetworkError() async {
@@ -158,11 +159,10 @@ struct GeneralSettingsViewModelAPITests {
         await viewModel.testOpenAI(apiKey: "sk-test1234567890")
 
         #expect(mockOpenAI.validateAPIKeyCallCount == 1)
-        if case .failure = viewModel.openaiTestResult {
-            // Expected
-        } else {
-            #expect(Bool(false), "Expected failure result")
-        }
+        #expect({
+            if case .failure = viewModel.openaiTestResult { return true }
+            return false
+        }(), "Expected failure result")
     }
 
     // MARK: - Gemini Testing
@@ -205,11 +205,12 @@ struct GeneralSettingsViewModelAPITests {
         await viewModel.testGemini(apiKey: "AI-invalid123456789")
 
         #expect(mockGemini.validateAPIKeyCallCount == 1)
-        if case .failure(let message) = viewModel.geminiTestResult {
-            #expect(message == "Invalid API key")
-        } else {
-            #expect(Bool(false), "Expected failure result")
-        }
+        #expect({
+            if case .failure(let message) = viewModel.geminiTestResult {
+                return message == "Invalid API key"
+            }
+            return false
+        }(), "Expected failure result")
     }
 
     @Test func testGeminiValidationNetworkError() async {
@@ -220,11 +221,10 @@ struct GeneralSettingsViewModelAPITests {
         await viewModel.testGemini(apiKey: "AI-test1234567890")
 
         #expect(mockGemini.validateAPIKeyCallCount == 1)
-        if case .failure = viewModel.geminiTestResult {
-            // Expected
-        } else {
-            #expect(Bool(false), "Expected failure result")
-        }
+        #expect({
+            if case .failure = viewModel.geminiTestResult { return true }
+            return false
+        }(), "Expected failure result")
     }
 
     // MARK: - Clear Test Result
@@ -296,15 +296,18 @@ struct TestServiceEnumTests {
         let gemini = TestService.gemini
 
         // Verify they are distinct cases via pattern matching
-        if case .local = local {} else {
-            #expect(Bool(false), "Expected .local case")
-        }
-        if case .openAI = openAI {} else {
-            #expect(Bool(false), "Expected .openAI case")
-        }
-        if case .gemini = gemini {} else {
-            #expect(Bool(false), "Expected .gemini case")
-        }
+        #expect({
+            if case .local = local { return true }
+            return false
+        }(), "Expected .local case")
+        #expect({
+            if case .openAI = openAI { return true }
+            return false
+        }(), "Expected .openAI case")
+        #expect({
+            if case .gemini = gemini { return true }
+            return false
+        }(), "Expected .gemini case")
     }
 }
 
