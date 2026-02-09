@@ -322,8 +322,8 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 - [x] `RecordingCoordinator` -> `@MainActor`.
 - [x] Заменить `Task.detached` на structured concurrency.
-- [ ] Вынести transitions в отдельный reducer.
-- [ ] Добавить tests для toggle/cancel гонок.
+- [x] Вынести transitions в отдельный reducer.
+- [x] Добавить tests для toggle/cancel гонок.
 
 ## Фаза 2 (settings + hotkeys)
 

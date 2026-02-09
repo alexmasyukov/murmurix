@@ -67,20 +67,6 @@ final class RecordingCoordinator {
     private let historyService: HistoryServiceProtocol
     private let settings: SettingsStorageProtocol
 
-    private enum CoordinatorEvent {
-        case toggle(mode: TranscriptionMode)
-        case cancelRecording
-        case cancelTranscription
-    }
-
-    private enum Transition {
-        case startRecording(mode: TranscriptionMode)
-        case stopRecording
-        case cancelRecording
-        case cancelTranscription
-        case ignore
-    }
-
     init(
         audioRecorder: AudioRecorderProtocol,
         transcriptionService: TranscriptionServiceProtocol,
@@ -96,18 +82,33 @@ final class RecordingCoordinator {
     // MARK: - Recording Control
 
     func toggleRecording(mode: TranscriptionMode) {
-        executeTransition(Self.reduce(event: .toggle(mode: mode), from: state))
+        executeTransition(
+            RecordingFlowReducer.reduce(
+                state: state,
+                event: .toggle(mode: mode)
+            )
+        )
     }
 
     func cancelRecording() {
-        executeTransition(Self.reduce(event: .cancelRecording, from: state))
+        executeTransition(
+            RecordingFlowReducer.reduce(
+                state: state,
+                event: .cancelRecording
+            )
+        )
     }
 
     func cancelTranscription() {
-        executeTransition(Self.reduce(event: .cancelTranscription, from: state))
+        executeTransition(
+            RecordingFlowReducer.reduce(
+                state: state,
+                event: .cancelTranscription
+            )
+        )
     }
 
-    private func executeTransition(_ transition: Transition) {
+    private func executeTransition(_ transition: RecordingFlowTransition) {
         switch transition {
         case .startRecording(let selectedMode):
             currentTranscriptionMode = selectedMode
@@ -261,23 +262,6 @@ final class RecordingCoordinator {
             try fileManager.removeItem(at: url)
         } catch {
             Logger.Transcription.error("Failed to remove file (\(context)): \(url.path), error: \(error.localizedDescription)")
-        }
-    }
-
-    private static func reduce(event: CoordinatorEvent, from state: RecordingState) -> Transition {
-        switch (state, event) {
-        case (.idle, .toggle(let mode)):
-            return .startRecording(mode: mode)
-        case (.recording, .toggle):
-            return .stopRecording
-        case (.recording, .cancelRecording):
-            return .cancelRecording
-        case (.transcribing, .cancelTranscription):
-            return .cancelTranscription
-        case (.transcribing, .toggle):
-            return .ignore
-        default:
-            return .ignore
         }
     }
 
