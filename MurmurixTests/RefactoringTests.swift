@@ -265,6 +265,52 @@ struct AppConstantsTests {
     @Test func modelPathsRepoSubpathIsCorrect() {
         #expect(ModelPaths.repoSubpath == "huggingface/models/argmaxinc/whisperkit-coreml")
     }
+
+    @Test func modelPathsCustomRepoHasHighestPriority() {
+        let tempDirectory = URL(fileURLWithPath: "/tmp/murmurix-tests")
+        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let customPath = "/custom/models/repo"
+
+        let repoDir = ModelPaths.repoDir(
+            for: [
+                ModelPaths.customRepoDirEnv: customPath,
+                ModelPaths.useTempRepoEnv: "1"
+            ],
+            tempDirectory: tempDirectory,
+            documentsDirectory: documentsDirectory
+        )
+
+        #expect(repoDir.path == URL(fileURLWithPath: customPath).standardizedFileURL.path)
+    }
+
+    @Test func modelPathsTempRepoCanBeForcedByEnvironment() {
+        let tempDirectory = URL(fileURLWithPath: "/tmp/murmurix-tests")
+        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+
+        let repoDir = ModelPaths.repoDir(
+            for: [ModelPaths.useTempRepoEnv: "1"],
+            tempDirectory: tempDirectory,
+            documentsDirectory: documentsDirectory
+        )
+
+        #expect(repoDir.path.contains("/tmp/murmurix-tests"))
+        #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
+        #expect(repoDir.path.contains(ModelPaths.repoSubpath))
+    }
+
+    @Test func modelPathsEnvZeroDisablesTempRepo() {
+        let tempDirectory = URL(fileURLWithPath: "/tmp/murmurix-tests")
+        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+
+        let repoDir = ModelPaths.repoDir(
+            for: [ModelPaths.useTempRepoEnv: "0"],
+            tempDirectory: tempDirectory,
+            documentsDirectory: documentsDirectory
+        )
+
+        #expect(repoDir.path.hasPrefix("/Users/test/Documents"))
+        #expect(repoDir.path.contains(ModelPaths.repoSubpath))
+    }
 }
 
 // MARK: - WindowPositioner Tests

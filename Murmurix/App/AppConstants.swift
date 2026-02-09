@@ -108,22 +108,12 @@ enum ModelPaths {
     static let debugRepoRoot = "murmurix-dev-models"
     private static let repoSubpathDepth = 3
 
-    private static var tempRepoDir: URL {
-        FileManager.default.temporaryDirectory
-            .appendingPathComponent(debugRepoRoot)
-            .appendingPathComponent(repoSubpath)
-    }
-
     static var repoDir: URL {
-        if let customRepoDir {
-            return customRepoDir
-        }
-
-        if shouldUseTempRepo {
-            return tempRepoDir
-        }
-
-        return persistentRepoDir
+        repoDir(
+            for: environment,
+            tempDirectory: FileManager.default.temporaryDirectory,
+            documentsDirectory: defaultDocumentsDirectory()
+        )
     }
 
     static var downloadBaseDir: URL {
@@ -139,12 +129,38 @@ enum ModelPaths {
         ProcessInfo.processInfo.environment
     }
 
-    private static var customRepoDir: URL? {
+    private static func basePath(forRepoDir repoDir: URL) -> URL {
+        var base = repoDir
+        for _ in 0..<repoSubpathDepth {
+            base.deleteLastPathComponent()
+        }
+        return base
+    }
+
+    static func repoDir(
+        for environment: [String: String],
+        tempDirectory: URL,
+        documentsDirectory: URL
+    ) -> URL {
+        if let customRepoDir = customRepoDir(from: environment) {
+            return customRepoDir
+        }
+
+        if shouldUseTempRepo(environment: environment) {
+            return tempDirectory
+                .appendingPathComponent(debugRepoRoot)
+                .appendingPathComponent(repoSubpath)
+        }
+
+        return documentsDirectory.appendingPathComponent(repoSubpath)
+    }
+
+    private static func customRepoDir(from environment: [String: String]) -> URL? {
         guard let customPath = environment[customRepoDirEnv], !customPath.isEmpty else { return nil }
         return URL(fileURLWithPath: customPath).standardizedFileURL
     }
 
-    private static var shouldUseTempRepo: Bool {
+    private static func shouldUseTempRepo(environment: [String: String]) -> Bool {
         if environment[useTempRepoEnv] == "1" {
             return true
         }
@@ -155,17 +171,8 @@ enum ModelPaths {
 #endif
     }
 
-    private static var persistentRepoDir: URL {
-        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+    private static func defaultDocumentsDirectory() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
-        return documentsDir.appendingPathComponent(repoSubpath)
-    }
-
-    private static func basePath(forRepoDir repoDir: URL) -> URL {
-        var base = repoDir
-        for _ in 0..<repoSubpathDepth {
-            base.deleteLastPathComponent()
-        }
-        return base
     }
 }
