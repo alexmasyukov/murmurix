@@ -69,6 +69,7 @@ final class WindowManager {
 
     func showSettingsWindow(
         settings: SettingsStorageProtocol,
+        makeGeneralSettingsViewModel: @MainActor (SettingsStorageProtocol) -> GeneralSettingsViewModel,
         loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
@@ -79,6 +80,7 @@ final class WindowManager {
         if settingsController == nil {
             settingsController = SettingsWindowController(
                 settings: settings,
+                makeGeneralSettingsViewModel: makeGeneralSettingsViewModel,
                 loadedModels: loadedModels,
                 onModelToggle: onModelToggle,
                 onLocalHotkeysChanged: onLocalHotkeysChanged,

@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:29  
+Последнее обновление: 2026-02-09 15:33  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -679,3 +679,22 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - observer lifecycle стал детерминированным и локализованным в одном token.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.24 Settings flow DI: явный factory для GeneralSettingsViewModel
+
+- Добавлен explicit live-factory `GeneralSettingsViewModel.live(settings:)`.
+- Вся settings-цепочка переведена на явную передачу фабрики view model:
+  - `AppDelegate` (`AppDependencies`) -> `WindowManager` -> `SettingsWindowController` -> `SettingsView` -> `GeneralSettingsView`.
+- Создание `GeneralSettingsViewModel` больше не зашито внутри `GeneralSettingsView`.
+- Изменены файлы:
+  - `Murmurix/App/AppDelegate.swift`
+  - `Murmurix/App/WindowManager.swift`
+  - `Murmurix/ViewModels/GeneralSettingsViewModel.swift`
+  - `Murmurix/Views/GeneralSettingsView.swift`
+  - `Murmurix/Views/SettingsView.swift`
+  - `Murmurix/Views/SettingsWindowController.swift`
+- Эффект:
+  - уменьшена скрытая singleton-surface в settings view-layer,
+  - live-конфигурация зависимостей для settings стала централизованной в composition root.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests` -> `** TEST SUCCEEDED **`.

@@ -11,6 +11,7 @@ struct AppDependencies {
     let settings: SettingsStorageProtocol
     let makeAudioRecorder: () -> any AudioRecorderProtocol
     let makeTranscriptionService: (SettingsStorageProtocol) -> any TranscriptionServiceProtocol
+    let makeGeneralSettingsViewModel: @MainActor (SettingsStorageProtocol) -> GeneralSettingsViewModel
 
     static func live() -> AppDependencies {
         AppDependencies(
@@ -19,6 +20,9 @@ struct AppDependencies {
             makeAudioRecorder: { AudioRecorder() },
             makeTranscriptionService: { settings in
                 TranscriptionService.live(settings: settings)
+            },
+            makeGeneralSettingsViewModel: { settings in
+                GeneralSettingsViewModel.live(settings: settings)
             }
         )
     }
@@ -41,12 +45,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings: SettingsStorageProtocol
     private let makeAudioRecorder: () -> any AudioRecorderProtocol
     private let makeTranscriptionService: (SettingsStorageProtocol) -> any TranscriptionServiceProtocol
+    private let makeGeneralSettingsViewModel: @MainActor (SettingsStorageProtocol) -> GeneralSettingsViewModel
 
     init(dependencies: AppDependencies = .live()) {
         self.historyService = dependencies.historyService
         self.settings = dependencies.settings
         self.makeAudioRecorder = dependencies.makeAudioRecorder
         self.makeTranscriptionService = dependencies.makeTranscriptionService
+        self.makeGeneralSettingsViewModel = dependencies.makeGeneralSettingsViewModel
         super.init()
     }
 
@@ -247,6 +253,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         windowManager?.showSettingsWindow(
             settings: settings,
+            makeGeneralSettingsViewModel: makeGeneralSettingsViewModel,
             loadedModels: Set(transcriptionService.loadedModelNames()),
             onModelToggle: { [weak self] model, enabled in
                 self?.handleModelToggle(model, enabled: enabled)

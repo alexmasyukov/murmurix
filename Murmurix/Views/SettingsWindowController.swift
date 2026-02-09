@@ -25,6 +25,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     convenience init(
         settings: SettingsStorageProtocol,
+        makeGeneralSettingsViewModel: @MainActor (SettingsStorageProtocol) -> GeneralSettingsViewModel,
         loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
@@ -50,8 +51,10 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.modelStatus.loadedModels = loadedModels
         window.delegate = self
 
+        let generalSettingsViewModel = makeGeneralSettingsViewModel(settings)
         let settingsView = SettingsView(
             settings: settings,
+            generalSettingsViewModel: generalSettingsViewModel,
             loadedModels: Binding(
                 get: { [weak self] in self?.modelStatus.loadedModels ?? [] },
                 set: { [weak self] in self?.modelStatus.loadedModels = $0 }

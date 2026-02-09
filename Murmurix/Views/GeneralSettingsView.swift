@@ -17,13 +17,13 @@ struct GeneralSettingsView: View {
     var onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)?
 
     init(
+        viewModel: GeneralSettingsViewModel,
         settings: SettingsStorageProtocol,
         loadedModels: Binding<Set<String>>,
         onModelToggle: ((String, Bool) -> Void)? = nil,
         onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
         onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)? = nil
     ) {
-        let viewModel = GeneralSettingsViewModel(settings: settings)
         let settingsStore = SettingsStore(settings: settings)
         self._loadedModels = loadedModels
         self.onModelToggle = onModelToggle

@@ -7,6 +7,7 @@ import SwiftUI
 
 struct SettingsView: View {
     let settings: SettingsStorageProtocol
+    let generalSettingsViewModel: GeneralSettingsViewModel
     @Binding var loadedModels: Set<String>
 
     var onModelToggle: ((String, Bool) -> Void)?
@@ -15,12 +16,14 @@ struct SettingsView: View {
 
     init(
         settings: SettingsStorageProtocol,
+        generalSettingsViewModel: GeneralSettingsViewModel,
         loadedModels: Binding<Set<String>>,
         onModelToggle: ((String, Bool) -> Void)? = nil,
         onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
         onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)? = nil
     ) {
         self.settings = settings
+        self.generalSettingsViewModel = generalSettingsViewModel
         self._loadedModels = loadedModels
         self.onModelToggle = onModelToggle
         self.onLocalHotkeysChanged = onLocalHotkeysChanged
@@ -29,6 +32,7 @@ struct SettingsView: View {
 
     var body: some View {
         GeneralSettingsView(
+            viewModel: generalSettingsViewModel,
             settings: settings,
             loadedModels: $loadedModels,
             onModelToggle: onModelToggle,
@@ -43,6 +47,7 @@ struct SettingsView: View {
 #Preview {
     SettingsView(
         settings: Settings.shared,
+        generalSettingsViewModel: GeneralSettingsViewModel.live(settings: Settings.shared),
         loadedModels: .constant([])
     )
 }
