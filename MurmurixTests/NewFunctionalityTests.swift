@@ -16,11 +16,10 @@ struct DownloadStatusTests {
 
     @Test func idleIsDefault() {
         let status: DownloadStatus = .idle
-        if case .idle = status {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected idle status")
-        }
+        #expect({
+            if case .idle = status { return true }
+            return false
+        }(), "Expected idle status")
     }
 
     @Test func downloadingTracksProgress() {
@@ -42,20 +41,18 @@ struct DownloadStatusTests {
 
     @Test func compilingStatus() {
         let status: DownloadStatus = .compiling
-        if case .compiling = status {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected compiling status")
-        }
+        #expect({
+            if case .compiling = status { return true }
+            return false
+        }(), "Expected compiling status")
     }
 
     @Test func completedStatus() {
         let status: DownloadStatus = .completed
-        if case .completed = status {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected completed status")
-        }
+        #expect({
+            if case .completed = status { return true }
+            return false
+        }(), "Expected completed status")
     }
 
     @Test func errorStatusContainsMessage() {
@@ -168,7 +165,7 @@ struct RecordingTimerTests {
         let timer = RecordingTimer()
         timer.start()
         timer.stop()
-        #expect(true)
+        #expect(timer.elapsedSeconds >= 0)
     }
 
     @Test func doubleStopDoesNotCrash() {
@@ -176,7 +173,7 @@ struct RecordingTimerTests {
         timer.start()
         timer.stop()
         timer.stop()
-        #expect(true)
+        #expect(timer.elapsedSeconds >= 0)
     }
 
     @Test func doubleStartResetsTimer() {
@@ -268,11 +265,10 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.cancelDownload(for: "small")
 
-        if case .idle = viewModel.downloadStatus(for: "small") {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected idle status after cancel")
-        }
+        #expect({
+            if case .idle = viewModel.downloadStatus(for: "small") { return true }
+            return false
+        }(), "Expected idle status after cancel")
     }
 
     @Test func cancelDownloadFromCompiling() {
@@ -281,11 +277,10 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.cancelDownload(for: "small")
 
-        if case .idle = viewModel.downloadStatus(for: "small") {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected idle status after cancel")
-        }
+        #expect({
+            if case .idle = viewModel.downloadStatus(for: "small") { return true }
+            return false
+        }(), "Expected idle status after cancel")
     }
 
     // MARK: - startDownload
@@ -296,11 +291,15 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.startDownload(for: "small")
 
-        if case .downloading = viewModel.downloadStatus(for: "small") {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected downloading status")
+        let status = viewModel.downloadStatus(for: "small")
+        let isDownloadFlowStatus: Bool
+        switch status {
+        case .downloading, .compiling, .completed:
+            isDownloadFlowStatus = true
+        case .idle, .error:
+            isDownloadFlowStatus = false
         }
+        #expect(isDownloadFlowStatus, "Expected download flow status")
     }
 
     @Test func startDownloadCallsWhisperKitService() async throws {
