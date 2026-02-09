@@ -3,6 +3,7 @@
 //  Murmurix
 //
 
+import Foundation
 import SwiftUI
 
 // MARK: - Layout
@@ -102,10 +103,43 @@ enum Defaults {
 
 enum ModelPaths {
     static let repoSubpath = "huggingface/models/argmaxinc/whisperkit-coreml"
+    static let customRepoDirEnv = "MURMURIX_MODEL_REPO_DIR"
+    static let useTempRepoEnv = "MURMURIX_USE_TEMP_MODEL_REPO"
+    static let debugRepoRoot = "murmurix-dev-models"
+
+    private static var tempRepoDir: URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent(debugRepoRoot)
+            .appendingPathComponent(repoSubpath)
+    }
 
     static var repoDir: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let environment = ProcessInfo.processInfo.environment
+
+        if let customPath = environment[customRepoDirEnv], !customPath.isEmpty {
+            return URL(fileURLWithPath: customPath).standardizedFileURL
+        }
+
+        if environment[useTempRepoEnv] == "1" {
+            return tempRepoDir
+        }
+
+#if DEBUG
+        if environment[useTempRepoEnv] != "0" {
+            return tempRepoDir
+        }
+#endif
+
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
             .appendingPathComponent(repoSubpath)
+    }
+
+    static var downloadBaseDir: URL {
+        // HubApi expects a base path and appends "models/argmaxinc/whisperkit-coreml".
+        repoDir
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
     }
 
     static func modelDir(for name: String) -> URL {

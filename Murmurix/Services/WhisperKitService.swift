@@ -115,6 +115,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
 
         _ = try await WhisperKit.download(
             variant: "openai_whisper-\(name)",
+            downloadBase: ModelPaths.downloadBaseDir,
             from: "argmaxinc/whisperkit-coreml",
             progressCallback: { downloadProgress in
                 progress(downloadProgress.fractionCompleted)

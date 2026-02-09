@@ -226,6 +226,16 @@ struct AudioCompressorErrorTests {
 
 @MainActor
 struct GeneralSettingsViewModelModelTests {
+    private func makeTempModelRepo() -> URL {
+        let repoDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("murmurix-model-tests-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: repoDir, withIntermediateDirectories: true)
+        return repoDir
+    }
+
+    private func tempModelDir(repoDir: URL, modelName: String) -> URL {
+        repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+    }
 
     // MARK: - isModelInstalled
 
@@ -364,42 +374,67 @@ struct GeneralSettingsViewModelModelTests {
 
     @Test func deleteModelRemovesDirectory() async {
         let mockWhisperKit = MockWhisperKitService()
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
 
-        // Create a temp directory pretending to be a model
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test_delete_\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        #expect(FileManager.default.fileExists(atPath: tempDir.path))
+        let viewModel = GeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
-        // We can't easily test with real ModelPaths, but we can test that
-        // unloadModel is called when model is loaded
+        #expect(FileManager.default.fileExists(atPath: modelDir.path))
+
         mockWhisperKit.loadedModelNames.insert("small")
         await viewModel.deleteModel("small")
 
         #expect(mockWhisperKit.unloadModelCallCount == 1)
-
-        // Cleanup
-        try? FileManager.default.removeItem(at: tempDir)
+        #expect(!FileManager.default.fileExists(atPath: modelDir.path))
     }
 
     @Test func deleteModelUnloadsModelWhenLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
         mockWhisperKit.loadedModelNames.insert("small")
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
+        let viewModel = GeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
         await viewModel.deleteModel("small")
 
         #expect(mockWhisperKit.unloadModelCallCount == 1)
+        #expect(!FileManager.default.fileExists(atPath: modelDir.path))
     }
 
     @Test func deleteModelSkipsUnloadWhenNotLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
+        let viewModel = GeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
         await viewModel.deleteModel("small")
 
         #expect(mockWhisperKit.unloadModelCallCount == 0)
+        #expect(!FileManager.default.fileExists(atPath: modelDir.path))
     }
 
     // MARK: - deleteAllModels
@@ -407,20 +442,48 @@ struct GeneralSettingsViewModelModelTests {
     @Test func deleteAllModelsUnloadsAllModels() async {
         let mockWhisperKit = MockWhisperKitService()
         mockWhisperKit.loadedModelNames.insert("small")
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let smallDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        let tinyDir = tempModelDir(repoDir: repoDir, modelName: "tiny")
+        let keepFile = repoDir.appendingPathComponent("keep.txt")
+        try? FileManager.default.createDirectory(at: smallDir, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: tinyDir, withIntermediateDirectories: true)
+        try? Data("keep".utf8).write(to: keepFile)
+        let viewModel = GeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
         await viewModel.deleteAllModels()
 
         #expect(mockWhisperKit.unloadAllModelsCallCount == 1)
+        #expect(!FileManager.default.fileExists(atPath: smallDir.path))
+        #expect(!FileManager.default.fileExists(atPath: tinyDir.path))
+        #expect(FileManager.default.fileExists(atPath: keepFile.path))
     }
 
     @Test func deleteAllModelsWorksWhenNoneLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let smallDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        try? FileManager.default.createDirectory(at: smallDir, withIntermediateDirectories: true)
+        let viewModel = GeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
         await viewModel.deleteAllModels()
 
         #expect(mockWhisperKit.unloadAllModelsCallCount == 1)
+        #expect(!FileManager.default.fileExists(atPath: smallDir.path))
     }
 }
 

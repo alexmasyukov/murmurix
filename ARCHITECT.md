@@ -123,7 +123,9 @@ Enum-based `L10n.swift` with `tr(en, ru, es)` helper. No .lproj/.strings files.
 ### WhisperKitService
 Native CoreML speech recognition via WhisperKit.
 
-- `loadModel(name:)` — Load a CoreML model from `~/Documents/huggingface/`
+- `loadModel(name:)` — Load a CoreML model from `ModelPaths`:
+  - `Debug`/tests: `$(TMPDIR)/murmurix-dev-models/huggingface/...`
+  - `Release`: `~/Documents/huggingface/...`
 - `unloadModel()` — Free memory
 - `transcribe(audioURL:language:)` — Run inference
 - `downloadModel(_:progress:)` — Download from Hugging Face

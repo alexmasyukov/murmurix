@@ -41,6 +41,8 @@ final class GeneralSettingsViewModel: ObservableObject {
     private let openAIService: OpenAITranscriptionServiceProtocol
     private let geminiService: GeminiTranscriptionServiceProtocol
     private let transcriptionServiceFactory: () -> TranscriptionServiceProtocol
+    private let modelDirectory: (String) -> URL
+    private let modelsRepositoryDirectory: () -> URL
     let settings: SettingsStorageProtocol
 
     init(
@@ -48,12 +50,16 @@ final class GeneralSettingsViewModel: ObservableObject {
         openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
         geminiService: GeminiTranscriptionServiceProtocol = GeminiTranscriptionService.shared,
         transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol = { TranscriptionService() },
+        modelDirectory: @escaping (String) -> URL = { ModelPaths.modelDir(for: $0) },
+        modelsRepositoryDirectory: @escaping () -> URL = { ModelPaths.repoDir },
         settings: SettingsStorageProtocol = Settings.shared
     ) {
         self.whisperKitService = whisperKitService
         self.openAIService = openAIService
         self.geminiService = geminiService
         self.transcriptionServiceFactory = transcriptionServiceFactory
+        self.modelDirectory = modelDirectory
+        self.modelsRepositoryDirectory = modelsRepositoryDirectory
         self.settings = settings
     }
 
@@ -128,7 +134,7 @@ final class GeneralSettingsViewModel: ObservableObject {
             await whisperKitService.unloadModel(name: modelName)
         }
         let fm = FileManager.default
-        let modelDir = ModelPaths.modelDir(for: modelName)
+        let modelDir = modelDirectory(modelName)
         try? fm.removeItem(at: modelDir)
         loadInstalledModels()
     }
@@ -136,7 +142,7 @@ final class GeneralSettingsViewModel: ObservableObject {
     func deleteAllModels() async {
         await whisperKitService.unloadAllModels()
         let fm = FileManager.default
-        let repoDir = ModelPaths.repoDir
+        let repoDir = modelsRepositoryDirectory()
         if let contents = try? fm.contentsOfDirectory(atPath: repoDir.path) {
             for item in contents where item.hasPrefix("openai_whisper-") {
                 try? fm.removeItem(at: repoDir.appendingPathComponent(item))
@@ -167,7 +173,11 @@ final class GeneralSettingsViewModel: ObservableObject {
             try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
             defer { try? FileManager.default.removeItem(at: tempURL) }
 
-            _ = try await service.transcribe(audioURL: tempURL, mode: .local(model: modelName))
+            _ = try await service.transcribe(
+                audioURL: tempURL,
+                language: settings.language,
+                mode: .local(model: modelName)
+            )
 
             localTestResults[modelName] = .success
         } catch {

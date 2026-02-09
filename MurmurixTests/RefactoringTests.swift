@@ -218,16 +218,42 @@ struct AppConstantsTests {
 
     // MARK: - ModelPaths
 
-    @Test func modelPathsRepoDirPointsToDocuments() {
+    @Test func modelPathsRepoDirUsesExpectedBase() {
         let repoDir = ModelPaths.repoDir
-        #expect(repoDir.path.contains("Documents"))
-        #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+        let environment = ProcessInfo.processInfo.environment
+
+        if let customPath = environment[ModelPaths.customRepoDirEnv], !customPath.isEmpty {
+            #expect(repoDir.path == URL(fileURLWithPath: customPath).standardizedFileURL.path)
+        } else if environment[ModelPaths.useTempRepoEnv] == "1" {
+            #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
+            #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+        } else {
+#if DEBUG
+            if environment[ModelPaths.useTempRepoEnv] != "0" {
+                #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
+                #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+            } else {
+                #expect(repoDir.path.contains("Documents"))
+                #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+            }
+#else
+            #expect(repoDir.path.contains("Documents"))
+            #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+#endif
+        }
     }
 
     @Test func modelPathsModelDirAppendsModelName() {
         let modelDir = ModelPaths.modelDir(for: "small")
         #expect(modelDir.lastPathComponent == "openai_whisper-small")
         #expect(modelDir.path.contains("whisperkit-coreml"))
+    }
+
+    @Test func modelPathsDownloadBaseDirPointsToHuggingFaceBase() {
+        let expectedRepoDir = ModelPaths.downloadBaseDir
+            .appendingPathComponent("models/argmaxinc/whisperkit-coreml")
+            .standardizedFileURL
+        #expect(expectedRepoDir.path == ModelPaths.repoDir.standardizedFileURL.path)
     }
 
     @Test func modelPathsRepoSubpathIsCorrect() {

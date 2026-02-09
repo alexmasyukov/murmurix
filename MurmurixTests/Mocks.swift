@@ -47,6 +47,8 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
     var unloadModelCallCount = 0
     var unloadAllModelsCallCount = 0
     var transcribeCallCount = 0
+    var lastLanguage: String?
+    var lastMode: TranscriptionMode?
 
     var transcriptionResult: Result<String, Error> = .success("Test transcription")
     var transcriptionDelay: TimeInterval = 0
@@ -70,8 +72,14 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
         loadedModels.removeAll()
     }
 
-    func transcribe(audioURL: URL, mode: TranscriptionMode = .local(model: "small")) async throws -> String {
+    func transcribe(
+        audioURL: URL,
+        language: String,
+        mode: TranscriptionMode = .local(model: "small")
+    ) async throws -> String {
         transcribeCallCount += 1
+        lastLanguage = language
+        lastMode = mode
 
         if transcriptionDelay > 0 {
             try await Task.sleep(nanoseconds: UInt64(transcriptionDelay * 1_000_000_000))
@@ -226,6 +234,7 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
     var transcribeCallCount = 0
     var downloadModelCallCount = 0
     var lastModelName: String?
+    var lastLanguage: String?
     var transcribeResult: Result<String, Error> = .success("Transcribed text")
 
     func isModelLoaded(name: String) -> Bool {
@@ -254,6 +263,8 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
 
     func transcribe(audioURL: URL, language: String, model: String) async throws -> String {
         transcribeCallCount += 1
+        lastLanguage = language
+        lastModelName = model
         switch transcribeResult {
         case .success(let text): return text
         case .failure(let error): throw error
@@ -272,12 +283,16 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
 final class MockOpenAITranscriptionService: OpenAITranscriptionServiceProtocol, @unchecked Sendable {
     var transcribeCallCount = 0
     var validateAPIKeyCallCount = 0
+    var lastLanguage: String?
+    var lastModel: String?
 
     var transcribeResult: Result<String, Error> = .success("Transcribed text")
     var validateAPIKeyResult: Result<Bool, Error> = .success(true)
 
     func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
         transcribeCallCount += 1
+        lastLanguage = language
+        lastModel = model
         switch transcribeResult {
         case .success(let result):
             return result

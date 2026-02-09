@@ -57,6 +57,7 @@ final class RecordingCoordinator {
     private var recordingStartTime: Date?
     private var transcriptionTask: Task<Void, Never>?
     private var currentAudioURL: URL?
+    private var currentCompressedAudioURL: URL?
     private var currentTranscriptionMode: TranscriptionMode = .local(model: "small")
 
     private let audioRecorder: AudioRecorderProtocol
@@ -94,7 +95,7 @@ final class RecordingCoordinator {
         guard state == .recording else { return }
 
         let audioURL = audioRecorder.stopRecording()
-        try? FileManager.default.removeItem(at: audioURL)
+        removeFileIfExists(audioURL, context: "cancel recording")
         state = .idle
         recordingStartTime = nil
     }
@@ -107,8 +108,12 @@ final class RecordingCoordinator {
 
         // Clean up audio file
         if let audioURL = currentAudioURL {
-            try? FileManager.default.removeItem(at: audioURL)
+            removeFileIfExists(audioURL, context: "cancel transcription")
             currentAudioURL = nil
+        }
+        if let compressedURL = currentCompressedAudioURL {
+            removeFileIfExists(compressedURL, context: "cancel transcription (compressed)")
+            currentCompressedAudioURL = nil
         }
 
         state = .idle
@@ -135,7 +140,7 @@ final class RecordingCoordinator {
         // Skip transcription if no voice was detected (prevents Whisper hallucinations)
         guard hadVoice else {
             state = .idle
-            try? FileManager.default.removeItem(at: audioURL)
+            removeFileIfExists(audioURL, context: "no voice activity")
             Logger.Transcription.info("No voice activity detected, skipping transcription")
             delegate?.recordingDidStopWithoutVoice()
             return
@@ -149,23 +154,31 @@ final class RecordingCoordinator {
 
     private func performTranscription(audioURL: URL, duration: TimeInterval) {
         currentAudioURL = audioURL
+        currentCompressedAudioURL = nil
         let service = transcriptionService
         let language = settings.language
         let mode = currentTranscriptionMode
 
         Logger.Transcription.info("Starting transcription, mode: \(mode.logName), language: \(language), duration: \(String(format: "%.1f", duration))s")
 
-        transcriptionTask = Task.detached { [weak self] in
+        transcriptionTask = Task { [weak self] in
             guard let self = self else { return }
 
             do {
                 // For cloud mode, compress WAV to M4A for faster upload
                 let transcriptionURL: URL
-                var compressedURL: URL?
 
                 if mode.isCloud {
-                    compressedURL = try? await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
+                    let compressedURL: URL?
+                    do {
+                        compressedURL = try await AudioCompressor.compress(wavURL: audioURL, deleteOriginal: false)
+                    } catch {
+                        Logger.Transcription.error("Audio compression failed, fallback to WAV: \(error.localizedDescription)")
+                        compressedURL = nil
+                    }
+
                     if let compressed = compressedURL {
+                        self.currentCompressedAudioURL = compressed
                         transcriptionURL = compressed
                         Logger.Transcription.info("Using M4A for cloud transcription (\(mode.logName))")
                     } else {
@@ -175,46 +188,51 @@ final class RecordingCoordinator {
                     transcriptionURL = audioURL
                 }
 
-                let transcribedText = try await service.transcribe(audioURL: transcriptionURL, mode: mode)
+                let transcribedText = try await service.transcribe(
+                    audioURL: transcriptionURL,
+                    language: language,
+                    mode: mode
+                )
 
                 // Check if cancelled
                 if Task.isCancelled { return }
 
-                await MainActor.run {
-                    self.state = .idle
-                    self.currentAudioURL = nil
-                    self.transcriptionTask = nil
+                self.state = .idle
+                self.currentAudioURL = nil
+                self.transcriptionTask = nil
 
-                    // Save to history
-                    let record = TranscriptionRecord(
-                        text: transcribedText,
-                        language: language,
-                        duration: duration
-                    )
-                    self.historyService.save(record: record)
+                // Save to history
+                let record = TranscriptionRecord(
+                    text: transcribedText,
+                    language: language,
+                    duration: duration
+                )
+                self.historyService.save(record: record)
 
-                    // Delete audio files
-                    try? FileManager.default.removeItem(at: audioURL)
-                    if let compressed = compressedURL {
-                        try? FileManager.default.removeItem(at: compressed)
-                    }
-
-                    self.delegate?.transcriptionDidComplete(text: transcribedText, duration: duration, recordId: record.id)
+                // Delete audio files
+                self.removeFileIfExists(audioURL, context: "successful transcription")
+                if let compressedURL = self.currentCompressedAudioURL {
+                    self.removeFileIfExists(compressedURL, context: "successful transcription (compressed)")
                 }
+                self.currentCompressedAudioURL = nil
+
+                self.delegate?.transcriptionDidComplete(text: transcribedText, duration: duration, recordId: record.id)
             } catch {
                 // Check if cancelled
                 if Task.isCancelled { return }
 
-                await MainActor.run {
-                    self.state = .idle
-                    self.currentAudioURL = nil
-                    self.transcriptionTask = nil
+                self.state = .idle
+                self.currentAudioURL = nil
+                self.transcriptionTask = nil
 
-                    // Delete audio file even on error
-                    try? FileManager.default.removeItem(at: audioURL)
-
-                    self.delegate?.transcriptionDidFail(error: error)
+                // Delete audio files even on error
+                self.removeFileIfExists(audioURL, context: "failed transcription")
+                if let compressedURL = self.currentCompressedAudioURL {
+                    self.removeFileIfExists(compressedURL, context: "failed transcription (compressed)")
                 }
+                self.currentCompressedAudioURL = nil
+
+                self.delegate?.transcriptionDidFail(error: error)
             }
         }
     }
@@ -224,7 +242,13 @@ final class RecordingCoordinator {
     func loadModelsIfNeeded() {
         let modelSettings = settings.loadWhisperModelSettings()
         for (modelName, ms) in modelSettings where ms.keepLoaded {
-            Task { try? await transcriptionService.loadModel(name: modelName) }
+            Task {
+                do {
+                    try await transcriptionService.loadModel(name: modelName)
+                } catch {
+                    Logger.Model.error("Failed to load model \(modelName): \(error.localizedDescription)")
+                }
+            }
         }
     }
 
@@ -234,7 +258,13 @@ final class RecordingCoordinator {
 
     func setModelLoaded(_ enabled: Bool, model: String) {
         if enabled {
-            Task { try? await transcriptionService.loadModel(name: model) }
+            Task {
+                do {
+                    try await transcriptionService.loadModel(name: model)
+                } catch {
+                    Logger.Model.error("Failed to load model \(model): \(error.localizedDescription)")
+                }
+            }
         } else {
             Task { await transcriptionService.unloadModel(name: model) }
         }
@@ -245,8 +275,26 @@ final class RecordingCoordinator {
             await transcriptionService.unloadModel(name: name)
             let modelSettings = settings.loadWhisperModelSettings()
             if modelSettings[name]?.keepLoaded == true {
-                try? await transcriptionService.loadModel(name: name)
+                do {
+                    try await transcriptionService.loadModel(name: name)
+                } catch {
+                    Logger.Model.error("Failed to reload model \(name): \(error.localizedDescription)")
+                }
             }
+        }
+    }
+
+    // MARK: - File Cleanup
+
+    private func removeFileIfExists(_ url: URL, context: String) {
+        guard !url.path.isEmpty else { return }
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: url.path) else { return }
+
+        do {
+            try fileManager.removeItem(at: url)
+        } catch {
+            Logger.Transcription.error("Failed to remove file (\(context)): \(url.path), error: \(error.localizedDescription)")
         }
     }
 }
