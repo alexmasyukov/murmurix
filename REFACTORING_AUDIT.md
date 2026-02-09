@@ -327,7 +327,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 
 ## Фаза 2 (settings + hotkeys)
 
-- [ ] Внедрить `SettingsStore`.
+- [x] Внедрить `SettingsStore`.
 - [x] Вынести единый `HotkeyCaptureService`.
 - [x] Убрать global mutable flags из `GlobalHotkeyManager`.
 - [x] Свести hotkey capture к одному reusable компоненту.
