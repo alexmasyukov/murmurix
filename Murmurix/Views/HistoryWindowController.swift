@@ -9,10 +9,12 @@ import SwiftUI
 @MainActor
 class HistoryWindowController: NSWindowController, NSWindowDelegate {
 
-    private var historyViewModel: HistoryViewModel!
+    private let historyViewModel: HistoryViewModel
     private var languageObserver: NSObjectProtocol?
 
-    convenience init(historyService: HistoryServiceProtocol) {
+    init(historyService: HistoryServiceProtocol) {
+        self.historyViewModel = HistoryViewModel(historyService: historyService)
+
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
             styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
@@ -25,12 +27,16 @@ class HistoryWindowController: NSWindowController, NSWindowDelegate {
         window.minSize = NSSize(width: 500, height: 300)
         window.appearance = NSAppearance(named: .darkAqua)
 
-        self.init(window: window)
-        historyViewModel = HistoryViewModel(historyService: historyService)
+        super.init(window: window)
         window.delegate = self
 
         let contentView = HistoryView(viewModel: historyViewModel)
         window.contentView = NSHostingView(rootView: contentView)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     override func showWindow(_ sender: Any?) {
