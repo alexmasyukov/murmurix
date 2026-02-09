@@ -18,6 +18,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onWindowClose: (() -> Void)?
 
     private let modelStatus = ModelStatusModel()
+    private let modelStatusUpdateDelay: TimeInterval = 1
 
     convenience init(
         loadedModels: Set<String>,
@@ -58,13 +59,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
             ),
             onModelToggle: { [weak self] model, enabled in
                 onModelToggle(model, enabled)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    if enabled {
-                        self?.modelStatus.loadedModels.insert(model)
-                    } else {
-                        self?.modelStatus.loadedModels.remove(model)
-                    }
-                }
+                self?.scheduleModelStatusUpdate(model: model, enabled: enabled)
             },
             onLocalHotkeysChanged: onLocalHotkeysChanged,
             onCloudHotkeysChanged: onCloudHotkeysChanged
@@ -74,6 +69,16 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     func updateLoadedModels(_ models: Set<String>) {
         modelStatus.loadedModels = models
+    }
+
+    private func scheduleModelStatusUpdate(model: String, enabled: Bool) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + modelStatusUpdateDelay) { [weak self] in
+            if enabled {
+                self?.modelStatus.loadedModels.insert(model)
+            } else {
+                self?.modelStatus.loadedModels.remove(model)
+            }
+        }
     }
 
     override func showWindow(_ sender: Any?) {
