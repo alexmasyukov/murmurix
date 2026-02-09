@@ -256,6 +256,44 @@ struct RecordingCoordinatorTests {
         #expect(delegate.transcriptionDidCancelCallCount == 1)
     }
 
+    @Test func cancelTranscriptionPreventsLateCompletionCallbacks() async throws {
+        let (coordinator, _, transcriptionService, _, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 0.4
+
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .transcribing)
+
+        coordinator.cancelTranscription()
+
+        #expect(coordinator.state == .idle)
+        #expect(delegate.transcriptionDidCancelCallCount == 1)
+
+        // Give the canceled task enough time to finish and assert no late callbacks happen.
+        try await Task.sleep(nanoseconds: 600_000_000)
+
+        #expect(delegate.transcriptionDidCompleteCallCount == 0)
+        #expect(delegate.transcriptionDidFailCallCount == 0)
+    }
+
+    @Test func cancelTranscriptionThenToggleStartsNewRecording() {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 1.0
+
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .transcribing)
+
+        coordinator.cancelTranscription()
+        coordinator.toggleRecording(mode: .local(model: "small"))
+
+        #expect(coordinator.state == .recording)
+        #expect(audioRecorder.startRecordingCallCount == 2)
+        #expect(delegate.recordingDidStartCallCount == 2)
+        #expect(delegate.transcriptionDidCancelCallCount == 1)
+        #expect(transcriptionService.transcribeCallCount <= 1)
+    }
+
     @Test func cancelTranscriptionWhenIdleDoesNothing() {
         let (coordinator, _, _, _, _, delegate) = createCoordinator()
 
