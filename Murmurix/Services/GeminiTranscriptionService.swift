@@ -12,10 +12,10 @@ protocol GeminiTranscriptionServiceProtocol: Sendable {
 }
 
 final class GeminiTranscriptionService: GeminiTranscriptionServiceProtocol, Sendable {
-    static let shared = GeminiTranscriptionService()
+    static let shared = GeminiTranscriptionService(promptPolicy: DefaultTranscriptionPromptPolicy.shared)
     private let promptPolicy: any TranscriptionPromptPolicy
 
-    init(promptPolicy: any TranscriptionPromptPolicy = DefaultTranscriptionPromptPolicy.shared) {
+    init(promptPolicy: any TranscriptionPromptPolicy) {
         self.promptPolicy = promptPolicy
     }
 

@@ -101,7 +101,10 @@ struct OpenAITranscriptionServiceDITests {
         let mockSession = MockURLSession()
         mockSession.setSuccessResponse(json: ["text": "Hello world"])
 
-        let service = OpenAITranscriptionService(session: mockSession)
+        let service = OpenAITranscriptionService(
+            session: mockSession,
+            promptPolicy: DefaultTranscriptionPromptPolicy.shared
+        )
 
         // Create a temp audio file for the test
         let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
@@ -124,7 +127,10 @@ struct OpenAITranscriptionServiceDITests {
         let mockSession = MockURLSession()
         mockSession.setSuccessResponse(json: ["text": "Test"])
 
-        let service = OpenAITranscriptionService(session: mockSession)
+        let service = OpenAITranscriptionService(
+            session: mockSession,
+            promptPolicy: DefaultTranscriptionPromptPolicy.shared
+        )
 
         let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
         try AudioTestUtility.createSilentWavFile(at: tempURL)
@@ -145,7 +151,10 @@ struct OpenAITranscriptionServiceDITests {
         let mockSession = MockURLSession()
         mockSession.setErrorResponse(statusCode: 401, message: "Invalid API key")
 
-        let service = OpenAITranscriptionService(session: mockSession)
+        let service = OpenAITranscriptionService(
+            session: mockSession,
+            promptPolicy: DefaultTranscriptionPromptPolicy.shared
+        )
 
         let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
         try? AudioTestUtility.createSilentWavFile(at: tempURL)

@@ -747,3 +747,23 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - тестовая инициализация централизована и стала явно управляемой.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests -only-testing:MurmurixTests/Phase3GeneralSettingsViewModelTests` -> `** TEST SUCCEEDED **`.
+
+### 10.28 OpenAI/Gemini services: убрать default singleton-зависимости в init
+
+- В сервисах cloud-транскрибации удалены default singleton-параметры из designated init:
+  - `OpenAITranscriptionService(session:promptPolicy:)`
+  - `GeminiTranscriptionService(promptPolicy:)`
+- `shared` сохранен, но теперь строится явно через конкретные зависимости:
+  - `URLSession.shared`
+  - `DefaultTranscriptionPromptPolicy.shared`
+- Обновлены DI-тесты под новый явный контракт конструктора:
+  - `MurmurixTests/Phase2Tests.swift`
+- Изменены файлы:
+  - `Murmurix/Services/OpenAITranscriptionService.swift`
+  - `Murmurix/Services/GeminiTranscriptionService.swift`
+  - `MurmurixTests/Phase2Tests.swift`
+- Эффект:
+  - снижена скрытая singleton-surface в domain/service слое,
+  - конструкторы сервисов стали полностью явными и тесто-дружелюбными.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/OpenAITranscriptionServiceDITests -only-testing:MurmurixTests/GeminiModelTests` -> `** TEST SUCCEEDED **`.

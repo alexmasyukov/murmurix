@@ -11,7 +11,10 @@ protocol OpenAITranscriptionServiceProtocol: Sendable {
 }
 
 final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Sendable {
-    static let shared = OpenAITranscriptionService()
+    static let shared = OpenAITranscriptionService(
+        session: URLSession.shared,
+        promptPolicy: DefaultTranscriptionPromptPolicy.shared
+    )
 
     private let baseURL = "https://api.openai.com/v1/audio/transcriptions"
     private let session: URLSessionProtocol
@@ -30,8 +33,8 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
     }
 
     init(
-        session: URLSessionProtocol = URLSession.shared,
-        promptPolicy: any TranscriptionPromptPolicy = DefaultTranscriptionPromptPolicy.shared
+        session: URLSessionProtocol,
+        promptPolicy: any TranscriptionPromptPolicy
     ) {
         self.session = session
         self.promptPolicy = promptPolicy
