@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:05  
+Последнее обновление: 2026-02-09 15:06  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -512,3 +512,13 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - `Murmurix/App/AppDelegate.swift`.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/HistoryServiceTests` -> `** TEST SUCCEEDED **`.
+
+### 10.11 Вынесен live composition root в `AppDependencies`
+
+- В `AppDelegate` введен структурный контейнер зависимостей:
+  - `Murmurix/App/AppDelegate.swift` (`AppDependencies` + `AppDependencies.live()`).
+- `AppDelegate` теперь инициализируется через единый контейнер:
+  - `init(dependencies: AppDependencies = .live())`.
+- Это устраняет рассыпанные default-параметры в конструкторе `AppDelegate` и упрощает future DI для интеграционных сценариев.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/HistoryViewModelTests` -> `** TEST SUCCEEDED **`.

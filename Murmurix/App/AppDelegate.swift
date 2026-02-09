@@ -6,6 +6,24 @@
 import SwiftUI
 import AppKit
 
+struct AppDependencies {
+    let historyService: HistoryServiceProtocol
+    let settings: SettingsStorageProtocol
+    let makeAudioRecorder: () -> any AudioRecorderProtocol
+    let makeTranscriptionService: (SettingsStorageProtocol) -> any TranscriptionServiceProtocol
+
+    static func live() -> AppDependencies {
+        AppDependencies(
+            historyService: HistoryService.shared,
+            settings: Settings.shared,
+            makeAudioRecorder: { AudioRecorder() },
+            makeTranscriptionService: { settings in
+                TranscriptionService(settings: settings)
+            }
+        )
+    }
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarManager: MenuBarManager!
     private var windowManager: WindowManager!
@@ -23,18 +41,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let makeAudioRecorder: () -> any AudioRecorderProtocol
     private let makeTranscriptionService: (SettingsStorageProtocol) -> any TranscriptionServiceProtocol
 
-    init(
-        historyService: HistoryServiceProtocol = HistoryService.shared,
-        settings: SettingsStorageProtocol = Settings.shared,
-        makeAudioRecorder: @escaping () -> any AudioRecorderProtocol = { AudioRecorder() },
-        makeTranscriptionService: @escaping (SettingsStorageProtocol) -> any TranscriptionServiceProtocol = {
-            settings in TranscriptionService(settings: settings)
-        }
-    ) {
-        self.historyService = historyService
-        self.settings = settings
-        self.makeAudioRecorder = makeAudioRecorder
-        self.makeTranscriptionService = makeTranscriptionService
+    init(dependencies: AppDependencies = .live()) {
+        self.historyService = dependencies.historyService
+        self.settings = dependencies.settings
+        self.makeAudioRecorder = dependencies.makeAudioRecorder
+        self.makeTranscriptionService = dependencies.makeTranscriptionService
         super.init()
     }
 
