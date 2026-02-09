@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:17  
+Последнее обновление: 2026-02-09 15:18  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -581,3 +581,14 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - прозрачнее граница production wiring vs тестовые doubles.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests -only-testing:MurmurixTests/DependencyInjectionTests -only-testing:MurmurixTests/Phase3Tests` -> `** TEST SUCCEEDED **`.
+
+### 10.16 GeneralSettingsViewModel: cancellable reset-status вместо GCD delay
+
+- В `GeneralSettingsViewModel` заменен `DispatchQueue.main.asyncAfter` на cancellable `Task`:
+  - `Murmurix/ViewModels/GeneralSettingsViewModel.swift`
+  - добавлена карта `statusResetTasks` на модель и явная отмена pending reset при новом старте/отмене download.
+- Эффект:
+  - более предсказуемое поведение при повторных `startDownload/cancelDownload`,
+  - единый structured-concurrency стиль в view-model слое.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests -only-testing:MurmurixTests/GeneralSettingsViewModelSettingsDITests` -> `** TEST SUCCEEDED **`.

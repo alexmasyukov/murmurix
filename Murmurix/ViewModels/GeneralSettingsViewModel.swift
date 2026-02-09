@@ -44,6 +44,7 @@ final class GeneralSettingsViewModel: ObservableObject {
     private let modelDirectory: (String) -> URL
     private let modelsRepositoryDirectory: () -> URL
     private let completedStatusResetDelay: TimeInterval = 2
+    private var statusResetTasks: [String: Task<Void, Never>] = [:]
     let settings: SettingsStorageProtocol
 
     init(
@@ -92,6 +93,7 @@ final class GeneralSettingsViewModel: ObservableObject {
     }
 
     func startDownload(for modelName: String) {
+        cancelStatusReset(for: modelName)
         downloadStatuses[modelName] = .downloading(progress: 0)
 
         Task { [weak self] in
@@ -118,16 +120,33 @@ final class GeneralSettingsViewModel: ObservableObject {
     }
 
     func cancelDownload(for modelName: String) {
+        cancelStatusReset(for: modelName)
         downloadStatuses[modelName] = .idle
     }
 
     private func scheduleStatusReset(for modelName: String) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + completedStatusResetDelay) { [weak self] in
-            guard let self = self else { return }
+        cancelStatusReset(for: modelName)
+        let delayNanoseconds = UInt64(completedStatusResetDelay * 1_000_000_000)
+
+        statusResetTasks[modelName] = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            } catch {
+                return
+            }
+
+            guard let self = self, !Task.isCancelled else { return }
+            defer { self.statusResetTasks[modelName] = nil }
+
             if case .completed = self.downloadStatuses[modelName] {
                 self.downloadStatuses[modelName] = .idle
             }
         }
+    }
+
+    private func cancelStatusReset(for modelName: String) {
+        statusResetTasks[modelName]?.cancel()
+        statusResetTasks[modelName] = nil
     }
 
     // MARK: - Model Deletion
