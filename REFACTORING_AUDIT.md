@@ -1,7 +1,7 @@
 # Murmurix Refactoring Audit (Deep)
 
 Дата: 2026-02-09  
-Последнее обновление: 2026-02-09 15:06  
+Последнее обновление: 2026-02-09 15:08  
 Ветка: `refactor/phase0-language-flow`  
 Проект: `Murmurix` (macOS menubar, Swift/AppKit/SwiftUI)
 
@@ -522,3 +522,16 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 - Это устраняет рассыпанные default-параметры в конструкторе `AppDelegate` и упрощает future DI для интеграционных сценариев.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/HistoryViewModelTests` -> `** TEST SUCCEEDED **`.
+
+### 10.12 HistoryViewModel: переход с GCD на structured concurrency
+
+- Заменён механизм отложенного выбора записи:
+  - `DispatchWorkItem + DispatchQueue.main.async`
+  - на `Task<Void, Never> + cancel + Task.yield()`.
+- Изменён файл:
+  - `Murmurix/ViewModels/HistoryViewModel.swift`.
+- Эффект:
+  - единый async-подход в view-model слое,
+  - более явная отмена pending update без GCD work item.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryViewModelTests -only-testing:MurmurixTests/HistoryServiceTests` -> `** TEST SUCCEEDED **`.

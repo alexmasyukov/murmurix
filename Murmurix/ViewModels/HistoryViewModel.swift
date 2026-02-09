@@ -22,7 +22,7 @@ final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
     @Published var selectedRecord: TranscriptionRecord?
 
     private let historyService: HistoryServiceProtocol
-    private var pendingSelectionUpdate: DispatchWorkItem?
+    private var pendingSelectionTask: Task<Void, Never>?
 
     init(historyService: HistoryServiceProtocol) {
         self.historyService = historyService
@@ -34,16 +34,16 @@ final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
         let fetched = historyService.fetchAll()
         records = fetched
 
-        // Defer selection update to next run loop to avoid multiple updates per frame
+        // Defer selection update to next task turn to avoid re-entrant updates in one cycle.
         if selectedRecord == nil, let first = fetched.first {
-            let workItem = DispatchWorkItem { [weak self] in
+            pendingSelectionTask = Task { [weak self] in
+                await Task.yield()
                 guard let self = self else { return }
+                guard !Task.isCancelled else { return }
                 guard self.selectedRecord == nil else { return }
                 guard self.records.first?.id == first.id else { return }
                 self.selectedRecord = first
             }
-            pendingSelectionUpdate = workItem
-            DispatchQueue.main.async(execute: workItem)
         }
     }
 
@@ -64,8 +64,8 @@ final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
     }
 
     private func clearPendingSelectionUpdate() {
-        pendingSelectionUpdate?.cancel()
-        pendingSelectionUpdate = nil
+        pendingSelectionTask?.cancel()
+        pendingSelectionTask = nil
     }
 
     // MARK: - Statistics
