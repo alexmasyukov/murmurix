@@ -143,14 +143,17 @@ struct AppConstantsTests {
     // MARK: - Typography
 
     @Test func typographyFontsExist() {
-        // These should not crash when accessed
-        _ = Typography.title
-        _ = Typography.label
-        _ = Typography.description
-        _ = Typography.caption
-        _ = Typography.monospaced
+        let fonts = [
+            Typography.title,
+            Typography.label,
+            Typography.description,
+            Typography.caption,
+            Typography.monospaced
+        ]
 
-        #expect(true) // If we get here, fonts were created successfully
+        for font in fonts {
+            #expect(!String(describing: font).isEmpty)
+        }
     }
 
     // MARK: - AppColors
@@ -163,11 +166,14 @@ struct AppConstantsTests {
     }
 
     @Test func appColorsColorsExist() {
-        // These should not crash when accessed
-        _ = AppColors.cardBackground
-        _ = AppColors.divider
+        let colors = [
+            AppColors.cardBackground,
+            AppColors.divider
+        ]
 
-        #expect(true) // If we get here, colors were created successfully
+        for color in colors {
+            #expect(!String(describing: color).isEmpty)
+        }
     }
 
     // MARK: - AudioConfig
@@ -275,9 +281,8 @@ struct WindowPositionerTests {
         )
 
         WindowPositioner.positionTopCenter(window)
-
-        // If we get here, no crash occurred
-        #expect(true)
+        #expect(window.frame.width == 200)
+        #expect(window.frame.height == 100)
     }
 
     @Test func positionTopCenterWithOffsetDoesNotCrash() {
@@ -289,8 +294,8 @@ struct WindowPositionerTests {
         )
 
         WindowPositioner.positionTopCenter(window, topOffset: 20)
-
-        #expect(true)
+        #expect(window.frame.width == 200)
+        #expect(window.frame.height == 100)
     }
 
     @Test func centerDoesNotCrash() {
@@ -302,8 +307,8 @@ struct WindowPositionerTests {
         )
 
         WindowPositioner.center(window)
-
-        #expect(true)
+        #expect(window.frame.width == 200)
+        #expect(window.frame.height == 100)
     }
 
     @Test func centerAndActivateDoesNotCrash() {
@@ -315,8 +320,8 @@ struct WindowPositionerTests {
         )
 
         WindowPositioner.centerAndActivate(window)
-
-        #expect(true)
+        #expect(window.frame.width == 200)
+        #expect(window.frame.height == 100)
     }
 
     @Test func positionTopCenterPositionsWindowAtTop() {
@@ -353,16 +358,12 @@ struct LoggerTests {
         Logger.Audio.info("Test info message")
         Logger.Audio.error("Test error message")
         Logger.Audio.debug("Test debug message")
-
-        #expect(true)
     }
 
     @Test func transcriptionLoggerDoesNotCrash() {
         Logger.Transcription.info("Test info message")
         Logger.Transcription.error("Test error message")
         Logger.Transcription.debug("Test debug message")
-
-        #expect(true)
     }
 
     @Test func modelLoggerDoesNotCrash() {
@@ -370,28 +371,20 @@ struct LoggerTests {
         Logger.Model.error("Test error message")
         Logger.Model.warning("Test warning message")
         Logger.Model.debug("Test debug message")
-
-        #expect(true)
     }
 
     @Test func hotkeyLoggerDoesNotCrash() {
         Logger.Hotkey.info("Test info message")
         Logger.Hotkey.error("Test error message")
-
-        #expect(true)
     }
 
     @Test func historyLoggerDoesNotCrash() {
         Logger.History.error("Test error message")
         Logger.History.debug("Test debug message")
-
-        #expect(true)
     }
 
     @Test func settingsLoggerDoesNotCrash() {
         Logger.Settings.debug("Test debug message")
-
-        #expect(true)
     }
 }
 
