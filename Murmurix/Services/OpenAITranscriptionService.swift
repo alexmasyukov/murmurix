@@ -38,10 +38,6 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
     // MARK: - Transcription
 
     func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
-        guard let url = URL(string: baseURL) else {
-            throw MurmurixError.transcription(.failed("Invalid API URL"))
-        }
-
         // Читаем аудио файл
         let audioData: Data
         do {
@@ -52,31 +48,14 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
 
         // Создаем multipart/form-data запрос
         let boundary = UUID().uuidString
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 120
-
-        // Собираем body
-        var body = Data()
-        let filename = audioURL.lastPathComponent
-        let mimeType = MIMETypeResolver.mimeType(for: audioURL.pathExtension)
-        appendFileField(
-            name: "file",
-            filename: filename,
-            mimeType: mimeType,
-            fileData: audioData,
-            boundary: boundary,
-            to: &body
+        var request = try makeMultipartRequest(apiKey: apiKey, boundary: boundary, timeout: 120)
+        request.httpBody = makeTranscriptionBody(
+            audioURL: audioURL,
+            audioData: audioData,
+            model: model,
+            language: language,
+            boundary: boundary
         )
-        appendFormField(name: "model", value: model, boundary: boundary, to: &body)
-        appendFormField(name: "language", value: language, boundary: boundary, to: &body)
-        appendFormField(name: "prompt", value: defaultPrompt, boundary: boundary, to: &body)
-        appendFormField(name: "response_format", value: "json", boundary: boundary, to: &body)
-        closeBoundary(boundary, to: &body)
-
-        request.httpBody = body
 
         // Отправляем запрос
         let (data, response) = try await session.data(for: request)
@@ -116,29 +95,9 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
         // Создаём минимальный WAV файл (тишина) для тестового запроса
         let testAudioData = AudioTestUtility.createWavData(duration: 0.1)
 
-        guard let url = URL(string: baseURL) else {
-            throw MurmurixError.transcription(.failed("Invalid API URL"))
-        }
-
         let boundary = UUID().uuidString
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
-
-        var body = Data()
-        appendFileField(
-            name: "file",
-            filename: "test.wav",
-            mimeType: "audio/wav",
-            fileData: testAudioData,
-            boundary: boundary,
-            to: &body
-        )
-        appendFormField(name: "model", value: "gpt-4o-mini-transcribe", boundary: boundary, to: &body)
-        closeBoundary(boundary, to: &body)
-        request.httpBody = body
+        var request = try makeMultipartRequest(apiKey: apiKey, boundary: boundary, timeout: 30)
+        request.httpBody = makeValidationBody(testAudioData: testAudioData, boundary: boundary)
 
         let (data, response) = try await session.data(for: request)
 
@@ -183,6 +142,58 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
             Logger.Transcription.debug("Failed to decode OpenAI error response: \(error.localizedDescription)")
             return nil
         }
+    }
+
+    private func makeMultipartRequest(apiKey: String, boundary: String, timeout: TimeInterval) throws -> URLRequest {
+        guard let url = URL(string: baseURL) else {
+            throw MurmurixError.transcription(.failed("Invalid API URL"))
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = timeout
+        return request
+    }
+
+    private func makeTranscriptionBody(
+        audioURL: URL,
+        audioData: Data,
+        model: String,
+        language: String,
+        boundary: String
+    ) -> Data {
+        var body = Data()
+        appendFileField(
+            name: "file",
+            filename: audioURL.lastPathComponent,
+            mimeType: MIMETypeResolver.mimeType(for: audioURL.pathExtension),
+            fileData: audioData,
+            boundary: boundary,
+            to: &body
+        )
+        appendFormField(name: "model", value: model, boundary: boundary, to: &body)
+        appendFormField(name: "language", value: language, boundary: boundary, to: &body)
+        appendFormField(name: "prompt", value: defaultPrompt, boundary: boundary, to: &body)
+        appendFormField(name: "response_format", value: "json", boundary: boundary, to: &body)
+        closeBoundary(boundary, to: &body)
+        return body
+    }
+
+    private func makeValidationBody(testAudioData: Data, boundary: String) -> Data {
+        var body = Data()
+        appendFileField(
+            name: "file",
+            filename: "test.wav",
+            mimeType: "audio/wav",
+            fileData: testAudioData,
+            boundary: boundary,
+            to: &body
+        )
+        appendFormField(name: "model", value: "gpt-4o-mini-transcribe", boundary: boundary, to: &body)
+        closeBoundary(boundary, to: &body)
+        return body
     }
 
     private func appendFormField(name: String, value: String, boundary: String, to body: inout Data) {
