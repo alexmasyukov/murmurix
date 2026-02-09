@@ -40,7 +40,7 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
 
     func requestPermission(completion: @escaping (Bool) -> Void) {
         AVCaptureDevice.requestAccess(for: .audio) { granted in
-            DispatchQueue.main.async {
+            self.runOnMain {
                 completion(granted)
             }
         }
@@ -119,7 +119,7 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
             // -50 dB = silence, 0 dB = max
             let normalizedLevel = max(0, (avgPower + 50) / 50)
 
-            DispatchQueue.main.async {
+            self.runOnMain {
                 // Smooth the transition
                 self.audioLevel = self.audioLevel * 0.3 + normalizedLevel * 0.7
 
@@ -134,6 +134,14 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     private func stopLevelMonitoring() {
         levelTimer?.invalidate()
         levelTimer = nil
+    }
+
+    private func runOnMain(_ block: @escaping () -> Void) {
+        if Thread.isMainThread {
+            block()
+        } else {
+            DispatchQueue.main.async(execute: block)
+        }
     }
 }
 
