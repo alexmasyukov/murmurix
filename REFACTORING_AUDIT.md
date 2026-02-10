@@ -1015,3 +1015,26 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - уведомление о смене языка и чтение текущего языка стали тестопригоднее и более явными.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/SettingsStoreTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.42 ModelPaths: изолировать temp-репозиторий тестов от debug runtime
+
+- `ModelPaths` получил отдельный temp-root для тестов:
+  - добавлен `ModelPaths.testRepoRoot = "murmurix-test-models"`,
+  - добавлена детекция test runtime по env (`XCTestConfigurationFilePath` / `XCTestBundlePath`),
+  - при temp-режиме выбор root теперь:
+    - `murmurix-test-models` для тестов,
+    - `murmurix-dev-models` для обычного debug/runtime.
+- Приоритеты path selection сохранены:
+  - `MURMURIX_MODEL_REPO_DIR` по-прежнему имеет максимальный приоритет,
+  - `MURMURIX_USE_TEMP_MODEL_REPO=0` по-прежнему отключает temp path.
+- Расширены тесты `AppConstantsTests`:
+  - существующие проверки обновлены под dual-root temp стратегию,
+  - добавлен targeted тест на отдельный test-root при `XCTest*` env.
+- Изменены файлы:
+  - `Murmurix/App/AppConstants.swift`
+  - `MurmurixTests/RefactoringTests.swift`
+- Эффект:
+  - тесты с удалением/чисткой моделей больше не конфликтуют с debug-сеансом разработки даже внутри временной директории,
+  - production путь моделей не затрагивается.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/RefactoringTests` -> `** TEST SUCCEEDED **`.

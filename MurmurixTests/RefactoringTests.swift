@@ -117,6 +117,12 @@ struct MurmurixErrorTests {
 // MARK: - AppConstants Tests
 
 struct AppConstantsTests {
+    private func expectedTempRepoRoot(for environment: [String: String]) -> String {
+        if environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil {
+            return ModelPaths.testRepoRoot
+        }
+        return ModelPaths.debugRepoRoot
+    }
 
     // MARK: - Layout
 
@@ -231,12 +237,12 @@ struct AppConstantsTests {
         if let customPath = environment[ModelPaths.customRepoDirEnv], !customPath.isEmpty {
             #expect(repoDir.path == URL(fileURLWithPath: customPath).standardizedFileURL.path)
         } else if environment[ModelPaths.useTempRepoEnv] == "1" {
-            #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
+            #expect(repoDir.path.contains(expectedTempRepoRoot(for: environment)))
             #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
         } else {
 #if DEBUG
             if environment[ModelPaths.useTempRepoEnv] != "0" {
-                #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
+                #expect(repoDir.path.contains(expectedTempRepoRoot(for: environment)))
                 #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
             } else {
                 #expect(repoDir.path.contains("Documents"))
@@ -295,6 +301,23 @@ struct AppConstantsTests {
 
         #expect(repoDir.path.contains("/tmp/murmurix-tests"))
         #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
+        #expect(repoDir.path.contains(ModelPaths.repoSubpath))
+    }
+
+    @Test func modelPathsUseDedicatedTestRootWhenXCTestEnvironmentIsPresent() {
+        let tempDirectory = URL(fileURLWithPath: "/tmp/murmurix-tests")
+        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+
+        let repoDir = ModelPaths.repoDir(
+            for: [
+                ModelPaths.useTempRepoEnv: "1",
+                "XCTestConfigurationFilePath": "/tmp/session.xctestconfiguration"
+            ],
+            tempDirectory: tempDirectory,
+            documentsDirectory: documentsDirectory
+        )
+
+        #expect(repoDir.path.contains(ModelPaths.testRepoRoot))
         #expect(repoDir.path.contains(ModelPaths.repoSubpath))
     }
 
