@@ -33,6 +33,11 @@ struct SettingsTests {
         #expect(settings.language == "ru")
     }
 
+    @Test func defaultAppLanguageIsEnglish() {
+        let settings = createSettings()
+        #expect(settings.appLanguage == AppLanguage.defaultRawValue)
+    }
+
     @Test func defaultToggleCloudHotkeyIsNil() {
         let settings = createSettings()
         let hotkey = settings.loadToggleCloudHotkey()
@@ -79,6 +84,16 @@ struct SettingsTests {
 
         settings.language = "auto"
         #expect(settings.language == "auto")
+    }
+
+    @Test func appLanguagePersists() {
+        let settings = createSettings()
+
+        settings.appLanguage = AppLanguage.ru.rawValue
+        #expect(settings.appLanguage == AppLanguage.ru.rawValue)
+
+        settings.appLanguage = AppLanguage.es.rawValue
+        #expect(settings.appLanguage == AppLanguage.es.rawValue)
     }
 
     @Test func toggleCloudHotkeyPersists() {
@@ -134,5 +149,14 @@ struct SettingsTests {
         let hotkey = settings.loadToggleCloudHotkey()
 
         #expect(hotkey == nil)
+    }
+
+    @Test func appLanguageCurrentFallsBackToDefaultForInvalidStoredValue() {
+        let suiteName = "com.murmurix.test.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.set("invalid-language", forKey: AppLanguage.storageKey)
+
+        let current = AppLanguage.current(in: defaults)
+        #expect(current == AppLanguage.defaultValue)
     }
 }

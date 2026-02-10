@@ -89,7 +89,7 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
     }
 
     var appLanguage: String {
-        get { defaults.string(forKey: Keys.appLanguage) ?? "en" }
+        get { defaults.string(forKey: Keys.appLanguage) ?? AppLanguage.defaultRawValue }
         set { defaults.set(newValue, forKey: Keys.appLanguage) }
     }
 

@@ -988,3 +988,30 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - снижены риски тихого рассинхрона `AppStorage` и `Settings`.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/TranscriptionPromptPolicyTests` -> `** TEST SUCCEEDED **`.
+
+### 10.41 App language defaults/notification: убрать остаточные дубли и усилить контракт
+
+- `AppLanguage` усилен как единая точка:
+  - добавлен `AppLanguage.defaultValue`,
+  - `defaultRawValue` теперь выводится из `defaultValue`,
+  - добавлен `AppLanguage.current(in:)` для явного чтения из конкретного `UserDefaults`,
+  - добавлен `AppLanguage.postDidChange(on:)` для централизованной публикации language-change уведомления.
+- Синхронизированы consumer-слои:
+  - `Settings.appLanguage` теперь использует `AppLanguage.defaultRawValue` вместо литерала,
+  - `GeneralSettingsView` публикует смену языка через `AppLanguage.postDidChange()`,
+  - `MockSettings.appLanguage` в тестах использует тот же default.
+- Добавлены тесты контракта:
+  - default app language в `Settings`,
+  - persistence app language,
+  - fallback `AppLanguage.current(in:)` на невалидном сохраненном raw value.
+- Изменены файлы:
+  - `Murmurix/Models/AppLanguage.swift`
+  - `Murmurix/Models/Settings.swift`
+  - `Murmurix/Views/GeneralSettingsView.swift`
+  - `MurmurixTests/Mocks.swift`
+  - `MurmurixTests/SettingsTests.swift`
+- Эффект:
+  - убраны последние строковые дубли default app language,
+  - уведомление о смене языка и чтение текущего языка стали тестопригоднее и более явными.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/SettingsStoreTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.

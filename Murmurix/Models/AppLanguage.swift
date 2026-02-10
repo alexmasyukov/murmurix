@@ -11,7 +11,8 @@ enum AppLanguage: String, CaseIterable {
     case es
 
     static let storageKey = "appLanguage"
-    static let defaultRawValue = "en"
+    static let defaultValue: AppLanguage = .en
+    static let defaultRawValue = defaultValue.rawValue
 
     var displayName: String {
         switch self {
@@ -21,8 +22,19 @@ enum AppLanguage: String, CaseIterable {
         }
     }
 
+    static func current(in defaults: UserDefaults) -> AppLanguage {
+        guard let rawValue = defaults.string(forKey: storageKey) else {
+            return defaultValue
+        }
+        return AppLanguage(rawValue: rawValue) ?? defaultValue
+    }
+
     static var current: AppLanguage {
-        AppLanguage(rawValue: UserDefaults.standard.string(forKey: storageKey) ?? defaultRawValue) ?? .en
+        current(in: .standard)
+    }
+
+    static func postDidChange(on center: NotificationCenter = .default) {
+        center.post(name: .appLanguageDidChange, object: nil)
     }
 }
 

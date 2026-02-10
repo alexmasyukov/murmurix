@@ -151,7 +151,7 @@ struct GeneralSettingsView: View {
             .labelsHidden()
             .transaction { $0.animation = nil }
             .onChange(of: settingsStore.appLanguage) { _, _ in
-                NotificationCenter.default.post(name: .appLanguageDidChange, object: nil)
+                AppLanguage.postDidChange()
             }
         }
     }
