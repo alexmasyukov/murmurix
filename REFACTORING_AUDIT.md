@@ -1109,3 +1109,13 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 - Результат:
   - `** TEST SUCCEEDED **`,
   - UI menu smoke-сценарии корректно `skip` в окружении, где status menu item не экспонируется для UI automation.
+
+### 10.47 Контрактный тест observer helper API для `AppLanguage`
+
+- Добавлен targeted тест `SettingsTests.appLanguageObserverHelpersAddAndRemoveObserver`:
+  - проверяет, что `AppLanguage.addDidChangeObserver` получает уведомление после `postDidChange`,
+  - проверяет, что после `removeDidChangeObserver` уведомления больше не доставляются.
+- Изменен файл:
+  - `MurmurixTests/SettingsTests.swift`
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.

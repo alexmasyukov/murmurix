@@ -9,6 +9,14 @@ import Carbon
 @testable import Murmurix
 
 struct SettingsTests {
+    private final class LanguageObserverHarness: NSObject {
+        var didChangeCallCount = 0
+
+        @objc
+        func handleLanguageDidChange(_ notification: Notification) {
+            didChangeCallCount += 1
+        }
+    }
 
     private func createSettings() -> Settings {
         // Use a unique suite name to avoid polluting real UserDefaults
@@ -174,5 +182,22 @@ struct SettingsTests {
 
         let settings = Settings(defaults: defaults)
         #expect(settings.appLanguage == AppLanguage.defaultRawValue)
+    }
+
+    @Test func appLanguageObserverHelpersAddAndRemoveObserver() {
+        let center = NotificationCenter()
+        let observer = LanguageObserverHarness()
+
+        AppLanguage.addDidChangeObserver(
+            observer,
+            selector: #selector(LanguageObserverHarness.handleLanguageDidChange(_:)),
+            on: center
+        )
+        AppLanguage.postDidChange(on: center)
+        #expect(observer.didChangeCallCount == 1)
+
+        AppLanguage.removeDidChangeObserver(observer, on: center)
+        AppLanguage.postDidChange(on: center)
+        #expect(observer.didChangeCallCount == 1)
     }
 }
