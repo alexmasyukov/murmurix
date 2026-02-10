@@ -921,3 +921,26 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryServiceTests -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests` (после фикса observer API) -> `** TEST SUCCEEDED **`.
+
+### 10.38 Удаление неиспользуемых singleton entrypoints после переноса DI в composition root
+
+- Удалены неиспользуемые `static shared` entrypoints у сервисов/storage, которые больше не участвуют в runtime wiring:
+  - `Settings.shared`,
+  - `HistoryService.shared`,
+  - `WhisperKitService.shared`,
+  - `OpenAITranscriptionService.shared`,
+  - `GeminiTranscriptionService.shared`.
+- При этом сохранены явные live-конструкторы/инициализация через composition root:
+  - `HistoryService.live()` оставлен как основной production factory,
+  - `AppDependencies.live()` продолжает создавать и передавать concrete сервисы явно.
+- Изменены файлы:
+  - `Murmurix/Models/Settings.swift`
+  - `Murmurix/Services/HistoryService.swift`
+  - `Murmurix/Services/WhisperKitService.swift`
+  - `Murmurix/Services/OpenAITranscriptionService.swift`
+  - `Murmurix/Services/GeminiTranscriptionService.swift`
+- Эффект:
+  - уменьшена мертвая глобальная поверхность,
+  - снижена вероятность случайного обхода composition root в будущем.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/Phase2Tests -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/HistoryServiceTests` -> `** TEST SUCCEEDED **`.

@@ -17,8 +17,6 @@ protocol WhisperKitServiceProtocol: AnyObject, Sendable {
 }
 
 final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
-    static let shared = WhisperKitService()
-
     private var pipelines: [String: WhisperKit] = [:]
     private let lock = NSLock()
 

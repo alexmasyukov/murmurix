@@ -13,8 +13,6 @@ protocol HistoryServiceProtocol {
 }
 
 final class HistoryService: HistoryServiceProtocol {
-    static let shared = HistoryService.live()
-
     static func live() -> HistoryService {
         HistoryService(repository: makeDefaultRepository())
     }

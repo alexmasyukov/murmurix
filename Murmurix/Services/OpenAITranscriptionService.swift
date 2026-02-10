@@ -11,11 +11,6 @@ protocol OpenAITranscriptionServiceProtocol: Sendable {
 }
 
 final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Sendable {
-    static let shared = OpenAITranscriptionService(
-        session: URLSession.shared,
-        promptPolicy: DefaultTranscriptionPromptPolicy.shared
-    )
-
     private let baseURL = "https://api.openai.com/v1/audio/transcriptions"
     private let session: URLSessionProtocol
     private let promptPolicy: any TranscriptionPromptPolicy
