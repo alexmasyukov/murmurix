@@ -21,7 +21,7 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
         static let toggleCloudHotkey = "toggleCloudHotkey"
         static let toggleGeminiHotkey = "toggleGeminiHotkey"
         static let cancelHotkey = "cancelHotkey"
-        static let appLanguage = "appLanguage"
+        static let appLanguage = AppLanguage.storageKey
         static let language = "language"
         static let openaiTranscriptionModel = "openaiTranscriptionModel"
         static let geminiModel = "geminiModel"

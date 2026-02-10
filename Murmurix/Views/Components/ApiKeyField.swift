@@ -12,7 +12,7 @@ struct ApiKeyField: View {
     let testResult: APITestResult?
     let onKeyChanged: (String) -> Void
     let onTest: () -> Void
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.defaultRawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {

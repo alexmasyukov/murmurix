@@ -8,7 +8,7 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var viewModel: HistoryViewModel
     @State private var showingClearConfirmation = false
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.defaultRawValue
 
     init(viewModel: HistoryViewModel) {
         self.viewModel = viewModel

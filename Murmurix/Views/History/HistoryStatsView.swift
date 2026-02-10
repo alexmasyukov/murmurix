@@ -7,7 +7,7 @@ import SwiftUI
 
 struct HistoryStatsView: View {
     @ObservedObject var viewModel: HistoryViewModel
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.defaultRawValue
 
     var body: some View {
         HStack(spacing: 0) {

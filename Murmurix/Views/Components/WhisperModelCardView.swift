@@ -13,7 +13,7 @@ struct WhisperModelCardView: View {
     var onModelToggle: ((String, Bool) -> Void)?
 
     @State private var showDeleteConfirmation = false
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.defaultRawValue
 
     private var modelName: String { model.rawValue }
     private var isInstalled: Bool { viewModel.isModelInstalled(modelName) }

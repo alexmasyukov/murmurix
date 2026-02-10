@@ -962,3 +962,29 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - DI-контур для prompt policy полностью явный.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/Phase2Tests -only-testing:MurmurixTests/TranscriptionPromptPolicyTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.40 App language key: единый source-of-truth для `AppStorage` и model-layer
+
+- Централизованы ключ и дефолт языка приложения в `AppLanguage`:
+  - добавлены `AppLanguage.storageKey`,
+  - добавлен `AppLanguage.defaultRawValue`.
+- Все `@AppStorage("appLanguage")` в UI заменены на централизованные константы:
+  - `@AppStorage(AppLanguage.storageKey) ... = AppLanguage.defaultRawValue`.
+- `Settings` и `AppLanguage.current` синхронизированы с тем же ключом:
+  - `Settings.Keys.appLanguage = AppLanguage.storageKey`,
+  - чтение текущего языка в `AppLanguage.current` использует `storageKey/defaultRawValue`.
+- Изменены файлы:
+  - `Murmurix/Models/AppLanguage.swift`
+  - `Murmurix/Models/Settings.swift`
+  - `Murmurix/Views/ResultView.swift`
+  - `Murmurix/Views/HistoryView.swift`
+  - `Murmurix/Views/History/HistoryStatsView.swift`
+  - `Murmurix/Views/History/HistoryDetailView.swift`
+  - `Murmurix/Views/Components/ApiKeyField.swift`
+  - `Murmurix/Views/Components/WhisperModelCardView.swift`
+  - `Murmurix/Views/Components/TestResultBadge.swift`
+- Эффект:
+  - устранено дублирование строкового ключа по UI/моделям,
+  - снижены риски тихого рассинхрона `AppStorage` и `Settings`.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/TranscriptionPromptPolicyTests` -> `** TEST SUCCEEDED **`.

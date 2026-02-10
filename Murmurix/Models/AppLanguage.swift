@@ -10,6 +10,9 @@ enum AppLanguage: String, CaseIterable {
     case ru
     case es
 
+    static let storageKey = "appLanguage"
+    static let defaultRawValue = "en"
+
     var displayName: String {
         switch self {
         case .en: return "English"
@@ -19,7 +22,7 @@ enum AppLanguage: String, CaseIterable {
     }
 
     static var current: AppLanguage {
-        AppLanguage(rawValue: UserDefaults.standard.string(forKey: "appLanguage") ?? "en") ?? .en
+        AppLanguage(rawValue: UserDefaults.standard.string(forKey: storageKey) ?? defaultRawValue) ?? .en
     }
 }
 

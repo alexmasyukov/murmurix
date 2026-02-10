@@ -12,7 +12,7 @@ struct HistoryDetailView: View {
 
     @State private var copied = false
     @State private var copyIndicatorResetTask: Task<Void, Never>?
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.defaultRawValue
     private let copyIndicatorResetDelay: TimeInterval = 2
 
     var body: some View {
