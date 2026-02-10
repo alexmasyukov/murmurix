@@ -1038,3 +1038,20 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - production путь моделей не затрагивается.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/RefactoringTests` -> `** TEST SUCCEEDED **`.
+
+### 10.43 Window observers: унификация на selector-based lifecycle
+
+- `SettingsWindowController` и `HistoryWindowController` переведены на единый observer-подход:
+  - убраны token-based `addObserver(...using:)`/`NSObjectProtocol` поля,
+  - введен selector-based observer (`addObserver(self, selector:...)`) с флагом `isObservingLanguageChanges`,
+  - `stopObservingLanguageChanges` теперь снимает подписку по `removeObserver(self, name:...)`.
+- `deinit` в обоих контроллерах делает безопасный unconditional cleanup observer по имени уведомления.
+- Изменены файлы:
+  - `Murmurix/Views/SettingsWindowController.swift`
+  - `Murmurix/Views/HistoryWindowController.swift`
+- Эффект:
+  - observer lifecycle унифицирован с `AppDelegate`,
+  - исключена необходимость хранить/синхронизировать token-объекты,
+  - снижена вероятность ошибок при повторных открытиях/закрытиях окон.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/MurmurixTests -only-testing:MurmurixTests/NewFunctionalityTests -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`.

@@ -20,7 +20,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let modelStatus = ModelStatusModel()
     private let modelStatusUpdateDelay: TimeInterval = 1
-    private var languageObserver: NSObjectProtocol?
+    private var isObservingLanguageChanges = false
     private var modelStatusUpdateTasks: [String: Task<Void, Never>] = [:]
 
     convenience init(
@@ -117,25 +117,29 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
             task.cancel()
         }
         modelStatusUpdateTasks.removeAll()
-        if let languageObserver {
-            NotificationCenter.default.removeObserver(languageObserver)
-            self.languageObserver = nil
-        }
+        NotificationCenter.default.removeObserver(self, name: .appLanguageDidChange, object: nil)
     }
 
     private func startObservingLanguageChangesIfNeeded() {
-        guard languageObserver == nil else { return }
-        languageObserver = NotificationCenter.default.addObserver(
-            forName: .appLanguageDidChange, object: nil, queue: .main
-        ) { [weak window] _ in
-            window?.title = L10n.settingsTitle
-        }
+        guard !isObservingLanguageChanges else { return }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLanguageDidChangeNotification(_:)),
+            name: .appLanguageDidChange,
+            object: nil
+        )
+        isObservingLanguageChanges = true
     }
 
     private func stopObservingLanguageChanges() {
-        guard let languageObserver else { return }
-        NotificationCenter.default.removeObserver(languageObserver)
-        self.languageObserver = nil
+        guard isObservingLanguageChanges else { return }
+        NotificationCenter.default.removeObserver(self, name: .appLanguageDidChange, object: nil)
+        isObservingLanguageChanges = false
+    }
+
+    @objc
+    private func handleLanguageDidChangeNotification(_ notification: Notification) {
+        window?.title = L10n.settingsTitle
     }
 
     private func cancelModelStatusUpdate(for model: String) {
