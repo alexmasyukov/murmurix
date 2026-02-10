@@ -47,13 +47,23 @@ final class GeneralSettingsViewModel: ObservableObject {
     private var statusResetTasks: [String: Task<Void, Never>] = [:]
     let settings: SettingsStorageProtocol
 
-    static func live(settings: SettingsStorageProtocol) -> GeneralSettingsViewModel {
+    static func live(
+        settings: SettingsStorageProtocol,
+        whisperKitService: WhisperKitServiceProtocol,
+        openAIService: OpenAITranscriptionServiceProtocol,
+        geminiService: GeminiTranscriptionServiceProtocol
+    ) -> GeneralSettingsViewModel {
         GeneralSettingsViewModel(
-            whisperKitService: WhisperKitService.shared,
-            openAIService: OpenAITranscriptionService.shared,
-            geminiService: GeminiTranscriptionService.shared,
+            whisperKitService: whisperKitService,
+            openAIService: openAIService,
+            geminiService: geminiService,
             transcriptionServiceFactory: {
-                TranscriptionService.live(settings: settings)
+                TranscriptionService.live(
+                    settings: settings,
+                    whisperKitService: whisperKitService,
+                    openAIService: openAIService,
+                    geminiService: geminiService
+                )
             },
             modelDirectory: { ModelPaths.modelDir(for: $0) },
             modelsRepositoryDirectory: { ModelPaths.repoDir },

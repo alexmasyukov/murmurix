@@ -877,3 +877,24 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - уменьшена вероятность рассинхронизации настроек между сервисным и window-слоем.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/SettingsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.36 Service live wiring: убрать скрытый `.shared` внутри live-фабрик сервисов и VM
+
+- Убрано чтение singleton-зависимостей изнутри `live`-фабрик доменного/VM-слоя:
+  - `TranscriptionService.live(...)` теперь принимает все сервисы явно,
+  - `GeneralSettingsViewModel.live(...)` теперь принимает сервисы явно и строит `transcriptionServiceFactory` через переданные зависимости.
+- Явное live-связывание вынесено в composition root:
+  - `AppDependencies.live()` теперь один раз создает `WhisperKitService`, `OpenAITranscriptionService`, `GeminiTranscriptionService` и передает их в фабрики `TranscriptionService` и `GeneralSettingsViewModel`.
+- Preview тоже переведен на явное wiring:
+  - `SettingsView` preview теперь создает те же live-сервисы явно и передает их в `GeneralSettingsViewModel.live(...)`.
+- Изменены файлы:
+  - `Murmurix/Services/TranscriptionService.swift`
+  - `Murmurix/ViewModels/GeneralSettingsViewModel.swift`
+  - `Murmurix/App/AppDelegate.swift`
+  - `Murmurix/Views/SettingsView.swift`
+- Эффект:
+  - уменьшена singleton-surface в сервисном и viewmodel-слое,
+  - live-конфигурация централизована в composition root,
+  - поведение осталось прежним (включая временный репозиторий моделей для тестов/разработки).
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.

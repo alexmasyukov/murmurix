@@ -11,12 +11,17 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
     private let openAIService: OpenAITranscriptionServiceProtocol
     private let geminiService: GeminiTranscriptionServiceProtocol
 
-    static func live(settings: SettingsStorageProtocol) -> TranscriptionService {
+    static func live(
+        settings: SettingsStorageProtocol,
+        whisperKitService: WhisperKitServiceProtocol,
+        openAIService: OpenAITranscriptionServiceProtocol,
+        geminiService: GeminiTranscriptionServiceProtocol
+    ) -> TranscriptionService {
         TranscriptionService(
-            whisperKitService: WhisperKitService.shared,
+            whisperKitService: whisperKitService,
             settings: settings,
-            openAIService: OpenAITranscriptionService.shared,
-            geminiService: GeminiTranscriptionService.shared
+            openAIService: openAIService,
+            geminiService: geminiService
         )
     }
 

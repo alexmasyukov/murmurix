@@ -15,15 +15,32 @@ struct AppDependencies {
 
     static func live() -> AppDependencies {
         let settings = Settings.shared
+        let promptPolicy = DefaultTranscriptionPromptPolicy.shared
+        let whisperKitService = WhisperKitService()
+        let openAIService = OpenAITranscriptionService(
+            session: URLSession.shared,
+            promptPolicy: promptPolicy
+        )
+        let geminiService = GeminiTranscriptionService(promptPolicy: promptPolicy)
         return AppDependencies(
             historyService: HistoryService.shared,
             settings: settings,
             makeAudioRecorder: { AudioRecorder() },
             makeTranscriptionService: {
-                TranscriptionService.live(settings: settings)
+                TranscriptionService.live(
+                    settings: settings,
+                    whisperKitService: whisperKitService,
+                    openAIService: openAIService,
+                    geminiService: geminiService
+                )
             },
             makeGeneralSettingsViewModel: {
-                GeneralSettingsViewModel.live(settings: settings)
+                GeneralSettingsViewModel.live(
+                    settings: settings,
+                    whisperKitService: whisperKitService,
+                    openAIService: openAIService,
+                    geminiService: geminiService
+                )
             }
         )
     }
