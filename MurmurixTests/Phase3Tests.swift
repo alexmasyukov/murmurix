@@ -280,8 +280,8 @@ struct GeneralSettingsViewModelSettingsDITests {
     @Test func viewModelUsesDefaultSettingsWhenNotProvided() {
         let viewModel = makeGeneralSettingsViewModel()
 
-        // Should use Settings.shared by default
-        #expect(viewModel.settings is Settings)
+        // Test helper defaults to isolated mock settings.
+        #expect(viewModel.settings is MockSettings)
     }
 }
 
