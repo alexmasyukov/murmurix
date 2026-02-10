@@ -16,7 +16,7 @@ struct AppDependencies {
     static func live() -> AppDependencies {
         let settings = Settings(defaults: .standard)
         let historyService = HistoryService.live()
-        let promptPolicy = DefaultTranscriptionPromptPolicy.shared
+        let promptPolicy = DefaultTranscriptionPromptPolicy()
         let whisperKitService = WhisperKitService()
         let openAIService = OpenAITranscriptionService(
             session: URLSession.shared,

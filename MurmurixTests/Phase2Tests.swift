@@ -103,7 +103,7 @@ struct OpenAITranscriptionServiceDITests {
 
         let service = OpenAITranscriptionService(
             session: mockSession,
-            promptPolicy: DefaultTranscriptionPromptPolicy.shared
+            promptPolicy: DefaultTranscriptionPromptPolicy()
         )
 
         // Create a temp audio file for the test
@@ -129,7 +129,7 @@ struct OpenAITranscriptionServiceDITests {
 
         let service = OpenAITranscriptionService(
             session: mockSession,
-            promptPolicy: DefaultTranscriptionPromptPolicy.shared
+            promptPolicy: DefaultTranscriptionPromptPolicy()
         )
 
         let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
@@ -153,7 +153,7 @@ struct OpenAITranscriptionServiceDITests {
 
         let service = OpenAITranscriptionService(
             session: mockSession,
-            promptPolicy: DefaultTranscriptionPromptPolicy.shared
+            promptPolicy: DefaultTranscriptionPromptPolicy()
         )
 
         let tempURL = AudioTestUtility.createTemporaryTestAudioURL()

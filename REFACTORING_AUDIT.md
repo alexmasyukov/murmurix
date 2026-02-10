@@ -944,3 +944,21 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - снижена вероятность случайного обхода composition root в будущем.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/Phase2Tests -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/HistoryServiceTests` -> `** TEST SUCCEEDED **`.
+
+### 10.39 Prompt policy wiring: убрать singleton-паттерн у `DefaultTranscriptionPromptPolicy`
+
+- Удален `DefaultTranscriptionPromptPolicy.shared`.
+- Все call-sites переведены на явное создание value-типа:
+  - `DefaultTranscriptionPromptPolicy()` в `AppDependencies.live()` и preview wiring,
+  - тесты `Phase2` и `TranscriptionPromptPolicyTests` обновлены соответственно.
+- Изменены файлы:
+  - `Murmurix/Services/TranscriptionPromptPolicy.swift`
+  - `Murmurix/App/AppDelegate.swift`
+  - `Murmurix/Views/SettingsView.swift`
+  - `MurmurixTests/Phase2Tests.swift`
+  - `MurmurixTests/TranscriptionPromptPolicyTests.swift`
+- Эффект:
+  - singleton-surface сокращена еще на один системный компонент,
+  - DI-контур для prompt policy полностью явный.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/Phase2Tests -only-testing:MurmurixTests/TranscriptionPromptPolicyTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.

@@ -2,7 +2,7 @@ import Testing
 @testable import Murmurix
 
 struct TranscriptionPromptPolicyTests {
-    private let policy = DefaultTranscriptionPromptPolicy.shared
+    private let policy = DefaultTranscriptionPromptPolicy()
 
     @Test func openAIPromptIncludesRussianHintForRuLanguage() {
         let prompt = policy.openAIPrompt(language: "ru")

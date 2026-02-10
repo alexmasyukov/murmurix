@@ -11,8 +11,6 @@ protocol TranscriptionPromptPolicy: Sendable {
 }
 
 struct DefaultTranscriptionPromptPolicy: TranscriptionPromptPolicy {
-    static let shared = DefaultTranscriptionPromptPolicy()
-
     private let technicalTermsHint = """
     Preserve technical terms exactly when possible: Anthropic, Claude, Bun, React, Docker, Kubernetes, Golang, Python, Swift, Xcode, GitHub, API, JSON, REST, GraphQL, PostgreSQL, MongoDB, Redis, AWS, Azure, GCP.
     """

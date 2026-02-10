@@ -48,7 +48,7 @@ struct SettingsView: View {
     let previewSuite = "Murmurix.SettingsView.Preview.\(UUID().uuidString)"
     let previewDefaults = UserDefaults(suiteName: previewSuite) ?? .standard
     let previewSettings = Settings(defaults: previewDefaults)
-    let promptPolicy = DefaultTranscriptionPromptPolicy.shared
+    let promptPolicy = DefaultTranscriptionPromptPolicy()
     let whisperKitService = WhisperKitService()
     let openAIService = OpenAITranscriptionService(
         session: URLSession.shared,
