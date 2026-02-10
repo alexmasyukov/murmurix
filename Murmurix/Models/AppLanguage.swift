@@ -44,6 +44,21 @@ enum AppLanguage: String, CaseIterable {
     static func postDidChange(on center: NotificationCenter = .default) {
         center.post(name: .appLanguageDidChange, object: nil)
     }
+
+    static func addDidChangeObserver(
+        _ observer: Any,
+        selector: Selector,
+        on center: NotificationCenter = .default
+    ) {
+        center.addObserver(observer, selector: selector, name: .appLanguageDidChange, object: nil)
+    }
+
+    static func removeDidChangeObserver(
+        _ observer: Any,
+        on center: NotificationCenter = .default
+    ) {
+        center.removeObserver(observer, name: .appLanguageDidChange, object: nil)
+    }
 }
 
 extension Notification.Name {

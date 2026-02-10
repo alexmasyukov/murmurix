@@ -117,23 +117,21 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
             task.cancel()
         }
         modelStatusUpdateTasks.removeAll()
-        NotificationCenter.default.removeObserver(self, name: .appLanguageDidChange, object: nil)
+        AppLanguage.removeDidChangeObserver(self)
     }
 
     private func startObservingLanguageChangesIfNeeded() {
         guard !isObservingLanguageChanges else { return }
-        NotificationCenter.default.addObserver(
+        AppLanguage.addDidChangeObserver(
             self,
-            selector: #selector(handleLanguageDidChangeNotification(_:)),
-            name: .appLanguageDidChange,
-            object: nil
+            selector: #selector(handleLanguageDidChangeNotification(_:))
         )
         isObservingLanguageChanges = true
     }
 
     private func stopObservingLanguageChanges() {
         guard isObservingLanguageChanges else { return }
-        NotificationCenter.default.removeObserver(self, name: .appLanguageDidChange, object: nil)
+        AppLanguage.removeDidChangeObserver(self)
         isObservingLanguageChanges = false
     }
 

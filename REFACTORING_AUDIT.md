@@ -1081,3 +1081,31 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - UI/store/settings слой теперь держат единый валидный домен значения.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/SettingsStoreTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.45 App language observer API: убрать дубли add/remove в app/window слоях
+
+- В `AppLanguage` добавлены helper-методы observer lifecycle:
+  - `addDidChangeObserver(_:selector:on:)`,
+  - `removeDidChangeObserver(_:on:)`.
+- Call-sites переведены на единый API:
+  - `AppDelegate`,
+  - `SettingsWindowController`,
+  - `HistoryWindowController`.
+- Эффект:
+  - устранено дублирование кода `NotificationCenter` для одного и того же события,
+  - снижены риски рассинхрона параметров `name/object` между слоями.
+- Изменены файлы:
+  - `Murmurix/Models/AppLanguage.swift`
+  - `Murmurix/App/AppDelegate.swift`
+  - `Murmurix/Views/SettingsWindowController.swift`
+  - `Murmurix/Views/HistoryWindowController.swift`
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/NewFunctionalityTests` -> `** TEST SUCCEEDED **`.
+
+### 10.46 Полный регрессионный прогон после серии 10.41-10.45
+
+- Выполнен полный тест-ран проекта:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test`
+- Результат:
+  - `** TEST SUCCEEDED **`,
+  - UI menu smoke-сценарии корректно `skip` в окружении, где status menu item не экспонируется для UI automation.
