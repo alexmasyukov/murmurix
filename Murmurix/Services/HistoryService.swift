@@ -13,7 +13,11 @@ protocol HistoryServiceProtocol {
 }
 
 final class HistoryService: HistoryServiceProtocol {
-    static let shared = HistoryService(repository: HistoryService.makeDefaultRepository())
+    static let shared = HistoryService.live()
+
+    static func live() -> HistoryService {
+        HistoryService(repository: makeDefaultRepository())
+    }
 
     private let repository: SQLiteTranscriptionRepository
 

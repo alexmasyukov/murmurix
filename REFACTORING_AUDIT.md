@@ -898,3 +898,26 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - поведение осталось прежним (включая временный репозиторий моделей для тестов/разработки).
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TranscriptionServiceIntegrationTests -only-testing:MurmurixTests/GeneralSettingsViewModelAPITests -only-testing:MurmurixTests/GeneralSettingsViewModelModelTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.37 AppDependencies bootstrap: убрать `shared` из live-композиции и стабилизировать language observer без sendable-warning
+
+- `HistoryService` получил явный live-factory:
+  - `HistoryService.live()` добавлен как основной способ собрать production instance,
+  - `HistoryService.shared` теперь делегирует в `live()`.
+- В `AppDependencies.live()` убраны прямые обращения к singleton storage/service:
+  - `Settings.shared` -> `Settings(defaults: .standard)`,
+  - `HistoryService.shared` -> `HistoryService.live()`.
+- `AppDelegate` language observer переведен на selector-based API `NotificationCenter`:
+  - убран closure-callback с `Task` и захватом `self`,
+  - удален token-based `languageObserver` storage,
+  - cleanup выполняется через `removeObserver(self, name: .appLanguageDidChange, ...)`.
+- Изменены файлы:
+  - `Murmurix/Services/HistoryService.swift`
+  - `Murmurix/App/AppDelegate.swift`
+- Эффект:
+  - composition root стал менее зависим от singleton-глобалей,
+  - устранен sendable-warning в `AppDelegate` observer path,
+  - runtime-поведение (включая модельные пути для dev/test) сохранено.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/HistoryServiceTests -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/AppConstantsTests` (после фикса observer API) -> `** TEST SUCCEEDED **`.

@@ -14,7 +14,8 @@ struct AppDependencies {
     let makeGeneralSettingsViewModel: @MainActor () -> GeneralSettingsViewModel
 
     static func live() -> AppDependencies {
-        let settings = Settings.shared
+        let settings = Settings(defaults: .standard)
+        let historyService = HistoryService.live()
         let promptPolicy = DefaultTranscriptionPromptPolicy.shared
         let whisperKitService = WhisperKitService()
         let openAIService = OpenAITranscriptionService(
@@ -23,7 +24,7 @@ struct AppDependencies {
         )
         let geminiService = GeminiTranscriptionService(promptPolicy: promptPolicy)
         return AppDependencies(
-            historyService: HistoryService.shared,
+            historyService: historyService,
             settings: settings,
             makeAudioRecorder: { AudioRecorder() },
             makeTranscriptionService: {
@@ -54,7 +55,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioRecorder: (any AudioRecorderProtocol)?
     private var transcriptionService: (any TranscriptionServiceProtocol)?
     private var coordinator: RecordingCoordinator?
-    private var languageObserver: NSObjectProtocol?
 
     private var lastRecordId: UUID?
     private var shouldPasteDirectly = false
@@ -85,26 +85,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         coordinator?.loadModelsIfNeeded()
 
-        languageObserver = NotificationCenter.default.addObserver(
-            forName: .appLanguageDidChange,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor in
-                guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
-                appDelegate.handleLanguageChange()
-            }
-        }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLanguageDidChangeNotification(_:)),
+            name: .appLanguageDidChange,
+            object: nil
+        )
     }
 
     @MainActor
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.unloadAllModels()
         hotkeyManager?.stop()
-        if let languageObserver {
-            NotificationCenter.default.removeObserver(languageObserver)
-            self.languageObserver = nil
-        }
+        NotificationCenter.default.removeObserver(self, name: .appLanguageDidChange, object: nil)
     }
 
     // MARK: - Setup
@@ -206,6 +199,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleLanguageChange() {
         setupMainMenu()
         menuBarManager?.rebuildMenu()
+    }
+
+    @objc
+    private func handleLanguageDidChangeNotification(_ notification: Notification) {
+        runOnMain { delegate in
+            delegate.handleLanguageChange()
+        }
     }
 
     // MARK: - Recording Actions
