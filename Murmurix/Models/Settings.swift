@@ -89,8 +89,11 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
     }
 
     var appLanguage: String {
-        get { defaults.string(forKey: Keys.appLanguage) ?? AppLanguage.defaultRawValue }
-        set { defaults.set(newValue, forKey: Keys.appLanguage) }
+        get {
+            let rawValue = defaults.string(forKey: Keys.appLanguage) ?? AppLanguage.defaultRawValue
+            return AppLanguage.normalizedRawValue(from: rawValue)
+        }
+        set { defaults.set(AppLanguage.normalizedRawValue(from: newValue), forKey: Keys.appLanguage) }
     }
 
     // MARK: - Per-Model WhisperKit Settings

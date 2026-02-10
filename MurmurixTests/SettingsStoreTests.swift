@@ -72,4 +72,22 @@ struct SettingsStoreTests {
         #expect(settings.loadToggleGeminiHotkey() == nil)
         #expect(settings.loadCancelHotkey() == nil)
     }
+
+    @Test func initNormalizesInvalidAppLanguage() {
+        let settings = MockSettings()
+        settings.appLanguage = "invalid-language"
+
+        let store = SettingsStore(settings: settings)
+        #expect(store.appLanguage == AppLanguage.defaultRawValue)
+    }
+
+    @Test func invalidAppLanguageUpdateIsNormalizedBeforePersist() {
+        let settings = MockSettings()
+        let store = SettingsStore(settings: settings)
+
+        store.appLanguage = "invalid-language"
+
+        #expect(store.appLanguage == AppLanguage.defaultRawValue)
+        #expect(settings.appLanguage == AppLanguage.defaultRawValue)
+    }
 }

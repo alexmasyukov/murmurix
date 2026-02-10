@@ -19,8 +19,18 @@ final class SettingsStore: ObservableObject {
 
     @Published var appLanguage: String {
         didSet {
-            guard appLanguage != oldValue else { return }
-            settings.appLanguage = appLanguage
+            let normalized = AppLanguage.normalizedRawValue(from: appLanguage)
+            guard normalized != oldValue else {
+                if appLanguage != normalized {
+                    appLanguage = normalized
+                }
+                return
+            }
+            if appLanguage != normalized {
+                appLanguage = normalized
+                return
+            }
+            settings.appLanguage = normalized
         }
     }
 
@@ -76,7 +86,7 @@ final class SettingsStore: ObservableObject {
     init(settings: SettingsStorageProtocol) {
         self.settings = settings
         self.language = settings.language
-        self.appLanguage = settings.appLanguage
+        self.appLanguage = AppLanguage.normalizedRawValue(from: settings.appLanguage)
         self.openaiTranscriptionModel = settings.openaiTranscriptionModel
         self.geminiModel = settings.geminiModel
         self.openaiApiKey = settings.openaiApiKey

@@ -1055,3 +1055,29 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - снижена вероятность ошибок при повторных открытиях/закрытиях окон.
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/MurmurixTests -only-testing:MurmurixTests/NewFunctionalityTests -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`.
+
+### 10.44 App language normalization: защита от невалидных raw values в settings/store
+
+- `AppLanguage` расширен нормализацией:
+  - добавлены `normalized(from:)` и `normalizedRawValue(from:)`,
+  - `current(in:)` теперь использует централизованную нормализацию.
+- `Settings.appLanguage` теперь нормализует значение:
+  - getter возвращает только валидный raw value,
+  - setter сохраняет только валидный raw value (fallback на default).
+- `SettingsStore.appLanguage` нормализует вход:
+  - при init поднимается уже нормализованное значение,
+  - при обновлении невалидный ввод автоматически приводится к default до persistence.
+- Добавлены targeted тесты:
+  - `SettingsTests`: нормализация getter/setter для `appLanguage`,
+  - `SettingsStoreTests`: нормализация при init и при update.
+- Изменены файлы:
+  - `Murmurix/Models/AppLanguage.swift`
+  - `Murmurix/Models/Settings.swift`
+  - `Murmurix/ViewModels/SettingsStore.swift`
+  - `MurmurixTests/SettingsTests.swift`
+  - `MurmurixTests/SettingsStoreTests.swift`
+- Эффект:
+  - исключён дрейф состояния при случайных/битых значениях `appLanguage`,
+  - UI/store/settings слой теперь держат единый валидный домен значения.
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/SettingsStoreTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
