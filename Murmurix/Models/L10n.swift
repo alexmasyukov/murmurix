@@ -44,6 +44,16 @@ enum L10n {
             "Al finalizar la transcripción, mostrar el tipo de campo enfocado y la decisión de pegado"
         )
     }
+    static var alwaysPaste: String {
+        tr("Always paste", "Вставлять всегда", "Pegar siempre")
+    }
+    static var alwaysPasteDescription: String {
+        tr(
+            "Ignore focus checks and always try to paste recognized text",
+            "Игнорировать проверки фокуса и всегда пытаться вставить распознанный текст",
+            "Ignorar las comprobaciones de foco e intentar siempre pegar el texto reconocido"
+        )
+    }
 
     // MARK: - Recognition
 

@@ -225,7 +225,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if coordinator.state == .idle {
             let focusContext = TextPaster.focusedContext()
-            shouldPasteDirectly = focusContext.isTextInput
+            shouldPasteDirectly = settings.alwaysPasteEnabled || focusContext.isTextInput
             focusContextAtRecordingStart = focusContext
             currentRecordingMode = mode
         }
@@ -260,7 +260,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let shouldPasteFromStart = shouldPasteDirectly
         dismissRecordingUI()
         let endFocusContext = TextPaster.focusedContext()
-        let pasteDirectly = endFocusContext.isTextInput || (endFocusContext.lookupFailed && shouldPasteFromStart)
+        let pasteDirectly = settings.alwaysPasteEnabled
+            || endFocusContext.isTextInput
+            || (endFocusContext.lookupFailed && shouldPasteFromStart)
 
         let didNotifyFocusDiagnostic = notifyFocusDebugIfNeeded(
             start: startFocusContext,
@@ -360,7 +362,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard shouldNotify else { return false }
 
         let action = pasteDirectly ? "paste" : "show-result-window"
-        let body = "start[\(start.summary)] end[\(end.summary)] action=\(action)"
+        let alwaysPaste = settings.alwaysPasteEnabled ? "true" : "false"
+        let body = "start[\(start.summary)] end[\(end.summary)] action=\(action), alwaysPaste=\(alwaysPaste)"
         Logger.Settings.debug(
             "Focus debug diagnostics: \(body), notificationsEnabled=\(settings.focusDebugNotificationsEnabled), forced=\(forceWhenPasteIsUnavailable)"
         )

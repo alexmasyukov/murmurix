@@ -139,6 +139,7 @@ final class MockSettings: SettingsStorageProtocol, @unchecked Sendable {
     var language: String = "ru"
     var appLanguage: String = AppLanguage.defaultRawValue
     var focusDebugNotificationsEnabled: Bool = false
+    var alwaysPasteEnabled: Bool = false
     var openaiApiKey: String = ""
     var openaiTranscriptionModel: String = "gpt-4o-transcribe"
     var geminiApiKey: String = ""

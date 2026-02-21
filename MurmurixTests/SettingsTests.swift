@@ -51,6 +51,11 @@ struct SettingsTests {
         #expect(settings.focusDebugNotificationsEnabled == false)
     }
 
+    @Test func defaultAlwaysPasteIsDisabled() {
+        let settings = createSettings()
+        #expect(settings.alwaysPasteEnabled == false)
+    }
+
     @Test func defaultToggleCloudHotkeyIsCtrlE() {
         let settings = createSettings()
         let hotkey = settings.loadToggleCloudHotkey()
@@ -117,6 +122,16 @@ struct SettingsTests {
 
         settings.focusDebugNotificationsEnabled = false
         #expect(settings.focusDebugNotificationsEnabled == false)
+    }
+
+    @Test func alwaysPastePersists() {
+        let settings = createSettings()
+
+        settings.alwaysPasteEnabled = true
+        #expect(settings.alwaysPasteEnabled == true)
+
+        settings.alwaysPasteEnabled = false
+        #expect(settings.alwaysPasteEnabled == false)
     }
 
     @Test func appLanguageSetterNormalizesInvalidValueToDefault() {

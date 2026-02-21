@@ -23,6 +23,7 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
         static let cancelHotkey = "cancelHotkey"
         static let appLanguage = AppLanguage.storageKey
         static let focusDebugNotificationsEnabled = "focusDebugNotificationsEnabled"
+        static let alwaysPasteEnabled = "alwaysPasteEnabled"
         static let language = "language"
         static let openaiTranscriptionModel = "openaiTranscriptionModel"
         static let geminiModel = "geminiModel"
@@ -100,6 +101,11 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
     var focusDebugNotificationsEnabled: Bool {
         get { defaults.bool(forKey: Keys.focusDebugNotificationsEnabled) }
         set { defaults.set(newValue, forKey: Keys.focusDebugNotificationsEnabled) }
+    }
+
+    var alwaysPasteEnabled: Bool {
+        get { defaults.bool(forKey: Keys.alwaysPasteEnabled) }
+        set { defaults.set(newValue, forKey: Keys.alwaysPasteEnabled) }
     }
 
     // MARK: - Per-Model WhisperKit Settings

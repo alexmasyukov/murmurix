@@ -41,6 +41,13 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var alwaysPasteEnabled: Bool {
+        didSet {
+            guard alwaysPasteEnabled != oldValue else { return }
+            settings.alwaysPasteEnabled = alwaysPasteEnabled
+        }
+    }
+
     @Published var openaiTranscriptionModel: String {
         didSet {
             guard openaiTranscriptionModel != oldValue else { return }
@@ -95,6 +102,7 @@ final class SettingsStore: ObservableObject {
         self.language = settings.language
         self.appLanguage = AppLanguage.normalizedRawValue(from: settings.appLanguage)
         self.focusDebugNotificationsEnabled = settings.focusDebugNotificationsEnabled
+        self.alwaysPasteEnabled = settings.alwaysPasteEnabled
         self.openaiTranscriptionModel = settings.openaiTranscriptionModel
         self.geminiModel = settings.geminiModel
         self.openaiApiKey = settings.openaiApiKey

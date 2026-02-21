@@ -176,6 +176,23 @@ struct GeneralSettingsView: View {
                     }
                 }
                 .toggleStyle(.switch)
+
+                Divider()
+                    .background(AppColors.divider)
+                    .padding(.vertical, Layout.Spacing.tiny)
+
+                Toggle(isOn: $settingsStore.alwaysPasteEnabled) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L10n.alwaysPaste)
+                            .font(Typography.label)
+                            .foregroundColor(.white)
+
+                        Text(L10n.alwaysPasteDescription)
+                            .font(Typography.description)
+                            .foregroundColor(.gray)
+                    }
+                }
+                .toggleStyle(.switch)
             }
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.vertical, Layout.Padding.vertical)

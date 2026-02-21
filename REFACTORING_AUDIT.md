@@ -1150,3 +1150,45 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - `MurmurixTests/Mocks.swift`
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test` -> `** TEST SUCCEEDED **`.
+
+### 10.49 Focus fallback: known host для Claude Desktop
+
+- Расширен known-host fallback в `TextPaster` для кейсов AX `noFocusedElement/roleUnavailable`:
+  - добавлен bundle id `com.anthropic.claudefordesktop`,
+  - добавлен name fragment `claude`.
+- Добавлен targeted тест:
+  - `TextPasterTests.inferTextInputTreatsClaudeDesktopNoFocusedElementAsTextInput`.
+- Изменены файлы:
+  - `Murmurix/Services/TextPaster.swift`
+  - `MurmurixTests/MurmurixTests.swift`
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/TextPasterTests -only-testing:MurmurixTests/RecordingCoordinatorTests -only-testing:MurmurixTests/SettingsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.50 Настройка `Always paste` (игнорировать focus-детекцию)
+
+- Добавлен новый пользовательский флаг:
+  - `SettingsStorageProtocol.alwaysPasteEnabled`,
+  - реализация в `Settings` + публикация в `SettingsStore`.
+- В `GeneralSettingsView` добавлен переключатель:
+  - `L10n.alwaysPaste` / `L10n.alwaysPasteDescription`.
+- В `AppDelegate` логика direct paste обновлена:
+  - при включенном `alwaysPasteEnabled` приложение всегда идет по пути `TextPaster.paste(...)`,
+  - focus-check остается как диагностика, но не блокирует вставку.
+- Диагностический лог теперь показывает значение `alwaysPaste`:
+  - `Focus debug diagnostics: ... action=..., alwaysPaste=true|false`.
+- Добавлены/обновлены тесты:
+  - `SettingsTests.defaultAlwaysPasteIsDisabled`
+  - `SettingsTests.alwaysPastePersists`
+  - `SettingsStoreTests` (init/persist scalar path).
+- Изменены файлы:
+  - `Murmurix/Services/Protocols.swift`
+  - `Murmurix/Models/Settings.swift`
+  - `Murmurix/ViewModels/SettingsStore.swift`
+  - `Murmurix/Views/GeneralSettingsView.swift`
+  - `Murmurix/App/AppDelegate.swift`
+  - `Murmurix/Models/L10n.swift`
+  - `MurmurixTests/Mocks.swift`
+  - `MurmurixTests/SettingsTests.swift`
+  - `MurmurixTests/SettingsStoreTests.swift`
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/SettingsStoreTests -only-testing:MurmurixTests/TextPasterTests -only-testing:MurmurixTests/RecordingCoordinatorTests` -> `** TEST SUCCEEDED **`.
