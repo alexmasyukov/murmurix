@@ -149,7 +149,7 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
     }
 
     func loadToggleCloudHotkey() -> Hotkey? {
-        loadHotkey(key: Keys.toggleCloudHotkey)
+        loadHotkey(key: Keys.toggleCloudHotkey) ?? .openAICloudDefault
     }
 
     func saveToggleCloudHotkey(_ hotkey: Hotkey?) {

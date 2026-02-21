@@ -46,10 +46,10 @@ struct SettingsTests {
         #expect(settings.appLanguage == AppLanguage.defaultRawValue)
     }
 
-    @Test func defaultToggleCloudHotkeyIsNil() {
+    @Test func defaultToggleCloudHotkeyIsCtrlE() {
         let settings = createSettings()
         let hotkey = settings.loadToggleCloudHotkey()
-        #expect(hotkey == nil)
+        #expect(hotkey == Hotkey.openAICloudDefault)
     }
 
     @Test func defaultCancelHotkeyIsEscape() {
@@ -153,7 +153,7 @@ struct SettingsTests {
 
     // MARK: - Edge Cases
 
-    @Test func loadCloudHotkeyReturnsNilWhenCorrupted() {
+    @Test func loadCloudHotkeyFallsBackToDefaultWhenCorrupted() {
         let suiteName = "com.murmurix.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
 
@@ -163,7 +163,7 @@ struct SettingsTests {
         let settings = Settings(defaults: defaults)
         let hotkey = settings.loadToggleCloudHotkey()
 
-        #expect(hotkey == nil)
+        #expect(hotkey == Hotkey.openAICloudDefault)
     }
 
     @Test func appLanguageCurrentFallsBackToDefaultForInvalidStoredValue() {
