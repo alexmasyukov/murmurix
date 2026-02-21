@@ -22,6 +22,7 @@ final class TextPaster {
         let appBundleIdentifier: String?
         let role: String?
         let subrole: String?
+        let axErrorCode: Int32?
         let isEditable: Bool?
         let hasValueAttribute: Bool?
         let hasInsertionPointLineNumber: Bool?
@@ -35,6 +36,7 @@ final class TextPaster {
             appBundleIdentifier: String? = nil,
             role: String? = nil,
             subrole: String? = nil,
+            axErrorCode: Int32? = nil,
             isEditable: Bool? = nil,
             hasValueAttribute: Bool? = nil,
             hasInsertionPointLineNumber: Bool? = nil,
@@ -47,6 +49,7 @@ final class TextPaster {
             self.appBundleIdentifier = appBundleIdentifier
             self.role = role
             self.subrole = subrole
+            self.axErrorCode = axErrorCode
             self.isEditable = isEditable
             self.hasValueAttribute = hasValueAttribute
             self.hasInsertionPointLineNumber = hasInsertionPointLineNumber
@@ -64,12 +67,13 @@ final class TextPaster {
             let bundle = appBundleIdentifier ?? "unknown"
             let roleValue = role ?? "nil"
             let subroleValue = subrole ?? "nil"
+            let axError = axErrorCode.map(String.init) ?? "nil"
             let editableValue = isEditable.map { $0 ? "true" : "false" } ?? "nil"
             let valueAttribute = hasValueAttribute.map { $0 ? "true" : "false" } ?? "nil"
             let insertionPoint = hasInsertionPointLineNumber.map { $0 ? "true" : "false" } ?? "nil"
             let selectedTextRange = hasSelectedTextRange.map { $0 ? "true" : "false" } ?? "nil"
             let knownFallback = usedKnownAppFallback ? "true" : "false"
-            return "status=\(status.rawValue), app=\(app), bundle=\(bundle), role=\(roleValue), subrole=\(subroleValue), editable=\(editableValue), hasValue=\(valueAttribute), hasInsertionLine=\(insertionPoint), hasSelectedTextRange=\(selectedTextRange), knownAppFallback=\(knownFallback), textInput=\(isTextInput)"
+            return "status=\(status.rawValue), app=\(app), bundle=\(bundle), role=\(roleValue), subrole=\(subroleValue), axError=\(axError), editable=\(editableValue), hasValue=\(valueAttribute), hasInsertionLine=\(insertionPoint), hasSelectedTextRange=\(selectedTextRange), knownAppFallback=\(knownFallback), textInput=\(isTextInput)"
         }
     }
 
@@ -128,13 +132,30 @@ final class TextPaster {
         )
 
         guard result == .success, let element = focusedElement else {
+            let frontmostApp = frontmostAppIdentity()
+            let inference = inferTextInput(
+                status: .noFocusedElement,
+                role: nil,
+                editable: nil,
+                hasValueAttribute: false,
+                hasInsertionPointLineNumber: false,
+                hasSelectedTextRange: false,
+                appName: frontmostApp.name,
+                appBundleIdentifier: frontmostApp.bundleIdentifier
+            )
             return FocusContext(
                 status: .noFocusedElement,
-                appName: nil,
+                appName: frontmostApp.name,
+                appBundleIdentifier: frontmostApp.bundleIdentifier,
                 role: nil,
                 subrole: nil,
+                axErrorCode: result.rawValue,
                 isEditable: nil,
-                isTextInput: false
+                hasValueAttribute: false,
+                hasInsertionPointLineNumber: false,
+                hasSelectedTextRange: false,
+                usedKnownAppFallback: inference.knownAppFallbackUsed,
+                isTextInput: inference.isTextInput
             )
         }
 
@@ -145,6 +166,7 @@ final class TextPaster {
                 appBundleIdentifier: nil,
                 role: nil,
                 subrole: nil,
+                axErrorCode: nil,
                 isEditable: nil,
                 isTextInput: false
             )
@@ -181,6 +203,7 @@ final class TextPaster {
                 appBundleIdentifier: app.bundleIdentifier,
                 role: nil,
                 subrole: nil,
+                axErrorCode: roleResult.rawValue,
                 isEditable: editable,
                 hasValueAttribute: hasValue,
                 hasInsertionPointLineNumber: hasInsertionPointLineNumber,
@@ -207,6 +230,7 @@ final class TextPaster {
                 appBundleIdentifier: app.bundleIdentifier,
                 role: nil,
                 subrole: nil,
+                axErrorCode: nil,
                 isEditable: editable,
                 hasValueAttribute: hasValue,
                 hasInsertionPointLineNumber: hasInsertionPointLineNumber,
@@ -234,6 +258,7 @@ final class TextPaster {
             appBundleIdentifier: app.bundleIdentifier,
             role: roleString,
             subrole: subrole,
+            axErrorCode: nil,
             isEditable: editable,
             hasValueAttribute: hasValue,
             hasInsertionPointLineNumber: hasInsertionPointLineNumber,
@@ -288,6 +313,9 @@ final class TextPaster {
 
     static func isKnownTextInputHost(appName: String?, bundleIdentifier: String?) -> Bool {
         if let bundleIdentifier {
+            if bundleIdentifier == Bundle.main.bundleIdentifier {
+                return false
+            }
             if knownTextInputHostBundleIdentifiers.contains(bundleIdentifier) {
                 return true
             }
@@ -352,6 +380,11 @@ final class TextPaster {
         var pid: pid_t = 0
         guard AXUIElementGetPid(element, &pid) == .success else { return (nil, nil) }
         let app = NSRunningApplication(processIdentifier: pid)
+        return (app?.localizedName, app?.bundleIdentifier)
+    }
+
+    private static func frontmostAppIdentity() -> (name: String?, bundleIdentifier: String?) {
+        let app = NSWorkspace.shared.frontmostApplication
         return (app?.localizedName, app?.bundleIdentifier)
     }
 

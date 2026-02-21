@@ -513,6 +513,22 @@ struct TextPasterTests {
         #expect(inference.knownAppFallbackUsed == true)
     }
 
+    @Test func inferTextInputTreatsJetBrainsNoFocusedElementAsTextInput() {
+        let inference = TextPaster.inferTextInput(
+            status: .noFocusedElement,
+            role: nil,
+            editable: nil,
+            hasValueAttribute: false,
+            hasInsertionPointLineNumber: false,
+            hasSelectedTextRange: false,
+            appName: "WebStorm",
+            appBundleIdentifier: "com.jetbrains.WebStorm"
+        )
+
+        #expect(inference.isTextInput == true)
+        #expect(inference.knownAppFallbackUsed == true)
+    }
+
     @Test func knownTextInputHostDetectsJetBrainsByBundlePrefix() {
         #expect(
             TextPaster.isKnownTextInputHost(
