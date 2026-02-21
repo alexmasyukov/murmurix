@@ -93,6 +93,7 @@ final class TextPaster {
         "com.apple.Terminal",
         "com.googlecode.iterm2",
         "com.microsoft.VSCode",
+        "com.anthropic.claudefordesktop",
         "com.todesktop.230313mzl4w4u92", // Cursor
         "com.exafunction.windsurf"
     ]
@@ -112,6 +113,7 @@ final class TextPaster {
         "rider",
         "phpstorm",
         "fleet",
+        "claude",
         "cursor",
         "windsurf"
     ]

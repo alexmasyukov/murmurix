@@ -529,6 +529,22 @@ struct TextPasterTests {
         #expect(inference.knownAppFallbackUsed == true)
     }
 
+    @Test func inferTextInputTreatsClaudeDesktopNoFocusedElementAsTextInput() {
+        let inference = TextPaster.inferTextInput(
+            status: .noFocusedElement,
+            role: nil,
+            editable: nil,
+            hasValueAttribute: false,
+            hasInsertionPointLineNumber: false,
+            hasSelectedTextRange: false,
+            appName: "Claude",
+            appBundleIdentifier: "com.anthropic.claudefordesktop"
+        )
+
+        #expect(inference.isTextInput == true)
+        #expect(inference.knownAppFallbackUsed == true)
+    }
+
     @Test func knownTextInputHostDetectsJetBrainsByBundlePrefix() {
         #expect(
             TextPaster.isKnownTextInputHost(
