@@ -164,35 +164,21 @@ struct GeneralSettingsView: View {
             SectionHeader(title: L10n.debug)
 
             VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
-                Toggle(isOn: $settingsStore.focusDebugNotificationsEnabled) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.focusDebugNotifications)
-                            .font(Typography.label)
-                            .foregroundColor(.white)
-
-                        Text(L10n.focusDebugNotificationsDescription)
-                            .font(Typography.description)
-                            .foregroundColor(.gray)
-                    }
-                }
-                .toggleStyle(.switch)
+                debugToggleRow(
+                    title: L10n.focusDebugNotifications,
+                    description: L10n.focusDebugNotificationsDescription,
+                    isOn: $settingsStore.focusDebugNotificationsEnabled
+                )
 
                 Divider()
                     .background(AppColors.divider)
                     .padding(.vertical, Layout.Spacing.tiny)
 
-                Toggle(isOn: $settingsStore.alwaysPasteEnabled) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.alwaysPaste)
-                            .font(Typography.label)
-                            .foregroundColor(.white)
-
-                        Text(L10n.alwaysPasteDescription)
-                            .font(Typography.description)
-                            .foregroundColor(.gray)
-                    }
-                }
-                .toggleStyle(.switch)
+                debugToggleRow(
+                    title: L10n.alwaysPaste,
+                    description: L10n.alwaysPasteDescription,
+                    isOn: $settingsStore.alwaysPasteEnabled
+                )
             }
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.vertical, Layout.Padding.vertical)
@@ -200,6 +186,26 @@ struct GeneralSettingsView: View {
             .cornerRadius(Layout.CornerRadius.card)
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.bottom, Layout.Padding.section)
+        }
+    }
+
+    private func debugToggleRow(title: String, description: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .top, spacing: Layout.Spacing.item) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(Typography.label)
+                    .foregroundColor(.white)
+
+                Text(description)
+                    .font(Typography.description)
+                    .foregroundColor(.gray)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .accessibilityLabel(Text(title))
         }
     }
 
