@@ -114,8 +114,8 @@ enum ModelPaths {
     static var repoDir: URL {
         repoDir(
             for: environment,
-            tempDirectory: FileManager.default.temporaryDirectory,
-            documentsDirectory: defaultDocumentsDirectory()
+            documentsDirectory: defaultDocumentsDirectory(),
+            appSupportDirectory: defaultAppSupportDirectory()
         )
     }
 
@@ -142,15 +142,15 @@ enum ModelPaths {
 
     static func repoDir(
         for environment: [String: String],
-        tempDirectory: URL,
-        documentsDirectory: URL
+        documentsDirectory: URL,
+        appSupportDirectory: URL
     ) -> URL {
         if let customRepoDir = customRepoDir(from: environment) {
             return customRepoDir
         }
 
         if shouldUseTempRepo(environment: environment) {
-            return tempDirectory
+            return appSupportDirectory
                 .appendingPathComponent(tempRepoRoot(for: environment))
                 .appendingPathComponent(repoSubpath)
         }
@@ -185,5 +185,11 @@ enum ModelPaths {
     private static func defaultDocumentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
+    }
+
+    private static func defaultAppSupportDirectory() -> URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support")
     }
 }

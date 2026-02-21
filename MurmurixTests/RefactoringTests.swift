@@ -273,8 +273,8 @@ struct AppConstantsTests {
     }
 
     @Test func modelPathsCustomRepoHasHighestPriority() {
-        let tempDirectory = URL(fileURLWithPath: "/tmp/murmurix-tests")
         let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
         let customPath = "/custom/models/repo"
 
         let repoDir = ModelPaths.repoDir(
@@ -282,39 +282,39 @@ struct AppConstantsTests {
                 ModelPaths.customRepoDirEnv: customPath,
                 ModelPaths.useTempRepoEnv: "1"
             ],
-            tempDirectory: tempDirectory,
-            documentsDirectory: documentsDirectory
+            documentsDirectory: documentsDirectory,
+            appSupportDirectory: appSupportDirectory
         )
 
         #expect(repoDir.path == URL(fileURLWithPath: customPath).standardizedFileURL.path)
     }
 
     @Test func modelPathsTempRepoCanBeForcedByEnvironment() {
-        let tempDirectory = URL(fileURLWithPath: "/tmp/murmurix-tests")
         let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
 
         let repoDir = ModelPaths.repoDir(
             for: [ModelPaths.useTempRepoEnv: "1"],
-            tempDirectory: tempDirectory,
-            documentsDirectory: documentsDirectory
+            documentsDirectory: documentsDirectory,
+            appSupportDirectory: appSupportDirectory
         )
 
-        #expect(repoDir.path.contains("/tmp/murmurix-tests"))
+        #expect(repoDir.path.contains("/Users/test/Library/Application Support"))
         #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
         #expect(repoDir.path.contains(ModelPaths.repoSubpath))
     }
 
     @Test func modelPathsUseDedicatedTestRootWhenXCTestEnvironmentIsPresent() {
-        let tempDirectory = URL(fileURLWithPath: "/tmp/murmurix-tests")
         let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
 
         let repoDir = ModelPaths.repoDir(
             for: [
                 ModelPaths.useTempRepoEnv: "1",
                 "XCTestConfigurationFilePath": "/tmp/session.xctestconfiguration"
             ],
-            tempDirectory: tempDirectory,
-            documentsDirectory: documentsDirectory
+            documentsDirectory: documentsDirectory,
+            appSupportDirectory: appSupportDirectory
         )
 
         #expect(repoDir.path.contains(ModelPaths.testRepoRoot))
@@ -322,13 +322,13 @@ struct AppConstantsTests {
     }
 
     @Test func modelPathsEnvZeroDisablesTempRepo() {
-        let tempDirectory = URL(fileURLWithPath: "/tmp/murmurix-tests")
         let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
 
         let repoDir = ModelPaths.repoDir(
             for: [ModelPaths.useTempRepoEnv: "0"],
-            tempDirectory: tempDirectory,
-            documentsDirectory: documentsDirectory
+            documentsDirectory: documentsDirectory,
+            appSupportDirectory: appSupportDirectory
         )
 
         #expect(repoDir.path.hasPrefix("/Users/test/Documents"))
