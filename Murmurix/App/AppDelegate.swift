@@ -361,6 +361,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let action = pasteDirectly ? "paste" : "show-result-window"
         let body = "start[\(start.summary)] end[\(end.summary)] action=\(action)"
+        Logger.Settings.debug(
+            "Focus debug diagnostics: \(body), notificationsEnabled=\(settings.focusDebugNotificationsEnabled), forced=\(forceWhenPasteIsUnavailable)"
+        )
         FocusDebugNotifier.notify(
             title: "Murmurix Focus Debug",
             body: body,
@@ -375,6 +378,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+        Logger.Settings.debug("Focus debug notification action: copied transcription to pasteboard")
     }
 }
 
