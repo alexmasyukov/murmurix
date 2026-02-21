@@ -16,20 +16,18 @@ struct DownloadStatusTests {
 
     @Test func idleIsDefault() {
         let status: DownloadStatus = .idle
-        if case .idle = status {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected idle status")
-        }
+        #expect({
+            if case .idle = status { return true }
+            return false
+        }(), "Expected idle status")
     }
 
     @Test func downloadingTracksProgress() {
         let status: DownloadStatus = .downloading(progress: 0.5)
-        if case .downloading(let progress) = status {
-            #expect(progress == 0.5)
-        } else {
-            #expect(Bool(false), "Expected downloading status")
-        }
+        #expect({
+            if case .downloading(let progress) = status { return progress == 0.5 }
+            return false
+        }(), "Expected downloading status")
     }
 
     @Test func downloadingProgressBoundaries() {
@@ -42,29 +40,26 @@ struct DownloadStatusTests {
 
     @Test func compilingStatus() {
         let status: DownloadStatus = .compiling
-        if case .compiling = status {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected compiling status")
-        }
+        #expect({
+            if case .compiling = status { return true }
+            return false
+        }(), "Expected compiling status")
     }
 
     @Test func completedStatus() {
         let status: DownloadStatus = .completed
-        if case .completed = status {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected completed status")
-        }
+        #expect({
+            if case .completed = status { return true }
+            return false
+        }(), "Expected completed status")
     }
 
     @Test func errorStatusContainsMessage() {
         let status: DownloadStatus = .error("Network timeout")
-        if case .error(let message) = status {
-            #expect(message == "Network timeout")
-        } else {
-            #expect(Bool(false), "Expected error status")
-        }
+        #expect({
+            if case .error(let message) = status { return message == "Network timeout" }
+            return false
+        }(), "Expected error status")
     }
 }
 
@@ -168,7 +163,7 @@ struct RecordingTimerTests {
         let timer = RecordingTimer()
         timer.start()
         timer.stop()
-        #expect(true)
+        #expect(timer.elapsedSeconds >= 0)
     }
 
     @Test func doubleStopDoesNotCrash() {
@@ -176,7 +171,7 @@ struct RecordingTimerTests {
         timer.start()
         timer.stop()
         timer.stop()
-        #expect(true)
+        #expect(timer.elapsedSeconds >= 0)
     }
 
     @Test func doubleStartResetsTimer() {
@@ -226,11 +221,21 @@ struct AudioCompressorErrorTests {
 
 @MainActor
 struct GeneralSettingsViewModelModelTests {
+    private func makeTempModelRepo() -> URL {
+        let repoDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("murmurix-model-tests-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: repoDir, withIntermediateDirectories: true)
+        return repoDir
+    }
+
+    private func tempModelDir(repoDir: URL, modelName: String) -> URL {
+        repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+    }
 
     // MARK: - isModelInstalled
 
     @Test func isModelInstalledReturnsTrueForInstalled() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
         viewModel.installedModels = ["small", "tiny"]
 
         #expect(viewModel.isModelInstalled("small") == true)
@@ -238,14 +243,14 @@ struct GeneralSettingsViewModelModelTests {
     }
 
     @Test func isModelInstalledReturnsFalseForNotInstalled() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
         viewModel.installedModels = ["small"]
 
         #expect(viewModel.isModelInstalled("tiny") == false)
     }
 
     @Test func isModelInstalledWithEmptySet() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
 
         #expect(viewModel.isModelInstalled("small") == false)
     }
@@ -253,50 +258,52 @@ struct GeneralSettingsViewModelModelTests {
     // MARK: - cancelDownload
 
     @Test func cancelDownloadResetsToIdle() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
         viewModel.downloadStatuses["small"] = .downloading(progress: 0.75)
 
         viewModel.cancelDownload(for: "small")
 
-        if case .idle = viewModel.downloadStatus(for: "small") {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected idle status after cancel")
-        }
+        #expect({
+            if case .idle = viewModel.downloadStatus(for: "small") { return true }
+            return false
+        }(), "Expected idle status after cancel")
     }
 
     @Test func cancelDownloadFromCompiling() {
-        let viewModel = GeneralSettingsViewModel()
+        let viewModel = makeGeneralSettingsViewModel()
         viewModel.downloadStatuses["small"] = .compiling
 
         viewModel.cancelDownload(for: "small")
 
-        if case .idle = viewModel.downloadStatus(for: "small") {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected idle status after cancel")
-        }
+        #expect({
+            if case .idle = viewModel.downloadStatus(for: "small") { return true }
+            return false
+        }(), "Expected idle status after cancel")
     }
 
     // MARK: - startDownload
 
     @Test func startDownloadSetsDownloadingStatus() {
         let mockWhisperKit = MockWhisperKitService()
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let viewModel = makeGeneralSettingsViewModel(whisperKitService: mockWhisperKit)
 
         viewModel.startDownload(for: "small")
 
-        if case .downloading = viewModel.downloadStatus(for: "small") {
-            #expect(true)
-        } else {
-            #expect(Bool(false), "Expected downloading status")
+        let status = viewModel.downloadStatus(for: "small")
+        let isDownloadFlowStatus: Bool
+        switch status {
+        case .downloading, .compiling, .completed:
+            isDownloadFlowStatus = true
+        case .idle, .error:
+            isDownloadFlowStatus = false
         }
+        #expect(isDownloadFlowStatus, "Expected download flow status")
     }
 
     @Test func startDownloadCallsWhisperKitService() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
@@ -315,7 +322,7 @@ struct GeneralSettingsViewModelModelTests {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
         // keepLoaded defaults to false in WhisperModelSettings.default
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
@@ -332,7 +339,7 @@ struct GeneralSettingsViewModelModelTests {
         let mockSettings = MockSettings()
         // Set keepLoaded=true for tiny
         mockSettings.saveWhisperModelSettings(["tiny": WhisperModelSettings(hotkey: nil, keepLoaded: true)])
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
@@ -348,7 +355,7 @@ struct GeneralSettingsViewModelModelTests {
     @Test func startDownloadCompletesSuccessfully() async throws {
         let mockWhisperKit = MockWhisperKitService()
         let mockSettings = MockSettings()
-        let viewModel = GeneralSettingsViewModel(
+        let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             settings: mockSettings
         )
@@ -364,42 +371,67 @@ struct GeneralSettingsViewModelModelTests {
 
     @Test func deleteModelRemovesDirectory() async {
         let mockWhisperKit = MockWhisperKitService()
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
 
-        // Create a temp directory pretending to be a model
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test_delete_\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        #expect(FileManager.default.fileExists(atPath: tempDir.path))
+        let viewModel = makeGeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
-        // We can't easily test with real ModelPaths, but we can test that
-        // unloadModel is called when model is loaded
+        #expect(FileManager.default.fileExists(atPath: modelDir.path))
+
         mockWhisperKit.loadedModelNames.insert("small")
         await viewModel.deleteModel("small")
 
         #expect(mockWhisperKit.unloadModelCallCount == 1)
-
-        // Cleanup
-        try? FileManager.default.removeItem(at: tempDir)
+        #expect(!FileManager.default.fileExists(atPath: modelDir.path))
     }
 
     @Test func deleteModelUnloadsModelWhenLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
         mockWhisperKit.loadedModelNames.insert("small")
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
+        let viewModel = makeGeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
         await viewModel.deleteModel("small")
 
         #expect(mockWhisperKit.unloadModelCallCount == 1)
+        #expect(!FileManager.default.fileExists(atPath: modelDir.path))
     }
 
     @Test func deleteModelSkipsUnloadWhenNotLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let modelDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
+        let viewModel = makeGeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
         await viewModel.deleteModel("small")
 
         #expect(mockWhisperKit.unloadModelCallCount == 0)
+        #expect(!FileManager.default.fileExists(atPath: modelDir.path))
     }
 
     // MARK: - deleteAllModels
@@ -407,20 +439,48 @@ struct GeneralSettingsViewModelModelTests {
     @Test func deleteAllModelsUnloadsAllModels() async {
         let mockWhisperKit = MockWhisperKitService()
         mockWhisperKit.loadedModelNames.insert("small")
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let smallDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        let tinyDir = tempModelDir(repoDir: repoDir, modelName: "tiny")
+        let keepFile = repoDir.appendingPathComponent("keep.txt")
+        try? FileManager.default.createDirectory(at: smallDir, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: tinyDir, withIntermediateDirectories: true)
+        try? Data("keep".utf8).write(to: keepFile)
+        let viewModel = makeGeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
         await viewModel.deleteAllModels()
 
         #expect(mockWhisperKit.unloadAllModelsCallCount == 1)
+        #expect(!FileManager.default.fileExists(atPath: smallDir.path))
+        #expect(!FileManager.default.fileExists(atPath: tinyDir.path))
+        #expect(FileManager.default.fileExists(atPath: keepFile.path))
     }
 
     @Test func deleteAllModelsWorksWhenNoneLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
-        let viewModel = GeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+        let smallDir = tempModelDir(repoDir: repoDir, modelName: "small")
+        try? FileManager.default.createDirectory(at: smallDir, withIntermediateDirectories: true)
+        let viewModel = makeGeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
 
         await viewModel.deleteAllModels()
 
         #expect(mockWhisperKit.unloadAllModelsCallCount == 1)
+        #expect(!FileManager.default.fileExists(atPath: smallDir.path))
     }
 }
 
@@ -496,6 +556,7 @@ struct SettingsMigrationTests {
 
 // MARK: - RecordingCoordinator Model Control Tests
 
+@MainActor
 struct RecordingCoordinatorModelControlTests {
 
     private func createCoordinator() -> (

@@ -27,7 +27,9 @@ A native macOS menubar app for voice-to-text transcription using local WhisperKi
 
 ## Whisper Models
 
-Models are downloaded via WhisperKit from Hugging Face and stored in `~/Documents/huggingface/models/argmaxinc/whisperkit-coreml/`.
+Models are downloaded via WhisperKit from Hugging Face and stored by build type:
+- `Debug` / tests: `$(TMPDIR)/murmurix-dev-models/huggingface/models/argmaxinc/whisperkit-coreml/`
+- `Release` (including DMG builds): `~/Documents/huggingface/models/argmaxinc/whisperkit-coreml/`
 
 | Model | Size | Speed | Quality |
 |-------|------|-------|---------|
@@ -116,7 +118,8 @@ Delete all downloaded models at once.
 | API Keys | macOS Keychain | Persistent, encrypted |
 | History | `~/Library/Application Support/Murmurix/history.sqlite` | Persistent |
 | Audio files | `/tmp/` | Deleted after transcription |
-| WhisperKit models | `~/Documents/huggingface/models/argmaxinc/whisperkit-coreml/` | Persistent |
+| WhisperKit models (Debug/tests) | `$(TMPDIR)/murmurix-dev-models/huggingface/models/argmaxinc/whisperkit-coreml/` | Isolated from production |
+| WhisperKit models (Release/DMG) | `~/Documents/huggingface/models/argmaxinc/whisperkit-coreml/` | Persistent |
 
 ### External Database Access
 

@@ -53,7 +53,7 @@ struct AnimatedLottieView: NSViewRepresentable {
                     animationView.play()
                 }
             } catch {
-                print("Failed to load animation: \(error)")
+                Logger.Transcription.error("Failed to load Lottie animation \(animationName): \(error.localizedDescription)")
             }
         }
 

@@ -3,6 +3,7 @@
 //  Murmurix
 //
 
+import Foundation
 import SwiftUI
 
 // MARK: - Layout
@@ -102,13 +103,93 @@ enum Defaults {
 
 enum ModelPaths {
     static let repoSubpath = "huggingface/models/argmaxinc/whisperkit-coreml"
+    static let customRepoDirEnv = "MURMURIX_MODEL_REPO_DIR"
+    static let useTempRepoEnv = "MURMURIX_USE_TEMP_MODEL_REPO"
+    static let debugRepoRoot = "murmurix-dev-models"
+    static let testRepoRoot = "murmurix-test-models"
+    private static let repoSubpathDepth = 3
+    private static let xctestConfigurationEnv = "XCTestConfigurationFilePath"
+    private static let xctestBundlePathEnv = "XCTestBundlePath"
 
     static var repoDir: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            .appendingPathComponent(repoSubpath)
+        repoDir(
+            for: environment,
+            documentsDirectory: defaultDocumentsDirectory(),
+            appSupportDirectory: defaultAppSupportDirectory()
+        )
+    }
+
+    static var downloadBaseDir: URL {
+        // HubApi expects a base path and appends "models/argmaxinc/whisperkit-coreml".
+        basePath(forRepoDir: repoDir)
     }
 
     static func modelDir(for name: String) -> URL {
         repoDir.appendingPathComponent("openai_whisper-\(name)")
+    }
+
+    private static var environment: [String: String] {
+        ProcessInfo.processInfo.environment
+    }
+
+    private static func basePath(forRepoDir repoDir: URL) -> URL {
+        var base = repoDir
+        for _ in 0..<repoSubpathDepth {
+            base.deleteLastPathComponent()
+        }
+        return base
+    }
+
+    static func repoDir(
+        for environment: [String: String],
+        documentsDirectory: URL,
+        appSupportDirectory: URL
+    ) -> URL {
+        if let customRepoDir = customRepoDir(from: environment) {
+            return customRepoDir
+        }
+
+        if shouldUseTempRepo(environment: environment) {
+            return appSupportDirectory
+                .appendingPathComponent(tempRepoRoot(for: environment))
+                .appendingPathComponent(repoSubpath)
+        }
+
+        return documentsDirectory.appendingPathComponent(repoSubpath)
+    }
+
+    private static func customRepoDir(from environment: [String: String]) -> URL? {
+        guard let customPath = environment[customRepoDirEnv], !customPath.isEmpty else { return nil }
+        return URL(fileURLWithPath: customPath).standardizedFileURL
+    }
+
+    private static func shouldUseTempRepo(environment: [String: String]) -> Bool {
+        if environment[useTempRepoEnv] == "1" {
+            return true
+        }
+#if DEBUG
+        return environment[useTempRepoEnv] != "0"
+#else
+        return false
+#endif
+    }
+
+    private static func tempRepoRoot(for environment: [String: String]) -> String {
+        isRunningTests(environment: environment) ? testRepoRoot : debugRepoRoot
+    }
+
+    private static func isRunningTests(environment: [String: String]) -> Bool {
+        environment[xctestConfigurationEnv] != nil || environment[xctestBundlePathEnv] != nil
+    }
+
+    private static func defaultDocumentsDirectory() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
+    }
+
+    private static func defaultAppSupportDirectory() -> URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support")
     }
 }

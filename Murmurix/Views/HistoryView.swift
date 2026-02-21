@@ -8,9 +8,9 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var viewModel: HistoryViewModel
     @State private var showingClearConfirmation = false
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.defaultRawValue
 
-    init(viewModel: HistoryViewModel = HistoryViewModel()) {
+    init(viewModel: HistoryViewModel) {
         self.viewModel = viewModel
     }
 
@@ -112,6 +112,11 @@ struct HistoryView: View {
 }
 
 #Preview {
-    HistoryView()
+    let previewDatabaseURL = FileManager.default.temporaryDirectory
+        .appendingPathComponent("murmurix-history-preview-\(UUID().uuidString).sqlite")
+    let previewRepository = SQLiteTranscriptionRepository(dbPath: previewDatabaseURL.path)
+    let previewHistoryService = HistoryService(repository: previewRepository)
+
+    HistoryView(viewModel: HistoryViewModel(historyService: previewHistoryService))
         .preferredColorScheme(.dark)
 }

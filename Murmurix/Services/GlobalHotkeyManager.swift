@@ -16,12 +16,6 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     // Only intercept cancel hotkey when recording is active
     var isRecording: Bool = false
 
-    // Disable hotkey interception while user is recording a new hotkey in settings
-    static var isRecordingHotkey: Bool = false
-
-    // Disable hotkey interception while settings window is open
-    static var isSettingsWindowActive: Bool = false
-
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
@@ -31,7 +25,14 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private var cancelHotkey: Hotkey?
     private let settings: SettingsStorageProtocol
 
-    init(settings: SettingsStorageProtocol = Settings.shared) {
+    private enum MatchedHotkeyAction {
+        case local(modelName: String)
+        case cloud
+        case gemini
+        case cancel
+    }
+
+    init(settings: SettingsStorageProtocol) {
         self.settings = settings
         toggleCloudHotkey = settings.loadToggleCloudHotkey()
         toggleGeminiHotkey = settings.loadToggleGeminiHotkey()
@@ -108,47 +109,16 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     }
 
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Skip interception while user is recording a new hotkey or settings window is active
-        if GlobalHotkeyManager.isRecordingHotkey || GlobalHotkeyManager.isSettingsWindowActive {
+        guard type == .keyDown else {
             return Unmanaged.passUnretained(event)
         }
 
-        if type == .keyDown {
-            let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-            let flags = event.flags
+        let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
+        let carbonModifiers = Self.carbonModifiers(from: event.flags)
 
-            // Convert CGEventFlags to Carbon modifiers
-            var carbonModifiers: UInt32 = 0
-            if flags.contains(.maskCommand) { carbonModifiers |= UInt32(cmdKey) }
-            if flags.contains(.maskAlternate) { carbonModifiers |= UInt32(optionKey) }
-            if flags.contains(.maskControl) { carbonModifiers |= UInt32(controlKey) }
-            if flags.contains(.maskShift) { carbonModifiers |= UInt32(shiftKey) }
-
-            // Check local model hotkeys
-            for (modelName, hotkey) in localModelHotkeys {
-                if keyCode == hotkey.keyCode && carbonModifiers == hotkey.modifiers {
-                    onToggleLocalRecording?(modelName)
-                    return nil
-                }
-            }
-
-            // Check toggle cloud (OpenAI) hotkey
-            if let hk = toggleCloudHotkey, keyCode == hk.keyCode && carbonModifiers == hk.modifiers {
-                onToggleCloudRecording?()
-                return nil
-            }
-
-            // Check toggle Gemini hotkey
-            if let hk = toggleGeminiHotkey, keyCode == hk.keyCode && carbonModifiers == hk.modifiers {
-                onToggleGeminiRecording?()
-                return nil
-            }
-
-            // Check cancel hotkey - only when recording
-            if let hk = cancelHotkey, isRecording && keyCode == hk.keyCode && carbonModifiers == hk.modifiers {
-                onCancelRecording?()
-                return nil
-            }
+        if let matchedAction = matchedHotkeyAction(for: keyCode, modifiers: carbonModifiers) {
+            dispatchMatchedHotkey(matchedAction)
+            return nil
         }
 
         return Unmanaged.passUnretained(event)
@@ -157,5 +127,54 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
     private func requestAccessibilityPermissions() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         AXIsProcessTrustedWithOptions(options)
+    }
+
+    private static func matches(hotkey: Hotkey?, keyCode: UInt32, modifiers: UInt32) -> Bool {
+        guard let hotkey else { return false }
+        return hotkey.keyCode == keyCode && hotkey.modifiers == modifiers
+    }
+
+    private func matchedHotkeyAction(for keyCode: UInt32, modifiers: UInt32) -> MatchedHotkeyAction? {
+        if let modelName = matchingLocalModelName(for: keyCode, modifiers: modifiers) {
+            return .local(modelName: modelName)
+        }
+        if Self.matches(hotkey: toggleCloudHotkey, keyCode: keyCode, modifiers: modifiers) {
+            return .cloud
+        }
+        if Self.matches(hotkey: toggleGeminiHotkey, keyCode: keyCode, modifiers: modifiers) {
+            return .gemini
+        }
+        if isRecording, Self.matches(hotkey: cancelHotkey, keyCode: keyCode, modifiers: modifiers) {
+            return .cancel
+        }
+        return nil
+    }
+
+    private func matchingLocalModelName(for keyCode: UInt32, modifiers: UInt32) -> String? {
+        localModelHotkeys.first(where: {
+            Self.matches(hotkey: $0.value, keyCode: keyCode, modifiers: modifiers)
+        })?.key
+    }
+
+    private func dispatchMatchedHotkey(_ action: MatchedHotkeyAction) {
+        switch action {
+        case .local(let modelName):
+            onToggleLocalRecording?(modelName)
+        case .cloud:
+            onToggleCloudRecording?()
+        case .gemini:
+            onToggleGeminiRecording?()
+        case .cancel:
+            onCancelRecording?()
+        }
+    }
+
+    private static func carbonModifiers(from flags: CGEventFlags) -> UInt32 {
+        var result: UInt32 = 0
+        if flags.contains(.maskCommand) { result |= UInt32(cmdKey) }
+        if flags.contains(.maskAlternate) { result |= UInt32(optionKey) }
+        if flags.contains(.maskControl) { result |= UInt32(controlKey) }
+        if flags.contains(.maskShift) { result |= UInt32(shiftKey) }
+        return result
     }
 }

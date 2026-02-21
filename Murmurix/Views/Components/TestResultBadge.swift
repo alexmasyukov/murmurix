@@ -8,7 +8,7 @@ import SwiftUI
 struct TestResultBadge: View {
     let result: APITestResult
     var successText: String? = nil
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.defaultRawValue
 
     var body: some View {
         HStack(spacing: 4) {

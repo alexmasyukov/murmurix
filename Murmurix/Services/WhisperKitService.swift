@@ -17,21 +17,19 @@ protocol WhisperKitServiceProtocol: AnyObject, Sendable {
 }
 
 final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
-    static let shared = WhisperKitService()
-
     private var pipelines: [String: WhisperKit] = [:]
     private let lock = NSLock()
 
     func isModelLoaded(name: String) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return pipelines[name] != nil
+        lock.withLock {
+            pipelines[name] != nil
+        }
     }
 
     var loadedModels: [String] {
-        lock.lock()
-        defer { lock.unlock() }
-        return Array(pipelines.keys)
+        lock.withLock {
+            Array(pipelines.keys)
+        }
     }
 
     func loadModel(name: String) async throws {
@@ -54,40 +52,39 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
 
         let pipe = try await WhisperKit(config)
 
-        lock.lock()
-        pipelines[name] = pipe
-        lock.unlock()
+        lock.withLock {
+            pipelines[name] = pipe
+        }
 
         Logger.Model.info("WhisperKit model loaded: \(name)")
     }
 
     func unloadModel(name: String) async {
-        lock.lock()
-        let pipe = pipelines.removeValue(forKey: name)
-        lock.unlock()
+        let pipe = lock.withLock {
+            pipelines.removeValue(forKey: name)
+        }
 
         if let pipe = pipe {
-            await pipe.unloadModels()
-            Logger.Model.info("WhisperKit model unloaded: \(name)")
+            await unloadPipeline(pipe, name: name)
         }
     }
 
     func unloadAllModels() async {
-        lock.lock()
-        let allPipelines = pipelines
-        pipelines.removeAll()
-        lock.unlock()
+        let allPipelines = lock.withLock {
+            let current = pipelines
+            pipelines.removeAll()
+            return current
+        }
 
         for (name, pipe) in allPipelines {
-            await pipe.unloadModels()
-            Logger.Model.info("WhisperKit model unloaded: \(name)")
+            await unloadPipeline(pipe, name: name)
         }
     }
 
     func transcribe(audioURL: URL, language: String, model: String) async throws -> String {
-        lock.lock()
-        let pipe = pipelines[model]
-        lock.unlock()
+        let pipe = lock.withLock {
+            pipelines[model]
+        }
 
         guard let pipe = pipe else {
             throw MurmurixError.transcription(.modelNotLoaded)
@@ -115,6 +112,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
 
         _ = try await WhisperKit.download(
             variant: "openai_whisper-\(name)",
+            downloadBase: ModelPaths.downloadBaseDir,
             from: "argmaxinc/whisperkit-coreml",
             progressCallback: { downloadProgress in
                 progress(downloadProgress.fractionCompleted)
@@ -122,5 +120,10 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         )
 
         Logger.Model.info("WhisperKit model downloaded: \(name)")
+    }
+
+    private func unloadPipeline(_ pipeline: WhisperKit, name: String) async {
+        await pipeline.unloadModels()
+        Logger.Model.info("WhisperKit model unloaded: \(name)")
     }
 }

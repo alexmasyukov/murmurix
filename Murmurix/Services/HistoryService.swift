@@ -13,35 +13,67 @@ protocol HistoryServiceProtocol {
 }
 
 final class HistoryService: HistoryServiceProtocol {
-    static let shared = HistoryService()
+    static func live() -> HistoryService {
+        HistoryService(repository: makeDefaultRepository())
+    }
 
     private let repository: SQLiteTranscriptionRepository
 
-    init(repository: SQLiteTranscriptionRepository? = nil) {
-        if let repository = repository {
-            self.repository = repository
-        } else {
-            let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            let appDir = supportDir.appendingPathComponent("Murmurix")
-            try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
-            let dbPath = appDir.appendingPathComponent("history.sqlite").path
-            self.repository = SQLiteTranscriptionRepository(dbPath: dbPath)
-        }
+    init(repository: SQLiteTranscriptionRepository) {
+        self.repository = repository
     }
 
     func save(record: TranscriptionRecord) {
-        repository.save(record)
+        do {
+            try repository.save(record)
+        } catch {
+            Logger.History.error("Failed to save history record \(record.id): \(error.localizedDescription)")
+        }
     }
 
     func fetchAll() -> [TranscriptionRecord] {
-        return repository.fetchAll()
+        do {
+            return try repository.fetchAll()
+        } catch {
+            Logger.History.error("Failed to fetch history records: \(error.localizedDescription)")
+            return []
+        }
     }
 
     func delete(id: UUID) {
-        repository.delete(id: id)
+        do {
+            try repository.delete(id: id)
+        } catch {
+            Logger.History.error("Failed to delete history record \(id): \(error.localizedDescription)")
+        }
     }
 
     func deleteAll() {
-        repository.deleteAll()
+        do {
+            try repository.deleteAll()
+        } catch {
+            Logger.History.error("Failed to delete all history records: \(error.localizedDescription)")
+        }
+    }
+
+    private static func makeDefaultRepository() -> SQLiteTranscriptionRepository {
+        SQLiteTranscriptionRepository(dbPath: defaultDatabasePath())
+    }
+
+    private static func defaultDatabasePath() -> String {
+        let fileManager = FileManager.default
+        let appDir = defaultApplicationSupportDirectory(using: fileManager)
+        do {
+            try fileManager.createDirectory(at: appDir, withIntermediateDirectories: true)
+        } catch {
+            Logger.History.error("Failed to create history directory \(appDir.path): \(error.localizedDescription)")
+        }
+        return appDir.appendingPathComponent("history.sqlite").path
+    }
+
+    private static func defaultApplicationSupportDirectory(using fileManager: FileManager) -> URL {
+        let supportDir = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
+        return supportDir.appendingPathComponent("Murmurix")
     }
 }

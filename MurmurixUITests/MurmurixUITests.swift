@@ -8,6 +8,10 @@
 import XCTest
 
 final class MurmurixUITests: XCTestCase {
+    private enum MenuLabels {
+        static let settingsKeywords = ["Settings", "Настройк", "Ajuste"]
+        static let historyKeywords = ["History", "Истори", "Historial"]
+    }
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.
@@ -24,11 +28,34 @@ final class MurmurixUITests: XCTestCase {
 
     @MainActor
     func testExample() throws {
-        // UI tests must launch the application that they test.
+        // Smoke test: app starts without crashing.
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(waitForAppToRun(app, timeout: 5))
+    }
+
+    @MainActor
+    func testOpenSettingsFromStatusMenu() throws {
         let app = XCUIApplication()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        try openStatusMenu(app)
+        try tapStatusMenuItem(app, keywords: MenuLabels.settingsKeywords)
+
+        XCTAssertTrue(waitForAnyWindow(app, timeout: 5))
+        app.typeKey("w", modifierFlags: .command)
+    }
+
+    @MainActor
+    func testOpenHistoryFromStatusMenu() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        try openStatusMenu(app)
+        try tapStatusMenuItem(app, keywords: MenuLabels.historyKeywords)
+
+        XCTAssertTrue(waitForAnyWindow(app, timeout: 5))
+        app.typeKey("w", modifierFlags: .command)
     }
 
     @MainActor
@@ -39,5 +66,48 @@ final class MurmurixUITests: XCTestCase {
                 XCUIApplication().launch()
             }
         }
+    }
+
+    @MainActor
+    private func openStatusMenu(_ app: XCUIApplication) throws {
+        let statusItem = app.statusItems.firstMatch
+        guard statusItem.waitForExistence(timeout: 5) else {
+            throw XCTSkip("Status item is not exposed in current UI test session")
+        }
+        statusItem.click()
+    }
+
+    @MainActor
+    private func tapStatusMenuItem(_ app: XCUIApplication, keywords: [String]) throws {
+        for keyword in keywords {
+            let predicate = NSPredicate(format: "label CONTAINS[c] %@", keyword)
+            let menuItem = app.menuItems.matching(predicate).firstMatch
+            if menuItem.waitForExistence(timeout: 2) {
+                menuItem.click()
+                return
+            }
+        }
+        throw XCTSkip("Status menu item is not exposed for keywords: \(keywords)")
+    }
+
+    @MainActor
+    private func waitForAnyWindow(_ app: XCUIApplication, timeout: TimeInterval) -> Bool {
+        let predicate = NSPredicate(format: "count > 0")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: app.windows)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func waitForAppToRun(_ app: XCUIApplication, timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            switch app.state {
+            case .runningForeground, .runningBackground:
+                return true
+            default:
+                RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            }
+        }
+        return false
     }
 }

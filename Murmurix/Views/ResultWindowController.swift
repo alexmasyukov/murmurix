@@ -25,6 +25,7 @@ class ResultWindow: NSWindow {
     }
 }
 
+@MainActor
 class ResultWindowController: NSWindowController {
 
     private var onDeleteCallback: (() -> Void)?

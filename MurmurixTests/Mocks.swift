@@ -47,12 +47,19 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
     var unloadModelCallCount = 0
     var unloadAllModelsCallCount = 0
     var transcribeCallCount = 0
+    var lastLanguage: String?
+    var lastMode: TranscriptionMode?
+    var lastAudioURL: URL?
 
     var transcriptionResult: Result<String, Error> = .success("Test transcription")
     var transcriptionDelay: TimeInterval = 0
 
     func isModelLoaded(name: String) -> Bool {
         loadedModels.contains(name)
+    }
+
+    func loadedModelNames() -> [String] {
+        Array(loadedModels)
     }
 
     func loadModel(name: String) async throws {
@@ -70,8 +77,15 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
         loadedModels.removeAll()
     }
 
-    func transcribe(audioURL: URL, mode: TranscriptionMode = .local(model: "small")) async throws -> String {
+    func transcribe(
+        audioURL: URL,
+        language: String,
+        mode: TranscriptionMode = .local(model: "small")
+    ) async throws -> String {
         transcribeCallCount += 1
+        lastAudioURL = audioURL
+        lastLanguage = language
+        lastMode = mode
 
         if transcriptionDelay > 0 {
             try await Task.sleep(nanoseconds: UInt64(transcriptionDelay * 1_000_000_000))
@@ -121,9 +135,11 @@ final class MockHistoryService: HistoryServiceProtocol {
 
 // MARK: - Mock Settings
 
-final class MockSettings: SettingsStorageProtocol {
+final class MockSettings: SettingsStorageProtocol, @unchecked Sendable {
     var language: String = "ru"
-    var appLanguage: String = "en"
+    var appLanguage: String = AppLanguage.defaultRawValue
+    var focusDebugNotificationsEnabled: Bool = false
+    var alwaysPasteEnabled: Bool = false
     var openaiApiKey: String = ""
     var openaiTranscriptionModel: String = "gpt-4o-transcribe"
     var geminiApiKey: String = ""
@@ -226,6 +242,7 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
     var transcribeCallCount = 0
     var downloadModelCallCount = 0
     var lastModelName: String?
+    var lastLanguage: String?
     var transcribeResult: Result<String, Error> = .success("Transcribed text")
 
     func isModelLoaded(name: String) -> Bool {
@@ -254,6 +271,8 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
 
     func transcribe(audioURL: URL, language: String, model: String) async throws -> String {
         transcribeCallCount += 1
+        lastLanguage = language
+        lastModelName = model
         switch transcribeResult {
         case .success(let text): return text
         case .failure(let error): throw error
@@ -272,12 +291,20 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
 final class MockOpenAITranscriptionService: OpenAITranscriptionServiceProtocol, @unchecked Sendable {
     var transcribeCallCount = 0
     var validateAPIKeyCallCount = 0
+    var lastAudioURL: URL?
+    var lastLanguage: String?
+    var lastModel: String?
+    var lastApiKey: String?
 
     var transcribeResult: Result<String, Error> = .success("Transcribed text")
     var validateAPIKeyResult: Result<Bool, Error> = .success(true)
 
     func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
         transcribeCallCount += 1
+        lastAudioURL = audioURL
+        lastLanguage = language
+        lastModel = model
+        lastApiKey = apiKey
         switch transcribeResult {
         case .success(let result):
             return result
@@ -302,16 +329,20 @@ final class MockOpenAITranscriptionService: OpenAITranscriptionServiceProtocol, 
 final class MockGeminiTranscriptionService: GeminiTranscriptionServiceProtocol, @unchecked Sendable {
     var transcribeCallCount = 0
     var validateAPIKeyCallCount = 0
+    var lastAudioURL: URL?
     var lastLanguage: String?
     var lastModel: String?
+    var lastApiKey: String?
 
     var transcribeResult: Result<String, Error> = .success("Gemini transcribed text")
     var validateAPIKeyResult: Result<Bool, Error> = .success(true)
 
     func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
         transcribeCallCount += 1
+        lastAudioURL = audioURL
         lastLanguage = language
         lastModel = model
+        lastApiKey = apiKey
         switch transcribeResult {
         case .success(let result):
             return result
@@ -375,7 +406,7 @@ final class MockTranscriptionRepository: TranscriptionRepositoryProtocol {
     var deleteCallCount = 0
     var deleteAllCallCount = 0
 
-    func save(_ item: TranscriptionRecord) {
+    func save(_ item: TranscriptionRecord) throws {
         saveCallCount += 1
         if let index = records.firstIndex(where: { $0.id == item.id }) {
             records[index] = item
@@ -384,17 +415,17 @@ final class MockTranscriptionRepository: TranscriptionRepositoryProtocol {
         }
     }
 
-    func fetchAll() -> [TranscriptionRecord] {
+    func fetchAll() throws -> [TranscriptionRecord] {
         fetchAllCallCount += 1
         return records.sorted { $0.createdAt > $1.createdAt }
     }
 
-    func delete(id: UUID) {
+    func delete(id: UUID) throws {
         deleteCallCount += 1
         records.removeAll { $0.id == id }
     }
 
-    func deleteAll() {
+    func deleteAll() throws {
         deleteAllCallCount += 1
         records.removeAll()
     }
@@ -442,4 +473,27 @@ final class MockURLSession: URLSessionProtocol, @unchecked Sendable {
         responseStatusCode = statusCode
         error = nil
     }
+}
+
+// MARK: - Test Helpers
+
+@MainActor
+func makeGeneralSettingsViewModel(
+    whisperKitService: WhisperKitServiceProtocol = MockWhisperKitService(),
+    openAIService: OpenAITranscriptionServiceProtocol = MockOpenAITranscriptionService(),
+    geminiService: GeminiTranscriptionServiceProtocol = MockGeminiTranscriptionService(),
+    transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol = { MockTranscriptionService() },
+    modelDirectory: @escaping (String) -> URL = { ModelPaths.modelDir(for: $0) },
+    modelsRepositoryDirectory: @escaping () -> URL = { ModelPaths.repoDir },
+    settings: SettingsStorageProtocol = MockSettings()
+) -> GeneralSettingsViewModel {
+    GeneralSettingsViewModel(
+        whisperKitService: whisperKitService,
+        openAIService: openAIService,
+        geminiService: geminiService,
+        transcriptionServiceFactory: transcriptionServiceFactory,
+        modelDirectory: modelDirectory,
+        modelsRepositoryDirectory: modelsRepositoryDirectory,
+        settings: settings
+    )
 }

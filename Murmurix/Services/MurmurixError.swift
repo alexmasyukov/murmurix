@@ -34,6 +34,7 @@ enum TranscriptionError: LocalizedError {
     case modelNotLoaded
     case failed(String)
     case timeout
+    case cloud(CloudTranscriptionError)
 
     var errorDescription: String? {
         switch self {
@@ -43,6 +44,8 @@ enum TranscriptionError: LocalizedError {
             return "Transcription failed: \(message)"
         case .timeout:
             return "Transcription timed out"
+        case .cloud(let error):
+            return error.errorDescription
         }
     }
 
@@ -54,6 +57,56 @@ enum TranscriptionError: LocalizedError {
             return "Try recording again"
         case .timeout:
             return "The transcription took too long. Try a shorter recording"
+        case .cloud(let error):
+            return error.recoverySuggestion
+        }
+    }
+}
+
+enum CloudTranscriptionError: LocalizedError, Equatable {
+    case unauthorized(provider: String)
+    case rateLimited(provider: String)
+    case payloadTooLarge(provider: String)
+    case invalidResponse(provider: String)
+    case network(provider: String, reason: String)
+    case providerMismatch(expected: String, actual: String)
+    case unknown(provider: String, message: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unauthorized(let provider):
+            return "\(provider) API key is invalid"
+        case .rateLimited(let provider):
+            return "\(provider) rate limit exceeded"
+        case .payloadTooLarge(let provider):
+            return "\(provider) request payload is too large"
+        case .invalidResponse(let provider):
+            return "\(provider) returned an invalid response"
+        case .network(let provider, let reason):
+            return "\(provider) network error: \(reason)"
+        case .providerMismatch(let expected, let actual):
+            return "Cloud provider mismatch: expected \(expected), got \(actual)"
+        case .unknown(let provider, let message):
+            return "\(provider) transcription error: \(message)"
+        }
+    }
+
+    var recoverySuggestion: String? {
+        switch self {
+        case .unauthorized:
+            return "Update API key in Settings and retry"
+        case .rateLimited:
+            return "Wait a moment and retry"
+        case .payloadTooLarge:
+            return "Record a shorter clip and retry"
+        case .invalidResponse:
+            return "Retry the request"
+        case .network:
+            return "Check internet connection and retry"
+        case .providerMismatch:
+            return "Re-run transcription with the selected provider"
+        case .unknown:
+            return "Retry the request"
         }
     }
 }

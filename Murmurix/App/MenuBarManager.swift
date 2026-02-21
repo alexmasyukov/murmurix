@@ -6,6 +6,7 @@
 import AppKit
 import Carbon
 
+@MainActor
 protocol MenuBarManagerDelegate: AnyObject {
     func menuBarDidRequestToggleLocalRecording(model: String)
     func menuBarDidRequestToggleCloudRecording()
@@ -15,18 +16,18 @@ protocol MenuBarManagerDelegate: AnyObject {
     func menuBarDidRequestQuit()
 }
 
+@MainActor
 final class MenuBarManager {
     weak var delegate: MenuBarManagerDelegate?
 
-    private var statusItem: NSStatusItem!
-    private var menu: NSMenu!
+    private var statusItem: NSStatusItem?
+    private var menu: NSMenu?
     private var localModelMenuItems: [String: NSMenuItem] = [:]
-    private var localSeparatorIndex: Int = 0
     private var toggleCloudMenuItem: NSMenuItem?
     private var toggleGeminiMenuItem: NSMenuItem?
     private let settings: SettingsStorageProtocol
 
-    init(settings: SettingsStorageProtocol = Settings.shared) {
+    init(settings: SettingsStorageProtocol) {
         self.settings = settings
     }
 
@@ -40,15 +41,13 @@ final class MenuBarManager {
     }
 
     func updateHotkeyDisplay() {
-        if let menuItem = toggleCloudMenuItem, let hotkey = settings.loadToggleCloudHotkey() {
-            applyHotkeyToMenuItem(menuItem, hotkey: hotkey)
-        }
-        if let menuItem = toggleGeminiMenuItem, let hotkey = settings.loadToggleGeminiHotkey() {
-            applyHotkeyToMenuItem(menuItem, hotkey: hotkey)
-        }
+        applyHotkeyIfPresent(to: toggleCloudMenuItem, hotkey: settings.loadToggleCloudHotkey())
+        applyHotkeyIfPresent(to: toggleGeminiMenuItem, hotkey: settings.loadToggleGeminiHotkey())
     }
 
     func updateLocalModelMenuItems(hotkeys: [String: Hotkey]) {
+        guard let menu else { return }
+
         // Remove existing local model items
         for (_, item) in localModelMenuItems {
             menu.removeItem(item)
@@ -57,18 +56,9 @@ final class MenuBarManager {
 
         // Insert new local model items at the beginning
         var insertIndex = 0
-        for model in WhisperModel.allCases {
-            guard let hotkey = hotkeys[model.rawValue] else { continue }
-            let item = NSMenuItem(
-                title: L10n.localModel(model.rawValue),
-                action: #selector(handleToggleLocalRecording(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = model.rawValue
-            applyHotkeyToMenuItem(item, hotkey: hotkey)
+        for (modelName, item) in makeOrderedLocalModelMenuItems(hotkeys: hotkeys) {
             menu.insertItem(item, at: insertIndex)
-            localModelMenuItems[model.rawValue] = item
+            localModelMenuItems[modelName] = item
             insertIndex += 1
         }
     }
@@ -78,83 +68,48 @@ final class MenuBarManager {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
-        if let button = statusItem.button {
+        if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Murmurix")
         }
     }
 
     private func setupMenu() {
-        menu = NSMenu()
+        let menu = NSMenu()
+        self.menu = menu
+        localModelMenuItems.removeAll()
 
         // Add local model items from settings
-        let modelSettings = settings.loadWhisperModelSettings()
-        for model in WhisperModel.allCases {
-            guard let ms = modelSettings[model.rawValue], ms.hotkey != nil else { continue }
-            let item = NSMenuItem(
-                title: L10n.localModel(model.rawValue),
-                action: #selector(handleToggleLocalRecording(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = model.rawValue
-            if let hotkey = ms.hotkey {
-                applyHotkeyToMenuItem(item, hotkey: hotkey)
-            }
+        for (modelName, item) in makeOrderedLocalModelMenuItems(hotkeys: localModelHotkeysFromSettings()) {
             menu.addItem(item)
-            localModelMenuItems[model.rawValue] = item
+            localModelMenuItems[modelName] = item
         }
 
-        toggleCloudMenuItem = NSMenuItem(
+        let cloudMenuItem = makeCloudMenuItem(
             title: L10n.cloudRecordingOpenAI,
             action: #selector(handleToggleCloudRecording),
-            keyEquivalent: ""
+            hotkey: settings.loadToggleCloudHotkey()
         )
-        toggleCloudMenuItem?.target = self
-        if let hotkey = settings.loadToggleCloudHotkey() {
-            applyHotkeyToMenuItem(toggleCloudMenuItem!, hotkey: hotkey)
-        }
-        menu.addItem(toggleCloudMenuItem!)
+        toggleCloudMenuItem = cloudMenuItem
+        menu.addItem(cloudMenuItem)
 
-        toggleGeminiMenuItem = NSMenuItem(
+        let geminiMenuItem = makeCloudMenuItem(
             title: L10n.geminiRecording,
             action: #selector(handleToggleGeminiRecording),
-            keyEquivalent: ""
+            hotkey: settings.loadToggleGeminiHotkey()
         )
-        toggleGeminiMenuItem?.target = self
-        if let hotkey = settings.loadToggleGeminiHotkey() {
-            applyHotkeyToMenuItem(toggleGeminiMenuItem!, hotkey: hotkey)
-        }
-        menu.addItem(toggleGeminiMenuItem!)
+        toggleGeminiMenuItem = geminiMenuItem
+        menu.addItem(geminiMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let historyItem = NSMenuItem(
-            title: L10n.history,
-            action: #selector(handleOpenHistory),
-            keyEquivalent: "h"
-        )
-        historyItem.target = self
-        menu.addItem(historyItem)
-
-        let settingsItem = NSMenuItem(
-            title: L10n.settings,
-            action: #selector(handleOpenSettings),
-            keyEquivalent: ","
-        )
-        settingsItem.target = self
-        menu.addItem(settingsItem)
+        menu.addItem(makeMenuItem(title: L10n.history, action: #selector(handleOpenHistory), keyEquivalent: "h"))
+        menu.addItem(makeMenuItem(title: L10n.settings, action: #selector(handleOpenSettings), keyEquivalent: ","))
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(
-            title: L10n.quit,
-            action: #selector(handleQuit),
-            keyEquivalent: "q"
-        )
-        quitItem.target = self
-        menu.addItem(quitItem)
+        menu.addItem(makeMenuItem(title: L10n.quit, action: #selector(handleQuit), keyEquivalent: "q"))
 
-        statusItem.menu = menu
+        statusItem?.menu = menu
     }
 
     private func applyHotkeyToMenuItem(_ menuItem: NSMenuItem, hotkey: Hotkey) {
@@ -168,6 +123,47 @@ final class MenuBarManager {
         if hotkey.modifiers & UInt32(controlKey) != 0 { modifiers.insert(.control) }
         if hotkey.modifiers & UInt32(shiftKey) != 0 { modifiers.insert(.shift) }
         menuItem.keyEquivalentModifierMask = modifiers
+    }
+
+    private func applyHotkeyIfPresent(to menuItem: NSMenuItem?, hotkey: Hotkey?) {
+        guard let menuItem, let hotkey else { return }
+        applyHotkeyToMenuItem(menuItem, hotkey: hotkey)
+    }
+
+    private func makeLocalModelMenuItem(modelName: String, hotkey: Hotkey) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: L10n.localModel(modelName),
+            action: #selector(handleToggleLocalRecording(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = modelName
+        applyHotkeyToMenuItem(item, hotkey: hotkey)
+        return item
+    }
+
+    private func makeCloudMenuItem(title: String, action: Selector, hotkey: Hotkey?) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        applyHotkeyIfPresent(to: item, hotkey: hotkey)
+        return item
+    }
+
+    private func makeMenuItem(title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.target = self
+        return item
+    }
+
+    private func localModelHotkeysFromSettings() -> [String: Hotkey] {
+        settings.loadWhisperModelSettings().compactMapValues(\.hotkey)
+    }
+
+    private func makeOrderedLocalModelMenuItems(hotkeys: [String: Hotkey]) -> [(String, NSMenuItem)] {
+        WhisperModel.allCases.compactMap { model in
+            guard let hotkey = hotkeys[model.rawValue] else { return nil }
+            return (model.rawValue, makeLocalModelMenuItem(modelName: model.rawValue, hotkey: hotkey))
+        }
     }
 
     // MARK: - Actions

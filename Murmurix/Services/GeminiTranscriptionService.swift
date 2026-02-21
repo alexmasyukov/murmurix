@@ -12,9 +12,11 @@ protocol GeminiTranscriptionServiceProtocol: Sendable {
 }
 
 final class GeminiTranscriptionService: GeminiTranscriptionServiceProtocol, Sendable {
-    static let shared = GeminiTranscriptionService()
+    private let promptPolicy: any TranscriptionPromptPolicy
 
-    private init() {}
+    init(promptPolicy: any TranscriptionPromptPolicy) {
+        self.promptPolicy = promptPolicy
+    }
 
     // MARK: - Transcription
 
@@ -36,22 +38,7 @@ final class GeminiTranscriptionService: GeminiTranscriptionServiceProtocol, Send
         // Create Gemini model
         let generativeModel = GenerativeModel(name: model, apiKey: apiKey)
 
-        // Build prompt with language hint
-        let languageHint: String
-        switch language {
-        case "ru":
-            languageHint = "The audio is in Russian. Transcribe it accurately, preserving technical terms like Anthropic, Claude, Docker, Kubernetes, React, Swift, Xcode."
-        case "en":
-            languageHint = "The audio is in English. Transcribe it accurately."
-        default:
-            languageHint = "Detect the language and transcribe accurately."
-        }
-
-        let prompt = """
-        Transcribe this audio to text precisely.
-        Output ONLY the transcription text, without any additional commentary, timestamps, or formatting.
-        \(languageHint)
-        """
+        let prompt = promptPolicy.geminiPrompt(language: language)
 
         // Create audio content part
         let audioPart = ModelContent.Part.data(mimetype: mimeType, audioData)

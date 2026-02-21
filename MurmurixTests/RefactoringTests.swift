@@ -117,6 +117,12 @@ struct MurmurixErrorTests {
 // MARK: - AppConstants Tests
 
 struct AppConstantsTests {
+    private func expectedTempRepoRoot(for environment: [String: String]) -> String {
+        if environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil {
+            return ModelPaths.testRepoRoot
+        }
+        return ModelPaths.debugRepoRoot
+    }
 
     // MARK: - Layout
 
@@ -143,14 +149,17 @@ struct AppConstantsTests {
     // MARK: - Typography
 
     @Test func typographyFontsExist() {
-        // These should not crash when accessed
-        _ = Typography.title
-        _ = Typography.label
-        _ = Typography.description
-        _ = Typography.caption
-        _ = Typography.monospaced
+        let fonts = [
+            Typography.title,
+            Typography.label,
+            Typography.description,
+            Typography.caption,
+            Typography.monospaced
+        ]
 
-        #expect(true) // If we get here, fonts were created successfully
+        for font in fonts {
+            #expect(!String(describing: font).isEmpty)
+        }
     }
 
     // MARK: - AppColors
@@ -163,11 +172,14 @@ struct AppConstantsTests {
     }
 
     @Test func appColorsColorsExist() {
-        // These should not crash when accessed
-        _ = AppColors.cardBackground
-        _ = AppColors.divider
+        let colors = [
+            AppColors.cardBackground,
+            AppColors.divider
+        ]
 
-        #expect(true) // If we get here, colors were created successfully
+        for color in colors {
+            #expect(!String(describing: color).isEmpty)
+        }
     }
 
     // MARK: - AudioConfig
@@ -218,10 +230,29 @@ struct AppConstantsTests {
 
     // MARK: - ModelPaths
 
-    @Test func modelPathsRepoDirPointsToDocuments() {
+    @Test func modelPathsRepoDirUsesExpectedBase() {
         let repoDir = ModelPaths.repoDir
-        #expect(repoDir.path.contains("Documents"))
-        #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+        let environment = ProcessInfo.processInfo.environment
+
+        if let customPath = environment[ModelPaths.customRepoDirEnv], !customPath.isEmpty {
+            #expect(repoDir.path == URL(fileURLWithPath: customPath).standardizedFileURL.path)
+        } else if environment[ModelPaths.useTempRepoEnv] == "1" {
+            #expect(repoDir.path.contains(expectedTempRepoRoot(for: environment)))
+            #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+        } else {
+#if DEBUG
+            if environment[ModelPaths.useTempRepoEnv] != "0" {
+                #expect(repoDir.path.contains(expectedTempRepoRoot(for: environment)))
+                #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+            } else {
+                #expect(repoDir.path.contains("Documents"))
+                #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+            }
+#else
+            #expect(repoDir.path.contains("Documents"))
+            #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
+#endif
+        }
     }
 
     @Test func modelPathsModelDirAppendsModelName() {
@@ -230,8 +261,78 @@ struct AppConstantsTests {
         #expect(modelDir.path.contains("whisperkit-coreml"))
     }
 
+    @Test func modelPathsDownloadBaseDirPointsToHuggingFaceBase() {
+        let expectedRepoDir = ModelPaths.downloadBaseDir
+            .appendingPathComponent("models/argmaxinc/whisperkit-coreml")
+            .standardizedFileURL
+        #expect(expectedRepoDir.path == ModelPaths.repoDir.standardizedFileURL.path)
+    }
+
     @Test func modelPathsRepoSubpathIsCorrect() {
         #expect(ModelPaths.repoSubpath == "huggingface/models/argmaxinc/whisperkit-coreml")
+    }
+
+    @Test func modelPathsCustomRepoHasHighestPriority() {
+        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
+        let customPath = "/custom/models/repo"
+
+        let repoDir = ModelPaths.repoDir(
+            for: [
+                ModelPaths.customRepoDirEnv: customPath,
+                ModelPaths.useTempRepoEnv: "1"
+            ],
+            documentsDirectory: documentsDirectory,
+            appSupportDirectory: appSupportDirectory
+        )
+
+        #expect(repoDir.path == URL(fileURLWithPath: customPath).standardizedFileURL.path)
+    }
+
+    @Test func modelPathsTempRepoCanBeForcedByEnvironment() {
+        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
+
+        let repoDir = ModelPaths.repoDir(
+            for: [ModelPaths.useTempRepoEnv: "1"],
+            documentsDirectory: documentsDirectory,
+            appSupportDirectory: appSupportDirectory
+        )
+
+        #expect(repoDir.path.contains("/Users/test/Library/Application Support"))
+        #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
+        #expect(repoDir.path.contains(ModelPaths.repoSubpath))
+    }
+
+    @Test func modelPathsUseDedicatedTestRootWhenXCTestEnvironmentIsPresent() {
+        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
+
+        let repoDir = ModelPaths.repoDir(
+            for: [
+                ModelPaths.useTempRepoEnv: "1",
+                "XCTestConfigurationFilePath": "/tmp/session.xctestconfiguration"
+            ],
+            documentsDirectory: documentsDirectory,
+            appSupportDirectory: appSupportDirectory
+        )
+
+        #expect(repoDir.path.contains(ModelPaths.testRepoRoot))
+        #expect(repoDir.path.contains(ModelPaths.repoSubpath))
+    }
+
+    @Test func modelPathsEnvZeroDisablesTempRepo() {
+        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+        let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
+
+        let repoDir = ModelPaths.repoDir(
+            for: [ModelPaths.useTempRepoEnv: "0"],
+            documentsDirectory: documentsDirectory,
+            appSupportDirectory: appSupportDirectory
+        )
+
+        #expect(repoDir.path.hasPrefix("/Users/test/Documents"))
+        #expect(repoDir.path.contains(ModelPaths.repoSubpath))
     }
 }
 
@@ -240,82 +341,84 @@ struct AppConstantsTests {
 @MainActor
 struct WindowPositionerTests {
 
-    @Test func positionTopCenterDoesNotCrash() {
-        let window = NSWindow(
+    private func makeWindow() -> NSWindow {
+        NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-
-        WindowPositioner.positionTopCenter(window)
-
-        // If we get here, no crash occurred
-        #expect(true)
     }
 
-    @Test func positionTopCenterWithOffsetDoesNotCrash() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-
-        WindowPositioner.positionTopCenter(window, topOffset: 20)
-
-        #expect(true)
-    }
-
-    @Test func centerDoesNotCrash() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-
-        WindowPositioner.center(window)
-
-        #expect(true)
-    }
-
-    @Test func centerAndActivateDoesNotCrash() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-
-        WindowPositioner.centerAndActivate(window)
-
-        #expect(true)
-    }
-
-    @Test func positionTopCenterPositionsWindowAtTop() {
-        guard NSScreen.main != nil else {
-            // Skip if no screen available (CI environment)
+    @Test func positionTopCenterPlacesWindowAtExpectedCoordinates() {
+        guard let screen = NSScreen.main else {
             return
         }
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-
+        let window = makeWindow()
         WindowPositioner.positionTopCenter(window)
 
-        // Window should be positioned near the top of the screen
+        let screenFrame = screen.visibleFrame
+        let expectedX = screenFrame.midX - window.frame.width / 2
+        let expectedY = screenFrame.maxY - window.frame.height - 10
+
+        #expect(abs(window.frame.origin.x - expectedX) < 1.0)
+        #expect(abs(window.frame.origin.y - expectedY) < 1.0)
+    }
+
+    @Test func positionTopCenterRespectsCustomOffset() {
+        guard let screen = NSScreen.main else {
+            return
+        }
+
+        let window = makeWindow()
+        WindowPositioner.positionTopCenter(window, topOffset: 20)
+
+        let expectedY = screen.visibleFrame.maxY - window.frame.height - 20
+        #expect(abs(window.frame.origin.y - expectedY) < 1.0)
+    }
+
+    @Test func centerPlacesWindowNearScreenCenter() {
+        guard NSScreen.main != nil else {
+            return
+        }
+
+        let window = makeWindow()
+        WindowPositioner.center(window)
+        #expect(NSScreen.screens.contains { $0.visibleFrame.intersects(window.frame) })
+    }
+
+    @Test func centerAndActivateMakesWindowVisibleAndCentered() {
+        guard NSScreen.main != nil else {
+            return
+        }
+
+        let window = makeWindow()
+        WindowPositioner.centerAndActivate(window)
+        #expect(NSScreen.screens.contains { $0.visibleFrame.intersects(window.frame) })
+    }
+
+    @Test func positionTopCenterPositionsWindowNearTopEdge() {
+        guard NSScreen.main != nil else {
+            return
+        }
+
+        let window = makeWindow()
+        WindowPositioner.positionTopCenter(window)
+
         if let screen = NSScreen.main {
             let screenTop = screen.visibleFrame.maxY
             let windowTop = window.frame.maxY
-
-            // Window top should be close to screen top (within offset + small margin)
-            #expect(abs(screenTop - windowTop) < 50)
+            #expect(abs(screenTop - windowTop) < 20)
         }
+    }
+
+    @Test func positionTopCenterKeepsWindowSizeUnchanged() {
+        let window = makeWindow()
+        let initialSize = window.frame.size
+
+        WindowPositioner.positionTopCenter(window)
+        #expect(window.frame.size == initialSize)
     }
 }
 
@@ -327,16 +430,12 @@ struct LoggerTests {
         Logger.Audio.info("Test info message")
         Logger.Audio.error("Test error message")
         Logger.Audio.debug("Test debug message")
-
-        #expect(true)
     }
 
     @Test func transcriptionLoggerDoesNotCrash() {
         Logger.Transcription.info("Test info message")
         Logger.Transcription.error("Test error message")
         Logger.Transcription.debug("Test debug message")
-
-        #expect(true)
     }
 
     @Test func modelLoggerDoesNotCrash() {
@@ -344,22 +443,20 @@ struct LoggerTests {
         Logger.Model.error("Test error message")
         Logger.Model.warning("Test warning message")
         Logger.Model.debug("Test debug message")
-
-        #expect(true)
     }
 
     @Test func hotkeyLoggerDoesNotCrash() {
         Logger.Hotkey.info("Test info message")
         Logger.Hotkey.error("Test error message")
-
-        #expect(true)
     }
 
     @Test func historyLoggerDoesNotCrash() {
         Logger.History.error("Test error message")
         Logger.History.debug("Test debug message")
+    }
 
-        #expect(true)
+    @Test func settingsLoggerDoesNotCrash() {
+        Logger.Settings.debug("Test debug message")
     }
 }
 
@@ -466,7 +563,7 @@ struct SQLiteDatabaseTests {
 
         if let insertStmt = db.prepareStatement("INSERT INTO test (value) VALUES (?)") {
             db.bindText(insertStmt, index: 1, value: "Hello World")
-            db.step(insertStmt)
+            _ = db.step(insertStmt)
             db.finalize(insertStmt)
         }
 
@@ -486,7 +583,7 @@ struct SQLiteDatabaseTests {
 
         if let insertStmt = db.prepareStatement("INSERT INTO test (value) VALUES (?)") {
             db.bindDouble(insertStmt, index: 1, value: 3.14159)
-            db.step(insertStmt)
+            _ = db.step(insertStmt)
             db.finalize(insertStmt)
         }
 
@@ -506,24 +603,27 @@ struct SQLiteDatabaseTests {
 struct SQLiteTranscriptionRepositoryTests {
 
     private func createTempRepository() -> SQLiteTranscriptionRepository {
-        let tempDir = FileManager.default.temporaryDirectory
-        let dbPath = tempDir.appendingPathComponent("test_repo_\(UUID().uuidString).sqlite").path
-        return SQLiteTranscriptionRepository(dbPath: dbPath)
+        SQLiteTranscriptionRepository(dbPath: createTempDatabasePath())
     }
 
-    @Test func saveAndFetchRecord() {
+    private func createTempDatabasePath() -> String {
+        let tempDir = FileManager.default.temporaryDirectory
+        return tempDir.appendingPathComponent("test_repo_\(UUID().uuidString).sqlite").path
+    }
+
+    @Test func saveAndFetchRecord() throws {
         let repo = createTempRepository()
         let record = TranscriptionRecord(text: "Hello", language: "en", duration: 5)
 
-        repo.save(record)
-        let fetched = repo.fetchAll()
+        try repo.save(record)
+        let fetched = try repo.fetchAll()
 
         #expect(fetched.count == 1)
         #expect(fetched.first?.text == "Hello")
         #expect(fetched.first?.id == record.id)
     }
 
-    @Test func fetchAllReturnsInReverseChronologicalOrder() {
+    @Test func fetchAllReturnsInReverseChronologicalOrder() throws {
         let repo = createTempRepository()
 
         let old = TranscriptionRecord(
@@ -539,54 +639,102 @@ struct SQLiteTranscriptionRepositoryTests {
             createdAt: Date(timeIntervalSince1970: 2000)
         )
 
-        repo.save(old)
-        repo.save(new)
+        try repo.save(old)
+        try repo.save(new)
 
-        let fetched = repo.fetchAll()
+        let fetched = try repo.fetchAll()
 
         #expect(fetched.count == 2)
         #expect(fetched[0].text == "New")
         #expect(fetched[1].text == "Old")
     }
 
-    @Test func deleteRemovesRecord() {
+    @Test func deleteRemovesRecord() throws {
         let repo = createTempRepository()
         let record = TranscriptionRecord(text: "Delete me", language: "en", duration: 5)
 
-        repo.save(record)
-        #expect(repo.fetchAll().count == 1)
+        try repo.save(record)
+        #expect(try repo.fetchAll().count == 1)
 
-        repo.delete(id: record.id)
-        #expect(repo.fetchAll().count == 0)
+        try repo.delete(id: record.id)
+        #expect(try repo.fetchAll().count == 0)
     }
 
-    @Test func deleteAllClearsAllRecords() {
+    @Test func deleteAllClearsAllRecords() throws {
         let repo = createTempRepository()
 
-        repo.save(TranscriptionRecord(text: "One", language: "en", duration: 5))
-        repo.save(TranscriptionRecord(text: "Two", language: "en", duration: 5))
-        repo.save(TranscriptionRecord(text: "Three", language: "en", duration: 5))
+        try repo.save(TranscriptionRecord(text: "One", language: "en", duration: 5))
+        try repo.save(TranscriptionRecord(text: "Two", language: "en", duration: 5))
+        try repo.save(TranscriptionRecord(text: "Three", language: "en", duration: 5))
 
-        #expect(repo.fetchAll().count == 3)
+        #expect(try repo.fetchAll().count == 3)
 
-        repo.deleteAll()
-        #expect(repo.fetchAll().count == 0)
+        try repo.deleteAll()
+        #expect(try repo.fetchAll().count == 0)
     }
 
-    @Test func saveUpdatesExistingRecord() {
+    @Test func saveUpdatesExistingRecord() throws {
         let repo = createTempRepository()
         let id = UUID()
 
         let original = TranscriptionRecord(id: id, text: "Original", language: "en", duration: 5)
-        repo.save(original)
+        try repo.save(original)
 
         let updated = TranscriptionRecord(id: id, text: "Updated", language: "ru", duration: 10)
-        repo.save(updated)
+        try repo.save(updated)
 
-        let fetched = repo.fetchAll()
+        let fetched = try repo.fetchAll()
         #expect(fetched.count == 1)
         #expect(fetched.first?.text == "Updated")
         #expect(fetched.first?.language == "ru")
+    }
+
+    @Test func initializationSetsSchemaUserVersionToOne() {
+        let dbPath = createTempDatabasePath()
+
+        _ = SQLiteTranscriptionRepository(dbPath: dbPath)
+        let db = SQLiteDatabase(path: dbPath)
+
+        #expect(db.userVersion() == 1)
+    }
+
+    @Test func reinitializationKeepsDataAndVersion() throws {
+        let dbPath = createTempDatabasePath()
+        let firstRepo = SQLiteTranscriptionRepository(dbPath: dbPath)
+
+        let record = TranscriptionRecord(text: "Persisted", language: "en", duration: 3)
+        try firstRepo.save(record)
+
+        let secondRepo = SQLiteTranscriptionRepository(dbPath: dbPath)
+        let fetched = try secondRepo.fetchAll()
+        let db = SQLiteDatabase(path: dbPath)
+
+        #expect(fetched.count == 1)
+        #expect(fetched.first?.text == "Persisted")
+        #expect(db.userVersion() == 1)
+    }
+
+    @Test func repositoryErrorIncludesSQLiteDiagnostics() {
+        let dbPath = createTempDatabasePath()
+        let db = SQLiteDatabase(path: dbPath)
+        let repo = SQLiteTranscriptionRepository(database: db)
+
+        db.execute("DROP TABLE transcriptions")
+
+        do {
+            _ = try repo.fetchAll()
+            #expect(Bool(false), "Expected SQLite diagnostics error")
+        } catch let error as TranscriptionRepositoryError {
+            switch error {
+            case .statementPreparationFailed(_, let sqliteCode, let sqliteMessage):
+                #expect(sqliteCode != 0)
+                #expect(!sqliteMessage.isEmpty)
+            default:
+                #expect(Bool(false), "Unexpected repository error type: \(error.localizedDescription)")
+            }
+        } catch {
+            #expect(Bool(false), "Unexpected error type: \(error.localizedDescription)")
+        }
     }
 }
 
@@ -598,7 +746,12 @@ struct DependencyInjectionTests {
         let mockSettings = MockSettings()
 
         let mockWhisperKit = MockWhisperKitService()
-        let service = TranscriptionService(whisperKitService: mockWhisperKit, settings: mockSettings)
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
+        )
 
         #expect(type(of: service) == TranscriptionService.self)
     }

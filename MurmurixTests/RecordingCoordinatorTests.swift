@@ -8,6 +8,7 @@ import Foundation
 import Carbon
 @testable import Murmurix
 
+@MainActor
 struct RecordingCoordinatorTests {
 
     private func createCoordinator() -> (
@@ -118,6 +119,24 @@ struct RecordingCoordinatorTests {
 
         #expect(coordinator.state == .idle)
         #expect(audioRecorder.stopRecordingCallCount == 0)
+    }
+
+    @Test func cancelRecordingWhileTranscribingDoesNothing() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 1.0
+
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .transcribing)
+
+        coordinator.cancelRecording()
+
+        #expect(coordinator.state == .transcribing)
+        #expect(delegate.transcriptionDidCancelCallCount == 0)
+        #expect(audioRecorder.stopRecordingCallCount == 1)
+
+        coordinator.cancelTranscription()
+        #expect(coordinator.state == .idle)
     }
 
     // MARK: - Transcription
@@ -237,12 +256,87 @@ struct RecordingCoordinatorTests {
         #expect(delegate.transcriptionDidCancelCallCount == 1)
     }
 
+    @Test func cancelTranscriptionPreventsLateCompletionCallbacks() async throws {
+        let (coordinator, _, transcriptionService, _, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 0.4
+
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .transcribing)
+
+        coordinator.cancelTranscription()
+
+        #expect(coordinator.state == .idle)
+        #expect(delegate.transcriptionDidCancelCallCount == 1)
+
+        // Give the canceled task enough time to finish and assert no late callbacks happen.
+        try await Task.sleep(nanoseconds: 600_000_000)
+
+        #expect(delegate.transcriptionDidCompleteCallCount == 0)
+        #expect(delegate.transcriptionDidFailCallCount == 0)
+    }
+
+    @Test func cancelTranscriptionThenToggleStartsNewRecording() {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 1.0
+
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .transcribing)
+
+        coordinator.cancelTranscription()
+        coordinator.toggleRecording(mode: .local(model: "small"))
+
+        #expect(coordinator.state == .recording)
+        #expect(audioRecorder.startRecordingCallCount == 2)
+        #expect(delegate.recordingDidStartCallCount == 2)
+        #expect(delegate.transcriptionDidCancelCallCount == 1)
+        #expect(transcriptionService.transcribeCallCount <= 1)
+    }
+
+    @Test func cancelTranscriptionThenSecondCycleCompletesWithoutLeakingFirstResult() async throws {
+        let (coordinator, _, transcriptionService, historyService, _, delegate) = createCoordinator()
+        transcriptionService.transcriptionDelay = 0.4
+
+        // First cycle: start transcription and cancel it.
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .transcribing)
+        coordinator.cancelTranscription()
+        #expect(delegate.transcriptionDidCancelCallCount == 1)
+
+        // Second cycle: complete successfully.
+        transcriptionService.transcriptionDelay = 0
+        transcriptionService.transcriptionResult = .success("Second result")
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        coordinator.toggleRecording(mode: .local(model: "small"))
+
+        try await Task.sleep(nanoseconds: 700_000_000)
+
+        #expect(coordinator.state == .idle)
+        #expect(delegate.transcriptionDidCompleteCallCount == 1)
+        #expect(delegate.lastCompletedText == "Second result")
+        #expect(historyService.saveCallCount == 1)
+    }
+
     @Test func cancelTranscriptionWhenIdleDoesNothing() {
         let (coordinator, _, _, _, _, delegate) = createCoordinator()
 
         coordinator.cancelTranscription()
 
         #expect(coordinator.state == .idle)
+        #expect(delegate.transcriptionDidCancelCallCount == 0)
+    }
+
+    @Test func cancelTranscriptionWhileRecordingDoesNothing() {
+        let (coordinator, _, _, _, _, delegate) = createCoordinator()
+
+        coordinator.toggleRecording(mode: .local(model: "small"))
+        #expect(coordinator.state == .recording)
+
+        coordinator.cancelTranscription()
+
+        #expect(coordinator.state == .recording)
         #expect(delegate.transcriptionDidCancelCallCount == 0)
     }
 
@@ -325,6 +419,25 @@ struct RecordingCoordinatorTests {
 
     // MARK: - Transcription Modes
 
+    @Test func cloudTranscriptionFallsBackToWavWhenCompressionFails() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
+        let missingAudioURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("missing-audio-\(UUID().uuidString).wav")
+        audioRecorder.recordingURL = missingAudioURL
+
+        #expect(FileManager.default.fileExists(atPath: missingAudioURL.path) == false)
+
+        coordinator.toggleRecording(mode: .openai)
+        coordinator.toggleRecording(mode: .openai)
+
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        #expect(coordinator.state == .idle)
+        #expect(transcriptionService.transcribeCallCount == 1)
+        #expect(transcriptionService.lastAudioURL == missingAudioURL)
+        #expect(delegate.transcriptionDidCompleteCallCount == 1)
+    }
+
     @Test func toggleRecordingWithOpenAIMode() async throws {
         let (coordinator, audioRecorder, transcriptionService, _, _, delegate) = createCoordinator()
 
@@ -359,15 +472,23 @@ struct RecordingCoordinatorTests {
         #expect(delegate.transcriptionDidCompleteCallCount == 1)
     }
 
-    @Test func transcriptionModeIsCloudReturnsCorrectValue() {
-        #expect(TranscriptionMode.local(model: "small").isCloud == false)
-        #expect(TranscriptionMode.openai.isCloud == true)
-        #expect(TranscriptionMode.gemini.isCloud == true)
-    }
+    @Test func modeSwitchAttemptDuringCloudTranscriptionDoesNotStartSecondFlow() async throws {
+        let (coordinator, audioRecorder, transcriptionService, _, _, _) = createCoordinator()
+        transcriptionService.transcriptionDelay = 0.6
 
-    @Test func transcriptionModeDisplayName() {
-        #expect(TranscriptionMode.local(model: "small").displayName == "Local (small)")
-        #expect(TranscriptionMode.openai.displayName == "Cloud (OpenAI)")
-        #expect(TranscriptionMode.gemini.displayName == "Cloud (Gemini)")
+        coordinator.toggleRecording(mode: .openai)
+        coordinator.toggleRecording(mode: .openai)
+        #expect(coordinator.state == .transcribing)
+
+        // Try switching to local flow while cloud transcription is still running.
+        coordinator.toggleRecording(mode: .local(model: "small"))
+
+        #expect(coordinator.state == .transcribing)
+        #expect(audioRecorder.startRecordingCallCount == 1)
+        #expect(transcriptionService.transcribeCallCount <= 1)
+
+        coordinator.cancelTranscription()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(coordinator.state == .idle)
     }
 }

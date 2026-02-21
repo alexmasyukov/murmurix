@@ -394,7 +394,7 @@ struct AudioRecorderTests {
 struct GlobalHotkeyManagerTests {
 
     @Test func hotkeyManagerInitialState() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
 
         #expect(manager.isRecording == false)
         #expect(manager.onToggleLocalRecording == nil)
@@ -403,7 +403,7 @@ struct GlobalHotkeyManagerTests {
     }
 
     @Test func hotkeyManagerUpdatesHotkeys() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
         let newToggleLocal = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey))
         let newToggleCloud = Hotkey(keyCode: 2, modifiers: UInt32(cmdKey))
         let newToggleGemini = Hotkey(keyCode: 5, modifiers: UInt32(cmdKey))
@@ -417,7 +417,7 @@ struct GlobalHotkeyManagerTests {
     }
 
     @Test func hotkeyManagerCallbacksCanBeSet() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
         var toggleLocalCalled = false
         var toggleCloudCalled = false
         var toggleGeminiCalled = false
@@ -445,7 +445,7 @@ struct GlobalHotkeyManagerTests {
     }
 
     @Test func hotkeyManagerIsRecordingFlag() {
-        let manager = GlobalHotkeyManager()
+        let manager = GlobalHotkeyManager(settings: MockSettings())
 
         manager.isRecording = true
         #expect(manager.isRecording == true)
@@ -454,16 +454,13 @@ struct GlobalHotkeyManagerTests {
         #expect(manager.isRecording == false)
     }
 
-    @Test func hotkeyManagerIsRecordingHotkeyStaticFlag() {
-        // Test the static flag used to disable hotkey interception during recording
-        GlobalHotkeyManager.isRecordingHotkey = false
-        #expect(GlobalHotkeyManager.isRecordingHotkey == false)
+    @Test func hotkeyManagerPauseResumeDoNotCrashWithoutActiveTap() {
+        let manager = GlobalHotkeyManager(settings: MockSettings())
 
-        GlobalHotkeyManager.isRecordingHotkey = true
-        #expect(GlobalHotkeyManager.isRecordingHotkey == true)
+        manager.pause()
+        manager.resume()
 
-        // Clean up
-        GlobalHotkeyManager.isRecordingHotkey = false
+        #expect(manager.isRecording == false)
     }
 }
 
@@ -479,9 +476,81 @@ struct TextPasterTests {
     }
 
     @Test func pasteMethodDoesNotCrash() {
-        // Test that paste() can be called without crashing
-        // Actual clipboard/keyboard simulation tested manually
-        TextPaster.paste("Test text")
-        #expect(true) // If we get here, no crash occurred
+        let marker = "Test text \(UUID().uuidString)"
+        TextPaster.paste(marker)
+        #expect(NSPasteboard.general.string(forType: .string) == marker)
+    }
+
+    @Test func inferTextInputTreatsWebAreaWithInsertionPointAsTextInput() {
+        let inference = TextPaster.inferTextInput(
+            status: .success,
+            role: "AXWebArea",
+            editable: false,
+            hasValueAttribute: false,
+            hasInsertionPointLineNumber: true,
+            hasSelectedTextRange: false,
+            appName: "Safari",
+            appBundleIdentifier: "com.apple.Safari"
+        )
+
+        #expect(inference.isTextInput == true)
+        #expect(inference.knownAppFallbackUsed == false)
+    }
+
+    @Test func inferTextInputTreatsJetBrainsRoleUnavailableAsTextInput() {
+        let inference = TextPaster.inferTextInput(
+            status: .roleUnavailable,
+            role: nil,
+            editable: nil,
+            hasValueAttribute: false,
+            hasInsertionPointLineNumber: false,
+            hasSelectedTextRange: false,
+            appName: "WebStorm",
+            appBundleIdentifier: "com.jetbrains.WebStorm"
+        )
+
+        #expect(inference.isTextInput == true)
+        #expect(inference.knownAppFallbackUsed == true)
+    }
+
+    @Test func inferTextInputTreatsJetBrainsNoFocusedElementAsTextInput() {
+        let inference = TextPaster.inferTextInput(
+            status: .noFocusedElement,
+            role: nil,
+            editable: nil,
+            hasValueAttribute: false,
+            hasInsertionPointLineNumber: false,
+            hasSelectedTextRange: false,
+            appName: "WebStorm",
+            appBundleIdentifier: "com.jetbrains.WebStorm"
+        )
+
+        #expect(inference.isTextInput == true)
+        #expect(inference.knownAppFallbackUsed == true)
+    }
+
+    @Test func inferTextInputTreatsClaudeDesktopNoFocusedElementAsTextInput() {
+        let inference = TextPaster.inferTextInput(
+            status: .noFocusedElement,
+            role: nil,
+            editable: nil,
+            hasValueAttribute: false,
+            hasInsertionPointLineNumber: false,
+            hasSelectedTextRange: false,
+            appName: "Claude",
+            appBundleIdentifier: "com.anthropic.claudefordesktop"
+        )
+
+        #expect(inference.isTextInput == true)
+        #expect(inference.knownAppFallbackUsed == true)
+    }
+
+    @Test func knownTextInputHostDetectsJetBrainsByBundlePrefix() {
+        #expect(
+            TextPaster.isKnownTextInputHost(
+                appName: "IntelliJ IDEA",
+                bundleIdentifier: "com.jetbrains.intellij"
+            ) == true
+        )
     }
 }

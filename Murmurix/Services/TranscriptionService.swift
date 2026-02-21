@@ -10,26 +10,41 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
     private let settings: SettingsStorageProtocol
     private let openAIService: OpenAITranscriptionServiceProtocol
     private let geminiService: GeminiTranscriptionServiceProtocol
-    private let language: String
+
+    static func live(
+        settings: SettingsStorageProtocol,
+        whisperKitService: WhisperKitServiceProtocol,
+        openAIService: OpenAITranscriptionServiceProtocol,
+        geminiService: GeminiTranscriptionServiceProtocol
+    ) -> TranscriptionService {
+        TranscriptionService(
+            whisperKitService: whisperKitService,
+            settings: settings,
+            openAIService: openAIService,
+            geminiService: geminiService
+        )
+    }
 
     init(
-        whisperKitService: WhisperKitServiceProtocol = WhisperKitService.shared,
-        settings: SettingsStorageProtocol = Settings.shared,
-        openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
-        geminiService: GeminiTranscriptionServiceProtocol = GeminiTranscriptionService.shared,
-        language: String = Defaults.language
+        whisperKitService: WhisperKitServiceProtocol,
+        settings: SettingsStorageProtocol,
+        openAIService: OpenAITranscriptionServiceProtocol,
+        geminiService: GeminiTranscriptionServiceProtocol
     ) {
         self.whisperKitService = whisperKitService
         self.settings = settings
         self.openAIService = openAIService
         self.geminiService = geminiService
-        self.language = language
     }
 
     // MARK: - TranscriptionServiceProtocol
 
     func isModelLoaded(name: String) -> Bool {
         whisperKitService.isModelLoaded(name: name)
+    }
+
+    func loadedModelNames() -> [String] {
+        whisperKitService.loadedModels
     }
 
     func loadModel(name: String) async throws {
@@ -44,25 +59,25 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
         await whisperKitService.unloadAllModels()
     }
 
-    func transcribe(audioURL: URL, mode: TranscriptionMode) async throws -> String {
+    func transcribe(audioURL: URL, language: String, mode: TranscriptionMode) async throws -> String {
         switch mode {
         case .openai:
             Logger.Transcription.info("Cloud mode (OpenAI)")
-            return try await transcribeViaOpenAI(audioURL: audioURL)
+            return try await transcribeViaOpenAI(audioURL: audioURL, language: language)
 
         case .gemini:
             Logger.Transcription.info("Cloud mode (Gemini)")
-            return try await transcribeViaGemini(audioURL: audioURL)
+            return try await transcribeViaGemini(audioURL: audioURL, language: language)
 
         case .local(let model):
             Logger.Transcription.info("Local mode (WhisperKit), model=\(model)")
-            return try await transcribeViaWhisperKit(audioURL: audioURL, model: model)
+            return try await transcribeViaWhisperKit(audioURL: audioURL, language: language, model: model)
         }
     }
 
     // MARK: - WhisperKit Transcription
 
-    private func transcribeViaWhisperKit(audioURL: URL, model: String) async throws -> String {
+    private func transcribeViaWhisperKit(audioURL: URL, language: String, model: String) async throws -> String {
         if !whisperKitService.isModelLoaded(name: model) {
             try await whisperKitService.loadModel(name: model)
         }
@@ -71,39 +86,48 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
 
     // MARK: - OpenAI Transcription
 
-    private func transcribeViaOpenAI(audioURL: URL) async throws -> String {
-        let apiKey = settings.openaiApiKey
-        guard !apiKey.isEmpty else {
-            throw MurmurixError.transcription(.failed("OpenAI API key not set. Please add it in Settings."))
-        }
+    private func transcribeViaOpenAI(audioURL: URL, language: String) async throws -> String {
+        let apiKey = try requireAPIKey(settings.openaiApiKey, providerName: "OpenAI")
 
         let model = settings.openaiTranscriptionModel
-        Logger.Transcription.info("OpenAI mode, model=\(model), audio=\(audioURL.path)")
+        logCloudMode("OpenAI", model: model, audioURL: audioURL)
 
-        return try await openAIService.transcribe(
+        let request = CloudTranscriptionRequest(
+            provider: .openAI,
             audioURL: audioURL,
             language: language,
             model: model,
             apiKey: apiKey
         )
+        return try await OpenAICloudTranscriptionClient(service: openAIService).transcribe(request: request)
     }
 
     // MARK: - Gemini Transcription
 
-    private func transcribeViaGemini(audioURL: URL) async throws -> String {
-        let apiKey = settings.geminiApiKey
-        guard !apiKey.isEmpty else {
-            throw MurmurixError.transcription(.failed("Gemini API key not set. Please add it in Settings."))
-        }
+    private func transcribeViaGemini(audioURL: URL, language: String) async throws -> String {
+        let apiKey = try requireAPIKey(settings.geminiApiKey, providerName: "Gemini")
 
         let model = settings.geminiModel
-        Logger.Transcription.info("Gemini mode, model=\(model), audio=\(audioURL.path)")
+        logCloudMode("Gemini", model: model, audioURL: audioURL)
 
-        return try await geminiService.transcribe(
+        let request = CloudTranscriptionRequest(
+            provider: .gemini,
             audioURL: audioURL,
             language: language,
             model: model,
             apiKey: apiKey
         )
+        return try await GeminiCloudTranscriptionClient(service: geminiService).transcribe(request: request)
+    }
+
+    private func requireAPIKey(_ apiKey: String, providerName: String) throws -> String {
+        guard !apiKey.isEmpty else {
+            throw MurmurixError.transcription(.failed("\(providerName) API key not set. Please add it in Settings."))
+        }
+        return apiKey
+    }
+
+    private func logCloudMode(_ providerName: String, model: String, audioURL: URL) {
+        Logger.Transcription.info("\(providerName) mode, model=\(model), audio=\(audioURL.path)")
     }
 }

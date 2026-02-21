@@ -10,6 +10,7 @@ class ModelStatusModel: ObservableObject {
     @Published var loadedModels: Set<String> = []
 }
 
+@MainActor
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onModelToggle: ((String, Bool) -> Void)?
     var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?
@@ -18,8 +19,13 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onWindowClose: (() -> Void)?
 
     private let modelStatus = ModelStatusModel()
+    private let modelStatusUpdateDelay: TimeInterval = 1
+    private var isObservingLanguageChanges = false
+    private var modelStatusUpdateTasks: [String: Task<Void, Never>] = [:]
 
     convenience init(
+        settings: SettingsStorageProtocol,
+        makeGeneralSettingsViewModel: @MainActor () -> GeneralSettingsViewModel,
         loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
@@ -45,26 +51,17 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.modelStatus.loadedModels = loadedModels
         window.delegate = self
 
-        NotificationCenter.default.addObserver(
-            forName: .appLanguageDidChange, object: nil, queue: .main
-        ) { [weak window] _ in
-            window?.title = L10n.settingsTitle
-        }
-
+        let generalSettingsViewModel = makeGeneralSettingsViewModel()
         let settingsView = SettingsView(
+            settings: settings,
+            generalSettingsViewModel: generalSettingsViewModel,
             loadedModels: Binding(
                 get: { [weak self] in self?.modelStatus.loadedModels ?? [] },
                 set: { [weak self] in self?.modelStatus.loadedModels = $0 }
             ),
             onModelToggle: { [weak self] model, enabled in
                 onModelToggle(model, enabled)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    if enabled {
-                        self?.modelStatus.loadedModels.insert(model)
-                    } else {
-                        self?.modelStatus.loadedModels.remove(model)
-                    }
-                }
+                self?.scheduleModelStatusUpdate(model: model, enabled: enabled)
             },
             onLocalHotkeysChanged: onLocalHotkeysChanged,
             onCloudHotkeysChanged: onCloudHotkeysChanged
@@ -73,10 +70,35 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func updateLoadedModels(_ models: Set<String>) {
+        cancelAllModelStatusUpdates()
         modelStatus.loadedModels = models
     }
 
+    private func scheduleModelStatusUpdate(model: String, enabled: Bool) {
+        cancelModelStatusUpdate(for: model)
+        let delayNanoseconds = UInt64(modelStatusUpdateDelay * 1_000_000_000)
+
+        modelStatusUpdateTasks[model] = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            } catch {
+                return
+            }
+
+            guard let self, !Task.isCancelled else { return }
+            defer { self.modelStatusUpdateTasks[model] = nil }
+
+            if enabled {
+                self.modelStatus.loadedModels.insert(model)
+            } else {
+                self.modelStatus.loadedModels.remove(model)
+            }
+        }
+    }
+
     override func showWindow(_ sender: Any?) {
+        window?.title = L10n.settingsTitle
+        startObservingLanguageChangesIfNeeded()
         window?.center()
         super.showWindow(sender)
         window?.makeKeyAndOrderFront(nil)
@@ -85,6 +107,48 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        cancelAllModelStatusUpdates()
+        stopObservingLanguageChanges()
         onWindowClose?()
+    }
+
+    deinit {
+        for task in modelStatusUpdateTasks.values {
+            task.cancel()
+        }
+        modelStatusUpdateTasks.removeAll()
+        AppLanguage.removeDidChangeObserver(self)
+    }
+
+    private func startObservingLanguageChangesIfNeeded() {
+        guard !isObservingLanguageChanges else { return }
+        AppLanguage.addDidChangeObserver(
+            self,
+            selector: #selector(handleLanguageDidChangeNotification(_:))
+        )
+        isObservingLanguageChanges = true
+    }
+
+    private func stopObservingLanguageChanges() {
+        guard isObservingLanguageChanges else { return }
+        AppLanguage.removeDidChangeObserver(self)
+        isObservingLanguageChanges = false
+    }
+
+    @objc
+    private func handleLanguageDidChangeNotification(_ notification: Notification) {
+        window?.title = L10n.settingsTitle
+    }
+
+    private func cancelModelStatusUpdate(for model: String) {
+        modelStatusUpdateTasks[model]?.cancel()
+        modelStatusUpdateTasks[model] = nil
+    }
+
+    private func cancelAllModelStatusUpdates() {
+        for task in modelStatusUpdateTasks.values {
+            task.cancel()
+        }
+        modelStatusUpdateTasks.removeAll()
     }
 }

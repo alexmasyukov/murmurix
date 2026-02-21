@@ -11,25 +11,33 @@ protocol OpenAITranscriptionServiceProtocol: Sendable {
 }
 
 final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Sendable {
-    static let shared = OpenAITranscriptionService()
-
     private let baseURL = "https://api.openai.com/v1/audio/transcriptions"
     private let session: URLSessionProtocol
+    private let promptPolicy: any TranscriptionPromptPolicy
 
-    // Промпт для улучшения распознавания технических терминов
-    private let defaultPrompt = "Диалог на темы программирования. Технические термины: Anthropic, Claude, Bun, React, Docker, Kubernetes, Golang, Python, Swift, Xcode, GitHub, API, JSON, REST, GraphQL, PostgreSQL, MongoDB, Redis, AWS, Azure, GCP и так далее."
+    private struct TranscriptionResponse: Decodable {
+        let text: String
+    }
 
-    init(session: URLSessionProtocol = URLSession.shared) {
+    private struct ErrorResponse: Decodable {
+        struct APIError: Decodable {
+            let message: String
+        }
+
+        let error: APIError
+    }
+
+    init(
+        session: URLSessionProtocol,
+        promptPolicy: any TranscriptionPromptPolicy
+    ) {
         self.session = session
+        self.promptPolicy = promptPolicy
     }
 
     // MARK: - Transcription
 
     func transcribe(audioURL: URL, language: String, model: String, apiKey: String) async throws -> String {
-        guard let url = URL(string: baseURL) else {
-            throw MurmurixError.transcription(.failed("Invalid API URL"))
-        }
-
         // Читаем аудио файл
         let audioData: Data
         do {
@@ -40,48 +48,14 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
 
         // Создаем multipart/form-data запрос
         let boundary = UUID().uuidString
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 120
-
-        // Собираем body
-        var body = Data()
-
-        // file
-        let filename = audioURL.lastPathComponent
-        let mimeType = MIMETypeResolver.mimeType(for: audioURL.pathExtension)
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
-        body.append(audioData)
-        body.append("\r\n".data(using: .utf8)!)
-
-        // model
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(model)\r\n".data(using: .utf8)!)
-
-        // language (обязательно для русского!)
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"language\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(language)\r\n".data(using: .utf8)!)
-
-        // prompt
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"prompt\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(defaultPrompt)\r\n".data(using: .utf8)!)
-
-        // response_format
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"response_format\"\r\n\r\n".data(using: .utf8)!)
-        body.append("json\r\n".data(using: .utf8)!)
-
-        // Закрываем boundary
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-
-        request.httpBody = body
+        var request = try makeMultipartRequest(apiKey: apiKey, boundary: boundary, timeout: 120)
+        request.httpBody = makeTranscriptionBody(
+            audioURL: audioURL,
+            audioData: audioData,
+            model: model,
+            language: language,
+            boundary: boundary
+        )
 
         // Отправляем запрос
         let (data, response) = try await session.data(for: request)
@@ -121,33 +95,9 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
         // Создаём минимальный WAV файл (тишина) для тестового запроса
         let testAudioData = AudioTestUtility.createWavData(duration: 0.1)
 
-        guard let url = URL(string: baseURL) else {
-            throw MurmurixError.transcription(.failed("Invalid API URL"))
-        }
-
         let boundary = UUID().uuidString
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
-
-        var body = Data()
-
-        // file
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"test.wav\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
-        body.append(testAudioData)
-        body.append("\r\n".data(using: .utf8)!)
-
-        // model
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
-        body.append("gpt-4o-mini-transcribe\r\n".data(using: .utf8)!)
-
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = body
+        var request = try makeMultipartRequest(apiKey: apiKey, boundary: boundary, timeout: 30)
+        request.httpBody = makeValidationBody(testAudioData: testAudioData, boundary: boundary)
 
         let (data, response) = try await session.data(for: request)
 
@@ -175,19 +125,104 @@ final class OpenAITranscriptionService: OpenAITranscriptionServiceProtocol, Send
     // MARK: - Helpers
 
     private func parseTranscriptionResponse(_ data: Data) throws -> String {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let text = json["text"] as? String else {
+        do {
+            let response = try JSONDecoder().decode(TranscriptionResponse.self, from: data)
+            return response.text
+        } catch {
+            Logger.Transcription.error("Failed to decode OpenAI transcription response: \(error.localizedDescription)")
             throw MurmurixError.transcription(.failed("Failed to parse response"))
         }
-        return text
     }
 
     private func parseErrorResponse(_ data: Data) -> String? {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let error = json["error"] as? [String: Any],
-              let message = error["message"] as? String else {
+        do {
+            let response = try JSONDecoder().decode(ErrorResponse.self, from: data)
+            return response.error.message
+        } catch {
+            Logger.Transcription.debug("Failed to decode OpenAI error response: \(error.localizedDescription)")
             return nil
         }
-        return message
+    }
+
+    private func makeMultipartRequest(apiKey: String, boundary: String, timeout: TimeInterval) throws -> URLRequest {
+        guard let url = URL(string: baseURL) else {
+            throw MurmurixError.transcription(.failed("Invalid API URL"))
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = timeout
+        return request
+    }
+
+    private func makeTranscriptionBody(
+        audioURL: URL,
+        audioData: Data,
+        model: String,
+        language: String,
+        boundary: String
+    ) -> Data {
+        let prompt = promptPolicy.openAIPrompt(language: language)
+        var body = Data()
+        appendFileField(
+            name: "file",
+            filename: audioURL.lastPathComponent,
+            mimeType: MIMETypeResolver.mimeType(for: audioURL.pathExtension),
+            fileData: audioData,
+            boundary: boundary,
+            to: &body
+        )
+        appendFormField(name: "model", value: model, boundary: boundary, to: &body)
+        appendFormField(name: "language", value: language, boundary: boundary, to: &body)
+        appendFormField(name: "prompt", value: prompt, boundary: boundary, to: &body)
+        appendFormField(name: "response_format", value: "json", boundary: boundary, to: &body)
+        closeBoundary(boundary, to: &body)
+        return body
+    }
+
+    private func makeValidationBody(testAudioData: Data, boundary: String) -> Data {
+        var body = Data()
+        appendFileField(
+            name: "file",
+            filename: "test.wav",
+            mimeType: "audio/wav",
+            fileData: testAudioData,
+            boundary: boundary,
+            to: &body
+        )
+        appendFormField(name: "model", value: "gpt-4o-mini-transcribe", boundary: boundary, to: &body)
+        closeBoundary(boundary, to: &body)
+        return body
+    }
+
+    private func appendFormField(name: String, value: String, boundary: String, to body: inout Data) {
+        appendUTF8("--\(boundary)\r\n", to: &body)
+        appendUTF8("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n", to: &body)
+        appendUTF8("\(value)\r\n", to: &body)
+    }
+
+    private func appendFileField(
+        name: String,
+        filename: String,
+        mimeType: String,
+        fileData: Data,
+        boundary: String,
+        to body: inout Data
+    ) {
+        appendUTF8("--\(boundary)\r\n", to: &body)
+        appendUTF8("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n", to: &body)
+        appendUTF8("Content-Type: \(mimeType)\r\n\r\n", to: &body)
+        body.append(fileData)
+        appendUTF8("\r\n", to: &body)
+    }
+
+    private func closeBoundary(_ boundary: String, to body: inout Data) {
+        appendUTF8("--\(boundary)--\r\n", to: &body)
+    }
+
+    private func appendUTF8(_ value: String, to body: inout Data) {
+        body.append(Data(value.utf8))
     }
 }

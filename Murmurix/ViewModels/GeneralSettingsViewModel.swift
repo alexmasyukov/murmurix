@@ -41,19 +41,51 @@ final class GeneralSettingsViewModel: ObservableObject {
     private let openAIService: OpenAITranscriptionServiceProtocol
     private let geminiService: GeminiTranscriptionServiceProtocol
     private let transcriptionServiceFactory: () -> TranscriptionServiceProtocol
+    private let modelDirectory: (String) -> URL
+    private let modelsRepositoryDirectory: () -> URL
+    private let completedStatusResetDelay: TimeInterval = 2
+    private var statusResetTasks: [String: Task<Void, Never>] = [:]
     let settings: SettingsStorageProtocol
 
+    static func live(
+        settings: SettingsStorageProtocol,
+        whisperKitService: WhisperKitServiceProtocol,
+        openAIService: OpenAITranscriptionServiceProtocol,
+        geminiService: GeminiTranscriptionServiceProtocol
+    ) -> GeneralSettingsViewModel {
+        GeneralSettingsViewModel(
+            whisperKitService: whisperKitService,
+            openAIService: openAIService,
+            geminiService: geminiService,
+            transcriptionServiceFactory: {
+                TranscriptionService.live(
+                    settings: settings,
+                    whisperKitService: whisperKitService,
+                    openAIService: openAIService,
+                    geminiService: geminiService
+                )
+            },
+            modelDirectory: { ModelPaths.modelDir(for: $0) },
+            modelsRepositoryDirectory: { ModelPaths.repoDir },
+            settings: settings
+        )
+    }
+
     init(
-        whisperKitService: WhisperKitServiceProtocol = WhisperKitService.shared,
-        openAIService: OpenAITranscriptionServiceProtocol = OpenAITranscriptionService.shared,
-        geminiService: GeminiTranscriptionServiceProtocol = GeminiTranscriptionService.shared,
-        transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol = { TranscriptionService() },
-        settings: SettingsStorageProtocol = Settings.shared
+        whisperKitService: WhisperKitServiceProtocol,
+        openAIService: OpenAITranscriptionServiceProtocol,
+        geminiService: GeminiTranscriptionServiceProtocol,
+        transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol,
+        modelDirectory: @escaping (String) -> URL,
+        modelsRepositoryDirectory: @escaping () -> URL,
+        settings: SettingsStorageProtocol
     ) {
         self.whisperKitService = whisperKitService
         self.openAIService = openAIService
         self.geminiService = geminiService
         self.transcriptionServiceFactory = transcriptionServiceFactory
+        self.modelDirectory = modelDirectory
+        self.modelsRepositoryDirectory = modelsRepositoryDirectory
         self.settings = settings
     }
 
@@ -83,6 +115,7 @@ final class GeneralSettingsViewModel: ObservableObject {
     }
 
     func startDownload(for modelName: String) {
+        cancelStatusReset(for: modelName)
         downloadStatuses[modelName] = .downloading(progress: 0)
 
         Task { [weak self] in
@@ -109,16 +142,33 @@ final class GeneralSettingsViewModel: ObservableObject {
     }
 
     func cancelDownload(for modelName: String) {
+        cancelStatusReset(for: modelName)
         downloadStatuses[modelName] = .idle
     }
 
     private func scheduleStatusReset(for modelName: String) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            guard let self = self else { return }
+        cancelStatusReset(for: modelName)
+        let delayNanoseconds = UInt64(completedStatusResetDelay * 1_000_000_000)
+
+        statusResetTasks[modelName] = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            } catch {
+                return
+            }
+
+            guard let self = self, !Task.isCancelled else { return }
+            defer { self.statusResetTasks[modelName] = nil }
+
             if case .completed = self.downloadStatuses[modelName] {
                 self.downloadStatuses[modelName] = .idle
             }
         }
+    }
+
+    private func cancelStatusReset(for modelName: String) {
+        statusResetTasks[modelName]?.cancel()
+        statusResetTasks[modelName] = nil
     }
 
     // MARK: - Model Deletion
@@ -127,20 +177,25 @@ final class GeneralSettingsViewModel: ObservableObject {
         if whisperKitService.isModelLoaded(name: modelName) {
             await whisperKitService.unloadModel(name: modelName)
         }
-        let fm = FileManager.default
-        let modelDir = ModelPaths.modelDir(for: modelName)
-        try? fm.removeItem(at: modelDir)
+        let modelDir = modelDirectory(modelName)
+        removeItemIfExists(modelDir, context: "delete model \(modelName)")
         loadInstalledModels()
     }
 
     func deleteAllModels() async {
         await whisperKitService.unloadAllModels()
         let fm = FileManager.default
-        let repoDir = ModelPaths.repoDir
-        if let contents = try? fm.contentsOfDirectory(atPath: repoDir.path) {
+        let repoDir = modelsRepositoryDirectory()
+        do {
+            let contents = try fm.contentsOfDirectory(atPath: repoDir.path)
             for item in contents where item.hasPrefix("openai_whisper-") {
-                try? fm.removeItem(at: repoDir.appendingPathComponent(item))
+                removeItemIfExists(
+                    repoDir.appendingPathComponent(item),
+                    context: "delete all models (\(item))"
+                )
             }
+        } catch {
+            Logger.Model.error("Failed to list model repository \(repoDir.path): \(error.localizedDescription)")
         }
         loadInstalledModels()
     }
@@ -165,9 +220,13 @@ final class GeneralSettingsViewModel: ObservableObject {
 
             let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
             try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
-            defer { try? FileManager.default.removeItem(at: tempURL) }
+            defer { removeTransientAudioIfNeeded(tempURL) }
 
-            _ = try await service.transcribe(audioURL: tempURL, mode: .local(model: modelName))
+            _ = try await service.transcribe(
+                audioURL: tempURL,
+                language: settings.language,
+                mode: .local(model: modelName)
+            )
 
             localTestResults[modelName] = .success
         } catch {
@@ -223,5 +282,23 @@ final class GeneralSettingsViewModel: ObservableObject {
             }
         }
         onLocalHotkeysChanged?(hotkeys)
+    }
+
+    private func removeItemIfExists(_ url: URL, context: String, logError: (String) -> Void = Logger.Model.error) {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: url.path) else { return }
+        do {
+            try fileManager.removeItem(at: url)
+        } catch {
+            logError("Failed to remove item (\(context)): \(url.path), error: \(error.localizedDescription)")
+        }
+    }
+
+    private func removeTransientAudioIfNeeded(_ url: URL) {
+        removeItemIfExists(
+            url,
+            context: "remove temporary test audio",
+            logError: Logger.Transcription.error
+        )
     }
 }

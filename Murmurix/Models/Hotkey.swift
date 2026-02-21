@@ -10,6 +10,7 @@ struct Hotkey: Equatable, Codable {
     var keyCode: UInt32
     var modifiers: UInt32
 
+    static let openAICloudDefault = Hotkey(keyCode: 14, modifiers: UInt32(controlKey)) // Ctrl+E
     static let cancelDefault = Hotkey(keyCode: 53, modifiers: 0)  // Escape
 
 

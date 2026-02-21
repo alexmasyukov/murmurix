@@ -6,19 +6,10 @@
 import SwiftUI
 
 struct GeneralSettingsView: View {
-    @AppStorage("language") private var language = Defaults.language
-    @AppStorage("openaiTranscriptionModel") private var openaiTranscriptionModel = OpenAITranscriptionModel.gpt4oTranscribe.rawValue
-    @AppStorage("appLanguage") private var appLanguage = "en"
-
-    @State private var toggleCloudHotkey: Hotkey?
-    @State private var toggleGeminiHotkey: Hotkey?
-    @State private var cancelHotkey: Hotkey?
-    @State private var openaiApiKey: String = ""
-    @State private var geminiApiKey: String = ""
-    @AppStorage("geminiModel") private var geminiModel = GeminiTranscriptionModel.flash2.rawValue
     @State private var showDeleteAllConfirmation = false
 
-    @StateObject private var viewModel = GeneralSettingsViewModel()
+    @StateObject private var viewModel: GeneralSettingsViewModel
+    @StateObject private var settingsStore: SettingsStore
     @Binding var loadedModels: Set<String>
 
     var onModelToggle: ((String, Bool) -> Void)?
@@ -26,20 +17,20 @@ struct GeneralSettingsView: View {
     var onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)?
 
     init(
+        viewModel: GeneralSettingsViewModel,
+        settings: SettingsStorageProtocol,
         loadedModels: Binding<Set<String>>,
         onModelToggle: ((String, Bool) -> Void)? = nil,
         onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
         onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)? = nil
     ) {
+        let settingsStore = SettingsStore(settings: settings)
         self._loadedModels = loadedModels
         self.onModelToggle = onModelToggle
         self.onLocalHotkeysChanged = onLocalHotkeysChanged
         self.onCloudHotkeysChanged = onCloudHotkeysChanged
-        _toggleCloudHotkey = State(initialValue: Settings.shared.loadToggleCloudHotkey())
-        _toggleGeminiHotkey = State(initialValue: Settings.shared.loadToggleGeminiHotkey())
-        _cancelHotkey = State(initialValue: Settings.shared.loadCancelHotkey())
-        _openaiApiKey = State(initialValue: Settings.shared.openaiApiKey)
-        _geminiApiKey = State(initialValue: Settings.shared.geminiApiKey)
+        _viewModel = StateObject(wrappedValue: viewModel)
+        _settingsStore = StateObject(wrappedValue: settingsStore)
     }
 
     var body: some View {
@@ -47,6 +38,7 @@ struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: 0) {
                 languageSection
                 keyboardShortcutsSection
+                debugSection
                 localModelsSection
                 modelManagementSection
                 cloudSettingsSection
@@ -98,11 +90,10 @@ struct GeneralSettingsView: View {
                 HotkeyRecorderView(
                     title: L10n.cloudRecordingOpenAI,
                     description: L10n.recordWithOpenAI,
-                    hotkey: $toggleCloudHotkey
+                    hotkey: $settingsStore.toggleCloudHotkey
                 )
-                .onChange(of: toggleCloudHotkey) { _, newValue in
-                    viewModel.settings.saveToggleCloudHotkey(newValue)
-                    onCloudHotkeysChanged?(newValue, toggleGeminiHotkey, cancelHotkey)
+                .onChange(of: settingsStore.toggleCloudHotkey) { _, newValue in
+                    onCloudHotkeysChanged?(newValue, settingsStore.toggleGeminiHotkey, settingsStore.cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -114,11 +105,10 @@ struct GeneralSettingsView: View {
                 HotkeyRecorderView(
                     title: L10n.geminiRecording,
                     description: L10n.recordWithGemini,
-                    hotkey: $toggleGeminiHotkey
+                    hotkey: $settingsStore.toggleGeminiHotkey
                 )
-                .onChange(of: toggleGeminiHotkey) { _, newValue in
-                    viewModel.settings.saveToggleGeminiHotkey(newValue)
-                    onCloudHotkeysChanged?(toggleCloudHotkey, newValue, cancelHotkey)
+                .onChange(of: settingsStore.toggleGeminiHotkey) { _, newValue in
+                    onCloudHotkeysChanged?(settingsStore.toggleCloudHotkey, newValue, settingsStore.cancelHotkey)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -130,11 +120,10 @@ struct GeneralSettingsView: View {
                 HotkeyRecorderView(
                     title: L10n.cancelRecording,
                     description: L10n.discardsRecording,
-                    hotkey: $cancelHotkey
+                    hotkey: $settingsStore.cancelHotkey
                 )
-                .onChange(of: cancelHotkey) { _, newValue in
-                    viewModel.settings.saveCancelHotkey(newValue)
-                    onCloudHotkeysChanged?(toggleCloudHotkey, toggleGeminiHotkey, newValue)
+                .onChange(of: settingsStore.cancelHotkey) { _, newValue in
+                    onCloudHotkeysChanged?(settingsStore.toggleCloudHotkey, settingsStore.toggleGeminiHotkey, newValue)
                 }
                 .padding(.horizontal, Layout.Padding.standard)
                 .padding(.vertical, Layout.Padding.vertical)
@@ -154,7 +143,7 @@ struct GeneralSettingsView: View {
 
             Spacer()
 
-            Picker("", selection: $appLanguage) {
+            Picker("", selection: $settingsStore.appLanguage) {
                 ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
                     Text(lang.displayName).tag(lang.rawValue)
                 }
@@ -162,13 +151,63 @@ struct GeneralSettingsView: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .transaction { $0.animation = nil }
-            .onChange(of: appLanguage) { _, _ in
-                NotificationCenter.default.post(name: .appLanguageDidChange, object: nil)
+            .onChange(of: settingsStore.appLanguage) { _, _ in
+                AppLanguage.postDidChange()
             }
         }
     }
 
     // MARK: - Local Models
+
+    private var debugSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: L10n.debug)
+
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                debugToggleRow(
+                    title: L10n.focusDebugNotifications,
+                    description: L10n.focusDebugNotificationsDescription,
+                    isOn: $settingsStore.focusDebugNotificationsEnabled
+                )
+
+                Divider()
+                    .background(AppColors.divider)
+                    .padding(.vertical, Layout.Spacing.tiny)
+
+                debugToggleRow(
+                    title: L10n.alwaysPaste,
+                    description: L10n.alwaysPasteDescription,
+                    isOn: $settingsStore.alwaysPasteEnabled
+                )
+            }
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
+        }
+    }
+
+    private func debugToggleRow(title: String, description: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .top, spacing: Layout.Spacing.item) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(Typography.label)
+                    .foregroundColor(.white)
+
+                Text(description)
+                    .font(Typography.description)
+                    .foregroundColor(.gray)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .accessibilityLabel(Text(title))
+        }
+    }
 
     private var localModelsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -279,7 +318,7 @@ struct GeneralSettingsView: View {
 
             Spacer()
 
-            Picker("", selection: $language) {
+            Picker("", selection: $settingsStore.language) {
                 Text(L10n.russian).tag("ru")
                 Text(L10n.english).tag("en")
                 Text(L10n.autoDetect).tag("auto")
@@ -298,7 +337,7 @@ struct GeneralSettingsView: View {
 
             Spacer()
 
-            Picker("", selection: $openaiTranscriptionModel) {
+            Picker("", selection: $settingsStore.openaiTranscriptionModel) {
                 ForEach(OpenAITranscriptionModel.allCases, id: \.rawValue) { model in
                     Text(model.displayName).tag(model.rawValue)
                 }
@@ -313,16 +352,15 @@ struct GeneralSettingsView: View {
     private var openaiApiKeyField: some View {
         ApiKeyField(
             placeholder: "sk-...",
-            apiKey: $openaiApiKey,
+            apiKey: $settingsStore.openaiApiKey,
             isTesting: viewModel.isTestingOpenAI,
             testResult: viewModel.openaiTestResult,
-            onKeyChanged: { newValue in
-                viewModel.settings.openaiApiKey = newValue
+            onKeyChanged: { _ in
                 viewModel.clearTestResult(for: .openAI)
             },
             onTest: {
                 Task {
-                    await viewModel.testOpenAI(apiKey: openaiApiKey)
+                    await viewModel.testOpenAI(apiKey: settingsStore.openaiApiKey)
                 }
             }
         )
@@ -336,7 +374,7 @@ struct GeneralSettingsView: View {
 
             Spacer()
 
-            Picker("", selection: $geminiModel) {
+            Picker("", selection: $settingsStore.geminiModel) {
                 ForEach(GeminiTranscriptionModel.allCases, id: \.rawValue) { model in
                     Text(model.displayName).tag(model.rawValue)
                 }
@@ -351,16 +389,15 @@ struct GeneralSettingsView: View {
     private var geminiApiKeyField: some View {
         ApiKeyField(
             placeholder: "AI...",
-            apiKey: $geminiApiKey,
+            apiKey: $settingsStore.geminiApiKey,
             isTesting: viewModel.isTestingGemini,
             testResult: viewModel.geminiTestResult,
-            onKeyChanged: { newValue in
-                viewModel.settings.geminiApiKey = newValue
+            onKeyChanged: { _ in
                 viewModel.clearTestResult(for: .gemini)
             },
             onTest: {
                 Task {
-                    await viewModel.testGemini(apiKey: geminiApiKey)
+                    await viewModel.testGemini(apiKey: settingsStore.geminiApiKey)
                 }
             }
         )

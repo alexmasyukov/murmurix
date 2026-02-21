@@ -20,10 +20,11 @@ protocol AudioRecorderProtocol: AnyObject {
 
 protocol TranscriptionServiceProtocol: Sendable {
     func isModelLoaded(name: String) -> Bool
+    func loadedModelNames() -> [String]
     func loadModel(name: String) async throws
     func unloadModel(name: String) async
     func unloadAllModels() async
-    func transcribe(audioURL: URL, mode: TranscriptionMode) async throws -> String
+    func transcribe(audioURL: URL, language: String, mode: TranscriptionMode) async throws -> String
 }
 
 // MARK: - Hotkey Management
@@ -50,9 +51,11 @@ extension URLSession: URLSessionProtocol {}
 
 // MARK: - Settings Storage
 
-protocol SettingsStorageProtocol: AnyObject {
+protocol SettingsStorageProtocol: AnyObject, Sendable {
     var language: String { get set }
     var appLanguage: String { get set }
+    var focusDebugNotificationsEnabled: Bool { get set }
+    var alwaysPasteEnabled: Bool { get set }
     var openaiApiKey: String { get set }
     var openaiTranscriptionModel: String { get set }
     var geminiApiKey: String { get set }

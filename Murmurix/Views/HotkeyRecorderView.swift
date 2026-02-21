@@ -8,12 +8,10 @@ import Carbon
 
 struct HotkeyRecorderView: View {
     let title: String
-    let description: String
+    let description: String?
     @Binding var hotkey: Hotkey?
     @State private var isRecording = false
-    @State private var localMonitor: Any?
-    @State private var globalMonitor: Any?
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @State private var captureService = HotkeyCaptureService.live()
 
     var body: some View {
         HStack {
@@ -21,9 +19,11 @@ struct HotkeyRecorderView: View {
                 Text(title)
                     .font(Typography.label)
                     .foregroundColor(.white)
-                Text(description)
-                    .font(Typography.description)
-                    .foregroundColor(.gray)
+                if let description, !description.isEmpty {
+                    Text(description)
+                        .font(Typography.description)
+                        .foregroundColor(.gray)
+                }
             }
 
             Spacer()
@@ -69,6 +69,9 @@ struct HotkeyRecorderView: View {
             }
         }
         .padding(.vertical, 4)
+        .onDisappear {
+            stopRecording()
+        }
     }
 
     private func toggleRecording() {
@@ -79,54 +82,19 @@ struct HotkeyRecorderView: View {
         }
     }
 
-    private func handleKeyEvent(_ event: NSEvent) {
-        let keyCode = UInt32(event.keyCode)
+    private func startRecording() {
+        isRecording = true
 
-        // Convert NSEvent modifiers to Carbon modifiers
-        var carbonModifiers: UInt32 = 0
-        if event.modifierFlags.contains(.command) { carbonModifiers |= UInt32(cmdKey) }
-        if event.modifierFlags.contains(.option) { carbonModifiers |= UInt32(optionKey) }
-        if event.modifierFlags.contains(.control) { carbonModifiers |= UInt32(controlKey) }
-        if event.modifierFlags.contains(.shift) { carbonModifiers |= UInt32(shiftKey) }
-
-        DispatchQueue.main.async {
-            self.hotkey = Hotkey(keyCode: keyCode, modifiers: carbonModifiers)
+        captureService.startCapturing { capturedHotkey in
+            self.hotkey = capturedHotkey
             self.stopRecording()
         }
     }
 
-    private func startRecording() {
-        isRecording = true
-
-        // Disable global hotkey interception while recording new hotkey
-        GlobalHotkeyManager.isRecordingHotkey = true
-
-        // Local monitor - when app is in focus
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            self.handleKeyEvent(event)
-            return nil // consume event
-        }
-
-        // Global monitor - when app is not in focus
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
-            self.handleKeyEvent(event)
-        }
-    }
-
     private func stopRecording() {
+        guard isRecording else { return }
         isRecording = false
-
-        // Re-enable global hotkey interception
-        GlobalHotkeyManager.isRecordingHotkey = false
-
-        if let monitor = localMonitor {
-            NSEvent.removeMonitor(monitor)
-            localMonitor = nil
-        }
-        if let monitor = globalMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalMonitor = nil
-        }
+        captureService.stopCapturing()
     }
 }
 

@@ -35,10 +35,13 @@ enum WhisperModel: String, CaseIterable {
         }
 
         // Check that the folder contains at least one .mlmodelc directory
-        if let contents = try? fm.contentsOfDirectory(atPath: modelDir.path) {
+        do {
+            let contents = try fm.contentsOfDirectory(atPath: modelDir.path)
             return contents.contains { $0.hasSuffix(".mlmodelc") }
+        } catch {
+            Logger.Model.debug("Failed to inspect model directory \(modelDir.path): \(error.localizedDescription)")
+            return false
         }
-        return false
     }
 
     static var installedModels: [WhisperModel] {

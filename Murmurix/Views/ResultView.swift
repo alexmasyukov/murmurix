@@ -11,7 +11,7 @@ struct ResultView: View {
     let duration: TimeInterval
     let onDelete: () -> Void
     let onClose: () -> Void
-    @AppStorage("appLanguage") private var appLanguage = "en"
+    @AppStorage(AppLanguage.storageKey) private var appLanguage = AppLanguage.defaultRawValue
 
     var body: some View {
         VStack(spacing: 0) {

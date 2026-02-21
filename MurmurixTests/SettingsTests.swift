@@ -9,6 +9,14 @@ import Carbon
 @testable import Murmurix
 
 struct SettingsTests {
+    private final class LanguageObserverHarness: NSObject {
+        var didChangeCallCount = 0
+
+        @objc
+        func handleLanguageDidChange(_ notification: Notification) {
+            didChangeCallCount += 1
+        }
+    }
 
     private func createSettings() -> Settings {
         // Use a unique suite name to avoid polluting real UserDefaults
@@ -33,10 +41,25 @@ struct SettingsTests {
         #expect(settings.language == "ru")
     }
 
-    @Test func defaultToggleCloudHotkeyIsNil() {
+    @Test func defaultAppLanguageIsEnglish() {
+        let settings = createSettings()
+        #expect(settings.appLanguage == AppLanguage.defaultRawValue)
+    }
+
+    @Test func defaultFocusDebugNotificationsAreDisabled() {
+        let settings = createSettings()
+        #expect(settings.focusDebugNotificationsEnabled == false)
+    }
+
+    @Test func defaultAlwaysPasteIsDisabled() {
+        let settings = createSettings()
+        #expect(settings.alwaysPasteEnabled == false)
+    }
+
+    @Test func defaultToggleCloudHotkeyIsCtrlE() {
         let settings = createSettings()
         let hotkey = settings.loadToggleCloudHotkey()
-        #expect(hotkey == nil)
+        #expect(hotkey == Hotkey.openAICloudDefault)
     }
 
     @Test func defaultCancelHotkeyIsEscape() {
@@ -81,6 +104,43 @@ struct SettingsTests {
         #expect(settings.language == "auto")
     }
 
+    @Test func appLanguagePersists() {
+        let settings = createSettings()
+
+        settings.appLanguage = AppLanguage.ru.rawValue
+        #expect(settings.appLanguage == AppLanguage.ru.rawValue)
+
+        settings.appLanguage = AppLanguage.es.rawValue
+        #expect(settings.appLanguage == AppLanguage.es.rawValue)
+    }
+
+    @Test func focusDebugNotificationsPersist() {
+        let settings = createSettings()
+
+        settings.focusDebugNotificationsEnabled = true
+        #expect(settings.focusDebugNotificationsEnabled == true)
+
+        settings.focusDebugNotificationsEnabled = false
+        #expect(settings.focusDebugNotificationsEnabled == false)
+    }
+
+    @Test func alwaysPastePersists() {
+        let settings = createSettings()
+
+        settings.alwaysPasteEnabled = true
+        #expect(settings.alwaysPasteEnabled == true)
+
+        settings.alwaysPasteEnabled = false
+        #expect(settings.alwaysPasteEnabled == false)
+    }
+
+    @Test func appLanguageSetterNormalizesInvalidValueToDefault() {
+        let settings = createSettings()
+
+        settings.appLanguage = "invalid-language"
+        #expect(settings.appLanguage == AppLanguage.defaultRawValue)
+    }
+
     @Test func toggleCloudHotkeyPersists() {
         let settings = createSettings()
         let newHotkey = Hotkey(keyCode: 1, modifiers: UInt32(cmdKey | shiftKey)) // Cmd+Shift+S
@@ -123,7 +183,7 @@ struct SettingsTests {
 
     // MARK: - Edge Cases
 
-    @Test func loadCloudHotkeyReturnsNilWhenCorrupted() {
+    @Test func loadCloudHotkeyFallsBackToDefaultWhenCorrupted() {
         let suiteName = "com.murmurix.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
 
@@ -133,6 +193,41 @@ struct SettingsTests {
         let settings = Settings(defaults: defaults)
         let hotkey = settings.loadToggleCloudHotkey()
 
-        #expect(hotkey == nil)
+        #expect(hotkey == Hotkey.openAICloudDefault)
+    }
+
+    @Test func appLanguageCurrentFallsBackToDefaultForInvalidStoredValue() {
+        let suiteName = "com.murmurix.test.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.set("invalid-language", forKey: AppLanguage.storageKey)
+
+        let current = AppLanguage.current(in: defaults)
+        #expect(current == AppLanguage.defaultValue)
+    }
+
+    @Test func settingsAppLanguageGetterNormalizesInvalidStoredValue() {
+        let suiteName = "com.murmurix.test.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.set("invalid-language", forKey: AppLanguage.storageKey)
+
+        let settings = Settings(defaults: defaults)
+        #expect(settings.appLanguage == AppLanguage.defaultRawValue)
+    }
+
+    @Test func appLanguageObserverHelpersAddAndRemoveObserver() {
+        let center = NotificationCenter()
+        let observer = LanguageObserverHarness()
+
+        AppLanguage.addDidChangeObserver(
+            observer,
+            selector: #selector(LanguageObserverHarness.handleLanguageDidChange(_:)),
+            on: center
+        )
+        AppLanguage.postDidChange(on: center)
+        #expect(observer.didChangeCallCount == 1)
+
+        AppLanguage.removeDidChangeObserver(observer, on: center)
+        AppLanguage.postDidChange(on: center)
+        #expect(observer.didChangeCallCount == 1)
     }
 }

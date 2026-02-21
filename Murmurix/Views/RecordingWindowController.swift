@@ -35,18 +35,20 @@ class CatLoadingState: ObservableObject {
     @Published var state: LoadingState = .transcribing
 }
 
+@MainActor
 class RecordingWindowController: NSWindowController {
     private var audioRecorder: any AudioRecorderProtocol
     private var onStop: () -> Void
     private var onCancelTranscription: (() -> Void)?
     private let recordingTimer = RecordingTimer()
-    private var audioLevelObserver: AudioLevelObserver!
+    private let audioLevelObserver: AudioLevelObserver
     private var catLoadingState: CatLoadingState?
 
     init(audioRecorder: any AudioRecorderProtocol, onStop: @escaping () -> Void, onCancelTranscription: (() -> Void)? = nil) {
         self.audioRecorder = audioRecorder
         self.onStop = onStop
         self.onCancelTranscription = onCancelTranscription
+        self.audioLevelObserver = AudioLevelObserver(audioRecorder: audioRecorder)
 
         // Dynamic Island style window - borderless, transparent
         let window = NSWindow(
@@ -64,7 +66,6 @@ class RecordingWindowController: NSWindowController {
 
         super.init(window: window)
 
-        audioLevelObserver = AudioLevelObserver(audioRecorder: audioRecorder)
         setupContentView()
         recordingTimer.start()
     }

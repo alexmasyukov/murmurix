@@ -5,16 +5,22 @@
 
 import AppKit
 
+@MainActor
 final class WindowManager {
+    private let historyService: HistoryServiceProtocol
     private var recordingController: RecordingWindowController?
     private var resultController: ResultWindowController?
     private var settingsController: SettingsWindowController?
     private var historyController: HistoryWindowController?
 
+    init(historyService: HistoryServiceProtocol) {
+        self.historyService = historyService
+    }
+
     // MARK: - Recording Window
 
     func showRecordingWindow(
-        audioRecorder: AudioRecorder,
+        audioRecorder: any AudioRecorderProtocol,
         onStop: @escaping () -> Void,
         onCancelTranscription: @escaping () -> Void
     ) {
@@ -54,7 +60,7 @@ final class WindowManager {
 
     func showHistoryWindow() {
         if historyController == nil {
-            historyController = HistoryWindowController()
+            historyController = HistoryWindowController(historyService: historyService)
         }
         historyController?.showWindow(nil)
     }
@@ -62,6 +68,8 @@ final class WindowManager {
     // MARK: - Settings Window
 
     func showSettingsWindow(
+        settings: SettingsStorageProtocol,
+        makeGeneralSettingsViewModel: @MainActor () -> GeneralSettingsViewModel,
         loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
@@ -71,6 +79,8 @@ final class WindowManager {
     ) {
         if settingsController == nil {
             settingsController = SettingsWindowController(
+                settings: settings,
+                makeGeneralSettingsViewModel: makeGeneralSettingsViewModel,
                 loadedModels: loadedModels,
                 onModelToggle: onModelToggle,
                 onLocalHotkeysChanged: onLocalHotkeysChanged,

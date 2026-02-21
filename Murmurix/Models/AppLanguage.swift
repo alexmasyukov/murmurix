@@ -10,6 +10,18 @@ enum AppLanguage: String, CaseIterable {
     case ru
     case es
 
+    static let storageKey = "appLanguage"
+    static let defaultValue: AppLanguage = .en
+    static let defaultRawValue = defaultValue.rawValue
+
+    static func normalized(from rawValue: String) -> AppLanguage {
+        AppLanguage(rawValue: rawValue) ?? defaultValue
+    }
+
+    static func normalizedRawValue(from rawValue: String) -> String {
+        normalized(from: rawValue).rawValue
+    }
+
     var displayName: String {
         switch self {
         case .en: return "English"
@@ -18,8 +30,34 @@ enum AppLanguage: String, CaseIterable {
         }
     }
 
+    static func current(in defaults: UserDefaults) -> AppLanguage {
+        guard let rawValue = defaults.string(forKey: storageKey) else {
+            return defaultValue
+        }
+        return normalized(from: rawValue)
+    }
+
     static var current: AppLanguage {
-        AppLanguage(rawValue: UserDefaults.standard.string(forKey: "appLanguage") ?? "en") ?? .en
+        current(in: .standard)
+    }
+
+    static func postDidChange(on center: NotificationCenter = .default) {
+        center.post(name: .appLanguageDidChange, object: nil)
+    }
+
+    static func addDidChangeObserver(
+        _ observer: Any,
+        selector: Selector,
+        on center: NotificationCenter = .default
+    ) {
+        center.addObserver(observer, selector: selector, name: .appLanguageDidChange, object: nil)
+    }
+
+    static func removeDidChangeObserver(
+        _ observer: Any,
+        on center: NotificationCenter = .default
+    ) {
+        center.removeObserver(observer, name: .appLanguageDidChange, object: nil)
     }
 }
 

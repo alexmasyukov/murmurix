@@ -20,14 +20,17 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
-        let result = try await service.transcribe(audioURL: audioURL, mode: .local(model: "small"))
+        let result = try await service.transcribe(audioURL: audioURL, language: "en", mode: .local(model: "small"))
 
         #expect(result == "Hello from WhisperKit")
         #expect(mockWhisperKit.transcribeCallCount == 1)
+        #expect(mockWhisperKit.lastLanguage == "en")
     }
 
     @Test func localModeThrowsWhenWhisperKitFails() async {
@@ -37,13 +40,15 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
 
         await #expect(throws: Error.self) {
-            try await service.transcribe(audioURL: audioURL, mode: .local(model: "small"))
+            try await service.transcribe(audioURL: audioURL, language: "ru", mode: .local(model: "small"))
         }
     }
 
@@ -59,14 +64,16 @@ struct TranscriptionServiceIntegrationTests {
         let service = TranscriptionService(
             whisperKitService: MockWhisperKitService(),
             settings: mockSettings,
-            openAIService: mockOpenAI
+            openAIService: mockOpenAI,
+            geminiService: MockGeminiTranscriptionService()
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
-        let result = try await service.transcribe(audioURL: audioURL, mode: .openai)
+        let result = try await service.transcribe(audioURL: audioURL, language: "es", mode: .openai)
 
         #expect(result == "Hello from OpenAI")
         #expect(mockOpenAI.transcribeCallCount == 1)
+        #expect(mockOpenAI.lastLanguage == "es")
     }
 
     @Test func openaiModeThrowsWhenApiKeyMissing() async {
@@ -77,13 +84,14 @@ struct TranscriptionServiceIntegrationTests {
         let service = TranscriptionService(
             whisperKitService: MockWhisperKitService(),
             settings: mockSettings,
-            openAIService: mockOpenAI
+            openAIService: mockOpenAI,
+            geminiService: MockGeminiTranscriptionService()
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
 
         await #expect(throws: Error.self) {
-            try await service.transcribe(audioURL: audioURL, mode: .openai)
+            try await service.transcribe(audioURL: audioURL, language: "en", mode: .openai)
         }
         #expect(mockOpenAI.transcribeCallCount == 0)
     }
@@ -100,14 +108,16 @@ struct TranscriptionServiceIntegrationTests {
         let service = TranscriptionService(
             whisperKitService: MockWhisperKitService(),
             settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
             geminiService: mockGemini
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
-        let result = try await service.transcribe(audioURL: audioURL, mode: .gemini)
+        let result = try await service.transcribe(audioURL: audioURL, language: "ru", mode: .gemini)
 
         #expect(result == "Hello from Gemini")
         #expect(mockGemini.transcribeCallCount == 1)
+        #expect(mockGemini.lastLanguage == "ru")
     }
 
     @Test func geminiModeThrowsWhenApiKeyMissing() async {
@@ -118,13 +128,14 @@ struct TranscriptionServiceIntegrationTests {
         let service = TranscriptionService(
             whisperKitService: MockWhisperKitService(),
             settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
             geminiService: mockGemini
         )
 
         let audioURL = URL(fileURLWithPath: "/tmp/test_audio.wav")
 
         await #expect(throws: Error.self) {
-            try await service.transcribe(audioURL: audioURL, mode: .gemini)
+            try await service.transcribe(audioURL: audioURL, language: "en", mode: .gemini)
         }
         #expect(mockGemini.transcribeCallCount == 0)
     }
@@ -137,7 +148,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         try await service.loadModel(name: "tiny")
@@ -154,7 +167,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         await service.unloadModel(name: "tiny")
@@ -169,7 +184,9 @@ struct TranscriptionServiceIntegrationTests {
 
         let service = TranscriptionService(
             whisperKitService: mockWhisperKit,
-            settings: mockSettings
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
         )
 
         #expect(service.isModelLoaded(name: "base") == false)
@@ -179,5 +196,25 @@ struct TranscriptionServiceIntegrationTests {
 
         await service.unloadModel(name: "base")
         #expect(service.isModelLoaded(name: "base") == false)
+    }
+
+    @Test func loadedModelNamesReflectWhisperKitState() async throws {
+        let mockWhisperKit = MockWhisperKitService()
+        let mockSettings = MockSettings()
+
+        let service = TranscriptionService(
+            whisperKitService: mockWhisperKit,
+            settings: mockSettings,
+            openAIService: MockOpenAITranscriptionService(),
+            geminiService: MockGeminiTranscriptionService()
+        )
+
+        #expect(service.loadedModelNames().isEmpty)
+
+        try await service.loadModel(name: "base")
+        try await service.loadModel(name: "small")
+
+        let loaded = Set(service.loadedModelNames())
+        #expect(loaded == Set(["base", "small"]))
     }
 }

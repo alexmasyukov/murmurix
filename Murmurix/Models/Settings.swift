@@ -12,9 +12,7 @@ struct WhisperModelSettings: Codable, Equatable {
     static let `default` = WhisperModelSettings(hotkey: nil, keepLoaded: false)
 }
 
-final class Settings: SettingsStorageProtocol {
-    static let shared = Settings()
-
+final class Settings: SettingsStorageProtocol, @unchecked Sendable {
     private let defaults: UserDefaults
 
     // MARK: - Keys
@@ -23,7 +21,9 @@ final class Settings: SettingsStorageProtocol {
         static let toggleCloudHotkey = "toggleCloudHotkey"
         static let toggleGeminiHotkey = "toggleGeminiHotkey"
         static let cancelHotkey = "cancelHotkey"
-        static let appLanguage = "appLanguage"
+        static let appLanguage = AppLanguage.storageKey
+        static let focusDebugNotificationsEnabled = "focusDebugNotificationsEnabled"
+        static let alwaysPasteEnabled = "alwaysPasteEnabled"
         static let language = "language"
         static let openaiTranscriptionModel = "openaiTranscriptionModel"
         static let geminiModel = "geminiModel"
@@ -37,7 +37,7 @@ final class Settings: SettingsStorageProtocol {
 
     // MARK: - Init
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults) {
         self.defaults = defaults
         registerDefaults()
     }
@@ -66,10 +66,8 @@ final class Settings: SettingsStorageProtocol {
         let oldKeepLoaded = defaults.object(forKey: Keys.legacyKeepModelLoaded) as? Bool ?? true
 
         // Migrate old local hotkey
-        var oldHotkey: Hotkey? = nil
-        if let data = defaults.data(forKey: Keys.legacyToggleLocalHotkey),
-           let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) {
-            oldHotkey = hotkey
+        let oldHotkey = defaults.data(forKey: Keys.legacyToggleLocalHotkey).flatMap { data in
+            decode(Hotkey.self, from: data, context: "legacy local hotkey migration")
         }
 
         let modelSettings = WhisperModelSettings(hotkey: oldHotkey, keepLoaded: oldKeepLoaded)
@@ -93,22 +91,35 @@ final class Settings: SettingsStorageProtocol {
     }
 
     var appLanguage: String {
-        get { defaults.string(forKey: Keys.appLanguage) ?? "en" }
-        set { defaults.set(newValue, forKey: Keys.appLanguage) }
+        get {
+            let rawValue = defaults.string(forKey: Keys.appLanguage) ?? AppLanguage.defaultRawValue
+            return AppLanguage.normalizedRawValue(from: rawValue)
+        }
+        set { defaults.set(AppLanguage.normalizedRawValue(from: newValue), forKey: Keys.appLanguage) }
+    }
+
+    var focusDebugNotificationsEnabled: Bool {
+        get { defaults.bool(forKey: Keys.focusDebugNotificationsEnabled) }
+        set { defaults.set(newValue, forKey: Keys.focusDebugNotificationsEnabled) }
+    }
+
+    var alwaysPasteEnabled: Bool {
+        get { defaults.bool(forKey: Keys.alwaysPasteEnabled) }
+        set { defaults.set(newValue, forKey: Keys.alwaysPasteEnabled) }
     }
 
     // MARK: - Per-Model WhisperKit Settings
 
     func loadWhisperModelSettings() -> [String: WhisperModelSettings] {
         guard let data = defaults.data(forKey: Keys.whisperModelSettings),
-              let map = try? JSONDecoder().decode([String: WhisperModelSettings].self, from: data) else {
+              let map = decode([String: WhisperModelSettings].self, from: data, context: "whisper model settings load") else {
             return [:]
         }
         return map
     }
 
     func saveWhisperModelSettings(_ settings: [String: WhisperModelSettings]) {
-        if let data = try? JSONEncoder().encode(settings) {
+        if let data = encode(settings, context: "whisper model settings save") {
             defaults.set(data, forKey: Keys.whisperModelSettings)
         }
     }
@@ -117,22 +128,40 @@ final class Settings: SettingsStorageProtocol {
 
     private func loadHotkey(key: String) -> Hotkey? {
         guard let data = defaults.data(forKey: key),
-              let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
+              let hotkey = decode(Hotkey.self, from: data, context: "hotkey load: \(key)") else {
             return nil
         }
         return hotkey
     }
 
     private func saveHotkey(key: String, hotkey: Hotkey?) {
-        if let hotkey, let data = try? JSONEncoder().encode(hotkey) {
+        if let hotkey, let data = encode(hotkey, context: "hotkey save: \(key)") {
             defaults.set(data, forKey: key)
         } else {
             defaults.removeObject(forKey: key)
         }
     }
 
+    private func decode<T: Decodable>(_ type: T.Type, from data: Data, context: String) -> T? {
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch {
+            Logger.Settings.debug("Failed to decode \(String(describing: type)) (\(context)): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func encode<T: Encodable>(_ value: T, context: String) -> Data? {
+        do {
+            return try JSONEncoder().encode(value)
+        } catch {
+            Logger.Settings.debug("Failed to encode \(String(describing: T.self)) (\(context)): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     func loadToggleCloudHotkey() -> Hotkey? {
-        loadHotkey(key: Keys.toggleCloudHotkey)
+        loadHotkey(key: Keys.toggleCloudHotkey) ?? .openAICloudDefault
     }
 
     func saveToggleCloudHotkey(_ hotkey: Hotkey?) {

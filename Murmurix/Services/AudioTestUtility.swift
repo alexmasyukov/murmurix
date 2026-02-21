@@ -38,12 +38,12 @@ enum AudioTestUtility {
         var wav = Data()
 
         // RIFF header
-        wav.append("RIFF".data(using: .ascii)!)
+        wav.append(Data("RIFF".utf8))
         wav.append(withUnsafeBytes(of: fileSize.littleEndian) { Data($0) })
-        wav.append("WAVE".data(using: .ascii)!)
+        wav.append(Data("WAVE".utf8))
 
         // fmt chunk
-        wav.append("fmt ".data(using: .ascii)!)
+        wav.append(Data("fmt ".utf8))
         wav.append(withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) }) // chunk size
         wav.append(withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) })  // PCM format
         wav.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
@@ -55,7 +55,7 @@ enum AudioTestUtility {
         wav.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
 
         // data chunk
-        wav.append("data".data(using: .ascii)!)
+        wav.append(Data("data".utf8))
         wav.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
 
         // Silence (zeros)
