@@ -23,6 +23,7 @@ enum L10n {
     static var modelManagement: String { tr("Model Management", "Управление моделями", "Gestión de modelos") }
     static var cloudOpenAI: String { tr("Cloud (OpenAI)", "Облако (OpenAI)", "Nube (OpenAI)") }
     static var cloudGemini: String { tr("Cloud (Gemini)", "Облако (Gemini)", "Nube (Gemini)") }
+    static var debug: String { tr("Debug", "Отладка", "Depuración") }
 
     // MARK: - Keyboard Shortcuts
 
@@ -33,6 +34,16 @@ enum L10n {
     static var cancelRecording: String { tr("Cancel Recording", "Отмена записи", "Cancelar grabación") }
     static var discardsRecording: String { tr("Discards the active recording", "Отменяет активную запись", "Descarta la grabación activa") }
     static var pressKeys: String { tr("Press keys...", "Нажмите клавиши...", "Pulse teclas...") }
+    static var focusDebugNotifications: String {
+        tr("Focus diagnostics notifications", "Уведомления диагностики фокуса", "Notificaciones de diagnóstico de foco")
+    }
+    static var focusDebugNotificationsDescription: String {
+        tr(
+            "At transcription end, show focused field type and paste decision",
+            "После распознавания показывать тип поля в фокусе и решение по вставке",
+            "Al finalizar la transcripción, mostrar el tipo de campo enfocado y la decisión de pegado"
+        )
+    }
 
     // MARK: - Recognition
 

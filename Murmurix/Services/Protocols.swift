@@ -54,6 +54,7 @@ extension URLSession: URLSessionProtocol {}
 protocol SettingsStorageProtocol: AnyObject, Sendable {
     var language: String { get set }
     var appLanguage: String { get set }
+    var focusDebugNotificationsEnabled: Bool { get set }
     var openaiApiKey: String { get set }
     var openaiTranscriptionModel: String { get set }
     var geminiApiKey: String { get set }

@@ -38,6 +38,7 @@ struct GeneralSettingsView: View {
             VStack(alignment: .leading, spacing: 0) {
                 languageSection
                 keyboardShortcutsSection
+                debugSection
                 localModelsSection
                 modelManagementSection
                 cloudSettingsSection
@@ -157,6 +158,33 @@ struct GeneralSettingsView: View {
     }
 
     // MARK: - Local Models
+
+    private var debugSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: L10n.debug)
+
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                Toggle(isOn: $settingsStore.focusDebugNotificationsEnabled) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L10n.focusDebugNotifications)
+                            .font(Typography.label)
+                            .foregroundColor(.white)
+
+                        Text(L10n.focusDebugNotificationsDescription)
+                            .font(Typography.description)
+                            .foregroundColor(.gray)
+                    }
+                }
+                .toggleStyle(.switch)
+            }
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
+        }
+    }
 
     private var localModelsSection: some View {
         VStack(alignment: .leading, spacing: 0) {

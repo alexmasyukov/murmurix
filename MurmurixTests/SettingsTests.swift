@@ -46,6 +46,11 @@ struct SettingsTests {
         #expect(settings.appLanguage == AppLanguage.defaultRawValue)
     }
 
+    @Test func defaultFocusDebugNotificationsAreDisabled() {
+        let settings = createSettings()
+        #expect(settings.focusDebugNotificationsEnabled == false)
+    }
+
     @Test func defaultToggleCloudHotkeyIsCtrlE() {
         let settings = createSettings()
         let hotkey = settings.loadToggleCloudHotkey()
@@ -102,6 +107,16 @@ struct SettingsTests {
 
         settings.appLanguage = AppLanguage.es.rawValue
         #expect(settings.appLanguage == AppLanguage.es.rawValue)
+    }
+
+    @Test func focusDebugNotificationsPersist() {
+        let settings = createSettings()
+
+        settings.focusDebugNotificationsEnabled = true
+        #expect(settings.focusDebugNotificationsEnabled == true)
+
+        settings.focusDebugNotificationsEnabled = false
+        #expect(settings.focusDebugNotificationsEnabled == false)
     }
 
     @Test func appLanguageSetterNormalizesInvalidValueToDefault() {

@@ -34,6 +34,13 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var focusDebugNotificationsEnabled: Bool {
+        didSet {
+            guard focusDebugNotificationsEnabled != oldValue else { return }
+            settings.focusDebugNotificationsEnabled = focusDebugNotificationsEnabled
+        }
+    }
+
     @Published var openaiTranscriptionModel: String {
         didSet {
             guard openaiTranscriptionModel != oldValue else { return }
@@ -87,6 +94,7 @@ final class SettingsStore: ObservableObject {
         self.settings = settings
         self.language = settings.language
         self.appLanguage = AppLanguage.normalizedRawValue(from: settings.appLanguage)
+        self.focusDebugNotificationsEnabled = settings.focusDebugNotificationsEnabled
         self.openaiTranscriptionModel = settings.openaiTranscriptionModel
         self.geminiModel = settings.geminiModel
         self.openaiApiKey = settings.openaiApiKey

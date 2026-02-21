@@ -22,6 +22,7 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
         static let toggleGeminiHotkey = "toggleGeminiHotkey"
         static let cancelHotkey = "cancelHotkey"
         static let appLanguage = AppLanguage.storageKey
+        static let focusDebugNotificationsEnabled = "focusDebugNotificationsEnabled"
         static let language = "language"
         static let openaiTranscriptionModel = "openaiTranscriptionModel"
         static let geminiModel = "geminiModel"
@@ -94,6 +95,11 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
             return AppLanguage.normalizedRawValue(from: rawValue)
         }
         set { defaults.set(AppLanguage.normalizedRawValue(from: newValue), forKey: Keys.appLanguage) }
+    }
+
+    var focusDebugNotificationsEnabled: Bool {
+        get { defaults.bool(forKey: Keys.focusDebugNotificationsEnabled) }
+        set { defaults.set(newValue, forKey: Keys.focusDebugNotificationsEnabled) }
     }
 
     // MARK: - Per-Model WhisperKit Settings

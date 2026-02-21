@@ -5,6 +5,7 @@
 
 import SwiftUI
 import AppKit
+import UserNotifications
 
 struct AppDependencies {
     let historyService: HistoryServiceProtocol
@@ -58,6 +59,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var lastRecordId: UUID?
     private var shouldPasteDirectly = false
+    private var focusContextAtRecordingStart: TextPaster.FocusContext?
 
     private let historyService: HistoryServiceProtocol
     private let settings: SettingsStorageProtocol
@@ -213,7 +215,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let coordinator else { return }
 
         if coordinator.state == .idle {
-            shouldPasteDirectly = TextPaster.isTextFieldFocused()
+            let focusContext = TextPaster.focusedContext()
+            shouldPasteDirectly = focusContext.isTextInput
+            focusContextAtRecordingStart = focusContext
             currentRecordingMode = mode
         }
         coordinator.toggleRecording(mode: currentRecordingMode)
@@ -230,12 +234,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func dismissRecordingUI() {
         windowManager?.dismissRecordingWindow()
         shouldPasteDirectly = false
+        focusContextAtRecordingStart = nil
     }
 
     @MainActor
     private func handleCompletedTranscription(text: String, duration: TimeInterval, recordId: UUID) {
-        let pasteDirectly = shouldPasteDirectly
+        let startFocusContext = focusContextAtRecordingStart
+            ?? TextPaster.FocusContext(
+                status: .noFocusedElement,
+                appName: nil,
+                role: nil,
+                subrole: nil,
+                isEditable: nil,
+                isTextInput: false
+            )
+        let shouldPasteFromStart = shouldPasteDirectly
         dismissRecordingUI()
+        let endFocusContext = TextPaster.focusedContext()
+        let pasteDirectly = endFocusContext.isTextInput || (endFocusContext.lookupFailed && shouldPasteFromStart)
+
+        notifyFocusDebugIfNeeded(
+            start: startFocusContext,
+            end: endFocusContext,
+            pasteDirectly: pasteDirectly
+        )
         lastRecordId = recordId
 
         if pasteDirectly {
@@ -304,6 +326,65 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleCloudHotkeysChanged(toggleCloud: Hotkey?, toggleGemini: Hotkey?, cancel: Hotkey?) {
         hotkeyManager?.updateCloudHotkeys(toggleCloud: toggleCloud, toggleGemini: toggleGemini, cancel: cancel)
         menuBarManager?.updateHotkeyDisplay()
+    }
+
+    private func notifyFocusDebugIfNeeded(
+        start: TextPaster.FocusContext,
+        end: TextPaster.FocusContext,
+        pasteDirectly: Bool
+    ) {
+        guard settings.focusDebugNotificationsEnabled else { return }
+
+        let action = pasteDirectly ? "paste" : "show-result-window"
+        let body = "start[\(start.summary)] end[\(end.summary)] action=\(action)"
+        FocusDebugNotifier.notify(title: "Murmurix Focus Debug", body: body)
+    }
+}
+
+private enum FocusDebugNotifier {
+    static func notify(title: String, body: String) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional:
+                post(title: title, body: body, center: center)
+            case .notDetermined:
+                center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+                    if let error {
+                        Logger.Settings.debug("Focus debug notification authorization failed: \(error.localizedDescription)")
+                    }
+                    guard granted else {
+                        Logger.Settings.debug("Focus debug notification authorization denied")
+                        return
+                    }
+                    post(title: title, body: body, center: center)
+                }
+            case .denied:
+                Logger.Settings.debug("Focus debug notifications are disabled in system settings")
+            @unknown default:
+                Logger.Settings.debug("Unknown notification authorization state")
+            }
+        }
+    }
+
+    private static func post(title: String, body: String, center: UNUserNotificationCenter) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "murmurix.focus.debug.\(UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+
+        center.add(request) { error in
+            if let error {
+                Logger.Settings.debug("Failed to post focus debug notification: \(error.localizedDescription)")
+            }
+        }
     }
 }
 
