@@ -1119,3 +1119,34 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
   - `MurmurixTests/SettingsTests.swift`
 - Проверка:
   - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test -only-testing:MurmurixTests/SettingsTests -only-testing:MurmurixTests/AppConstantsTests` -> `** TEST SUCCEEDED **`.
+
+### 10.48 Focus diagnostics + re-check focus before paste
+
+- Добавлена диагностика фокуса в `TextPaster`:
+  - введен `TextPaster.FocusContext` с ролью, subrole, editable-флагом и итоговым `isTextInput`,
+  - `isTextFieldFocused()` теперь делегирует в `focusedContext()`.
+- Логика вставки в `AppDelegate` усилена:
+  - сохраняется контекст фокуса на старте записи,
+  - перед вставкой выполняется повторная проверка фокуса в конце распознавания,
+  - решение о direct paste принимается по актуальному end-focus (с fallback на start-focus при lookup failure).
+- Добавлен debug-инструмент в UI:
+  - `GeneralSettingsView` получил секцию `Debug`,
+  - настройка `focusDebugNotificationsEnabled` сохранена в `Settings`/`SettingsStore`,
+  - при включении отправляется локальное уведомление с `start`, `end` и `action` (`paste`/`show-result-window`).
+- Обновлены тесты и моки:
+  - `MurmurixTests/SettingsTests.swift`,
+  - `MurmurixTests/SettingsStoreTests.swift`,
+  - `MurmurixTests/Mocks.swift`.
+- Изменены файлы:
+  - `Murmurix/Services/TextPaster.swift`
+  - `Murmurix/App/AppDelegate.swift`
+  - `Murmurix/Views/GeneralSettingsView.swift`
+  - `Murmurix/ViewModels/SettingsStore.swift`
+  - `Murmurix/Models/Settings.swift`
+  - `Murmurix/Services/Protocols.swift`
+  - `Murmurix/Models/L10n.swift`
+  - `MurmurixTests/SettingsTests.swift`
+  - `MurmurixTests/SettingsStoreTests.swift`
+  - `MurmurixTests/Mocks.swift`
+- Проверка:
+  - `MURMURIX_USE_TEMP_MODEL_REPO=1 ... xcodebuild ... test` -> `** TEST SUCCEEDED **`.
