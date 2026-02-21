@@ -60,6 +60,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastRecordId: UUID?
     private var shouldPasteDirectly = false
     private var focusContextAtRecordingStart: TextPaster.FocusContext?
+    private let focusNotificationToWindowDelayNanoseconds: UInt64 = 250_000_000
 
     private let historyService: HistoryServiceProtocol
     private let settings: SettingsStorageProtocol
@@ -84,6 +85,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupServices()
         setupManagers()
         setupHotkeys()
+        setupNotifications()
 
         coordinator?.loadModelsIfNeeded()
 
@@ -161,6 +163,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager = GlobalHotkeyManager(settings: settings)
         bindHotkeyHandlers()
         hotkeyManager?.start()
+    }
+
+    @MainActor
+    private func setupNotifications() {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        FocusDebugNotifier.registerCategory(center: center)
     }
 
     private func runOnMain(_ action: @escaping @MainActor (AppDelegate) -> Void) {
@@ -253,18 +262,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let endFocusContext = TextPaster.focusedContext()
         let pasteDirectly = endFocusContext.isTextInput || (endFocusContext.lookupFailed && shouldPasteFromStart)
 
-        notifyFocusDebugIfNeeded(
+        let didNotifyFocusDiagnostic = notifyFocusDebugIfNeeded(
             start: startFocusContext,
             end: endFocusContext,
-            pasteDirectly: pasteDirectly
+            pasteDirectly: pasteDirectly,
+            transcriptionText: text,
+            forceWhenPasteIsUnavailable: !pasteDirectly
         )
         lastRecordId = recordId
 
         if pasteDirectly {
             TextPaster.paste(text)
         } else {
-            showResultWindow(text: text, duration: duration) { [weak self] in
+            let onDelete: () -> Void = { [weak self] in
                 self?.deleteLastHistoryRecordIfNeeded()
+            }
+            guard didNotifyFocusDiagnostic else {
+                showResultWindow(text: text, duration: duration, onDelete: onDelete)
+                return
+            }
+
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                try? await Task.sleep(nanoseconds: self.focusNotificationToWindowDelayNanoseconds)
+                self.showResultWindow(text: text, duration: duration, onDelete: onDelete)
             }
         }
     }
@@ -331,23 +352,63 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func notifyFocusDebugIfNeeded(
         start: TextPaster.FocusContext,
         end: TextPaster.FocusContext,
-        pasteDirectly: Bool
-    ) {
-        guard settings.focusDebugNotificationsEnabled else { return }
+        pasteDirectly: Bool,
+        transcriptionText: String,
+        forceWhenPasteIsUnavailable: Bool
+    ) -> Bool {
+        let shouldNotify = settings.focusDebugNotificationsEnabled || forceWhenPasteIsUnavailable
+        guard shouldNotify else { return false }
 
         let action = pasteDirectly ? "paste" : "show-result-window"
         let body = "start[\(start.summary)] end[\(end.summary)] action=\(action)"
-        FocusDebugNotifier.notify(title: "Murmurix Focus Debug", body: body)
+        FocusDebugNotifier.notify(
+            title: "Murmurix Focus Debug",
+            body: body,
+            copyText: transcriptionText
+        )
+        return true
+    }
+
+    @MainActor
+    private func copyTranscriptionToPasteboard(_ text: String) {
+        guard !text.isEmpty else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
     }
 }
 
 private enum FocusDebugNotifier {
-    static func notify(title: String, body: String) {
+    static let categoryIdentifier = "murmurix.focus.debug.category"
+    static let copyActionIdentifier = "murmurix.focus.debug.copy"
+    static let copyTextUserInfoKey = "focusDebugCopyText"
+
+    static func registerCategory(center: UNUserNotificationCenter) {
+        let copyAction = UNNotificationAction(
+            identifier: copyActionIdentifier,
+            title: L10n.copy,
+            options: []
+        )
+        let category = UNNotificationCategory(
+            identifier: categoryIdentifier,
+            actions: [copyAction],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        center.getNotificationCategories { existingCategories in
+            var updatedCategories = existingCategories
+            updatedCategories.update(with: category)
+            center.setNotificationCategories(updatedCategories)
+        }
+    }
+
+    static func notify(title: String, body: String, copyText: String?) {
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .authorized, .provisional:
-                post(title: title, body: body, center: center)
+                post(title: title, body: body, copyText: copyText, center: center)
             case .notDetermined:
                 center.requestAuthorization(options: [.alert, .sound]) { granted, error in
                     if let error {
@@ -357,7 +418,7 @@ private enum FocusDebugNotifier {
                         Logger.Settings.debug("Focus debug notification authorization denied")
                         return
                     }
-                    post(title: title, body: body, center: center)
+                    post(title: title, body: body, copyText: copyText, center: center)
                 }
             case .denied:
                 Logger.Settings.debug("Focus debug notifications are disabled in system settings")
@@ -367,11 +428,15 @@ private enum FocusDebugNotifier {
         }
     }
 
-    private static func post(title: String, body: String, center: UNUserNotificationCenter) {
+    private static func post(title: String, body: String, copyText: String?, center: UNUserNotificationCenter) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
+        if let copyText, !copyText.isEmpty {
+            content.categoryIdentifier = categoryIdentifier
+            content.userInfo = [copyTextUserInfoKey: copyText]
+        }
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
         let request = UNNotificationRequest(
@@ -384,6 +449,38 @@ private enum FocusDebugNotifier {
             if let error {
                 Logger.Settings.debug("Failed to post focus debug notification: \(error.localizedDescription)")
             }
+        }
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        guard notification.request.identifier.hasPrefix("murmurix.focus.debug.") else {
+            completionHandler([])
+            return
+        }
+
+        completionHandler([.banner, .list, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        defer { completionHandler() }
+
+        guard response.actionIdentifier == FocusDebugNotifier.copyActionIdentifier else { return }
+        guard let text = response.notification.request.content.userInfo[FocusDebugNotifier.copyTextUserInfoKey] as? String else {
+            return
+        }
+
+        runOnMain { delegate in
+            delegate.copyTranscriptionToPasteboard(text)
         }
     }
 }
