@@ -480,4 +480,45 @@ struct TextPasterTests {
         TextPaster.paste(marker)
         #expect(NSPasteboard.general.string(forType: .string) == marker)
     }
+
+    @Test func inferTextInputTreatsWebAreaWithInsertionPointAsTextInput() {
+        let inference = TextPaster.inferTextInput(
+            status: .success,
+            role: "AXWebArea",
+            editable: false,
+            hasValueAttribute: false,
+            hasInsertionPointLineNumber: true,
+            hasSelectedTextRange: false,
+            appName: "Safari",
+            appBundleIdentifier: "com.apple.Safari"
+        )
+
+        #expect(inference.isTextInput == true)
+        #expect(inference.knownAppFallbackUsed == false)
+    }
+
+    @Test func inferTextInputTreatsJetBrainsRoleUnavailableAsTextInput() {
+        let inference = TextPaster.inferTextInput(
+            status: .roleUnavailable,
+            role: nil,
+            editable: nil,
+            hasValueAttribute: false,
+            hasInsertionPointLineNumber: false,
+            hasSelectedTextRange: false,
+            appName: "WebStorm",
+            appBundleIdentifier: "com.jetbrains.WebStorm"
+        )
+
+        #expect(inference.isTextInput == true)
+        #expect(inference.knownAppFallbackUsed == true)
+    }
+
+    @Test func knownTextInputHostDetectsJetBrainsByBundlePrefix() {
+        #expect(
+            TextPaster.isKnownTextInputHost(
+                appName: "IntelliJ IDEA",
+                bundleIdentifier: "com.jetbrains.intellij"
+            ) == true
+        )
+    }
 }
