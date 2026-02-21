@@ -2,7 +2,7 @@
 
 A native macOS menubar app for voice-to-text transcription using local WhisperKit (CoreML), OpenAI, or Google Gemini.
 
-**Version 3.0** | 57 production files | 298 tests | Pure Swift, no Python
+**Version 4.1** | 57 production files | 298 tests | Pure Swift, no Python
 
 ## Features
 
@@ -159,6 +159,20 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=m
 | MurmurixTests | 25 | HistoryViewModel, ResultWindowController |
 | NewFunctionalityTests | 69 | Model management, timer, migration, enums |
 | IntegrationTests | 3 | End-to-end tests |
+
+## Release Build (DMG)
+
+Production artifacts should be published as `.dmg` (not `.zip`):
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+xcodebuild -project Murmurix.xcodeproj -scheme Murmurix \
+-configuration Release -destination 'platform=macOS' \
+-derivedDataPath /tmp/murmurix-dd-prod build
+
+hdiutil create -volname "Murmurix" -srcfolder /tmp/murmurix-dd-prod/Build/Products/Release/Murmurix.app \
+-ov -format UDZO /tmp/Murmurix-vX.Y-macOS.dmg
+```
 
 ## Architecture
 
