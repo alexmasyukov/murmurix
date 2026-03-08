@@ -103,6 +103,26 @@ struct GeneralSettingsViewModelAPITests {
         }(), "Expected failure result for uninstalled model")
     }
 
+    @Test func testLocalModelTimeoutClearsLoadingState() async {
+        let mockTranscription = MockTranscriptionService()
+        mockTranscription.transcriptionDelay = 0.2
+        let viewModel = makeGeneralSettingsViewModel(
+            transcriptionServiceFactory: { mockTranscription },
+            modelOperationTimeout: 0.05
+        )
+        viewModel.installedModels = ["small"]
+
+        await viewModel.testModel("small")
+
+        #expect(viewModel.testingModels.contains("small") == false)
+        #expect({
+            if case .failure(let message) = viewModel.localTestResults["small"] {
+                return message.localizedCaseInsensitiveContains("timed out")
+            }
+            return false
+        }(), "Expected timeout failure result")
+    }
+
     // MARK: - OpenAI Testing
 
     @Test func testOpenAISetsLoadingState() async {

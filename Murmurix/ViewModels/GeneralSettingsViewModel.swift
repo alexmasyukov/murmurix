@@ -44,6 +44,8 @@ final class GeneralSettingsViewModel: ObservableObject {
     private let modelDirectory: (String) -> URL
     private let modelsRepositoryDirectory: () -> URL
     private let completedStatusResetDelay: TimeInterval = 2
+    private let modelLoadTimeout: TimeInterval
+    private let modelOperationTimeout: TimeInterval
     private var statusResetTasks: [String: Task<Void, Never>] = [:]
     let settings: SettingsStorageProtocol
 
@@ -67,6 +69,8 @@ final class GeneralSettingsViewModel: ObservableObject {
             },
             modelDirectory: { ModelPaths.modelDir(for: $0) },
             modelsRepositoryDirectory: { ModelPaths.repoDir },
+            modelLoadTimeout: 600,
+            modelOperationTimeout: 30,
             settings: settings
         )
     }
@@ -78,6 +82,8 @@ final class GeneralSettingsViewModel: ObservableObject {
         transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol,
         modelDirectory: @escaping (String) -> URL,
         modelsRepositoryDirectory: @escaping () -> URL,
+        modelLoadTimeout: TimeInterval = 600,
+        modelOperationTimeout: TimeInterval = 30,
         settings: SettingsStorageProtocol
     ) {
         self.whisperKitService = whisperKitService
@@ -86,6 +92,8 @@ final class GeneralSettingsViewModel: ObservableObject {
         self.transcriptionServiceFactory = transcriptionServiceFactory
         self.modelDirectory = modelDirectory
         self.modelsRepositoryDirectory = modelsRepositoryDirectory
+        self.modelLoadTimeout = modelLoadTimeout
+        self.modelOperationTimeout = modelOperationTimeout
         self.settings = settings
     }
 
@@ -117,25 +125,35 @@ final class GeneralSettingsViewModel: ObservableObject {
     func startDownload(for modelName: String) {
         cancelStatusReset(for: modelName)
         downloadStatuses[modelName] = .downloading(progress: 0)
+        Logger.Model.info("UI requested model download: \(modelName)")
+        Logger.Model.debug("UI model repository path: \(modelsRepositoryDirectory().path)")
+        Logger.Model.debug("UI target model path: \(modelDirectory(modelName).path)")
 
         Task { [weak self] in
             guard let self = self else { return }
             do {
                 try await self.whisperKitService.downloadModel(modelName) { progress in
+                    Logger.Model.debug("Download progress for \(modelName): \(Int(progress * 100))%")
                     Task { @MainActor [weak self] in
                         self?.downloadStatuses[modelName] = .downloading(progress: progress)
                     }
                 }
+                Logger.Model.info("Model download finished, starting compile/load: \(modelName)")
                 self.downloadStatuses[modelName] = .compiling
-                try await self.whisperKitService.loadModel(name: modelName)
+                try await self.runModelOperationWithTimeout("load \(modelName)", timeout: self.modelLoadTimeout) {
+                    try await self.whisperKitService.loadModel(name: modelName)
+                }
                 let ms = self.modelSettings(for: modelName)
                 if !ms.keepLoaded {
+                    Logger.Model.debug("Unloading model after compile because keepLoaded=false: \(modelName)")
                     await self.whisperKitService.unloadModel(name: modelName)
                 }
                 self.downloadStatuses[modelName] = .completed
+                Logger.Model.info("Model download flow completed successfully: \(modelName)")
                 self.loadInstalledModels()
                 self.scheduleStatusReset(for: modelName)
             } catch {
+                Logger.Model.error("Model download flow failed for \(modelName): \(error.localizedDescription)")
                 self.downloadStatuses[modelName] = .error(error.localizedDescription)
             }
         }
@@ -205,34 +223,46 @@ final class GeneralSettingsViewModel: ObservableObject {
     func testModel(_ modelName: String) async {
         testingModels.insert(modelName)
         localTestResults[modelName] = nil
+        defer { testingModels.remove(modelName) }
+        Logger.Model.info("Local model test requested: \(modelName)")
+        Logger.Model.debug("Local model test path: \(modelDirectory(modelName).path)")
 
         guard isModelInstalled(modelName) else {
+            Logger.Model.warning("Local model test aborted because model is not installed: \(modelName)")
             localTestResults[modelName] = .failure("Model not installed. Download it first.")
-            testingModels.remove(modelName)
             return
         }
 
         do {
             let service = transcriptionServiceFactory()
             if !service.isModelLoaded(name: modelName) {
-                try await service.loadModel(name: modelName)
+                Logger.Model.debug("Local model test needs to load model first: \(modelName)")
+                try await runModelOperationWithTimeout("load \(modelName)", timeout: modelLoadTimeout) {
+                    try await service.loadModel(name: modelName)
+                }
+            } else {
+                Logger.Model.debug("Local model test using already loaded model: \(modelName)")
             }
 
             let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
             try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
+            Logger.Model.debug("Local model test audio created at: \(tempURL.path)")
             defer { removeTransientAudioIfNeeded(tempURL) }
 
-            _ = try await service.transcribe(
-                audioURL: tempURL,
-                language: settings.language,
-                mode: .local(model: modelName)
-            )
+            _ = try await runModelOperationWithTimeout("test \(modelName)") {
+                try await service.transcribe(
+                    audioURL: tempURL,
+                    language: self.settings.language,
+                    mode: .local(model: modelName)
+                )
+            }
 
+            Logger.Model.info("Local model test succeeded: \(modelName)")
             localTestResults[modelName] = .success
         } catch {
+            Logger.Model.error("Local model test failed for \(modelName): \(error.localizedDescription)")
             localTestResults[modelName] = .failure(error.localizedDescription)
         }
-        testingModels.remove(modelName)
     }
 
     func testOpenAI(apiKey: String) async {
@@ -300,5 +330,32 @@ final class GeneralSettingsViewModel: ObservableObject {
             context: "remove temporary test audio",
             logError: Logger.Transcription.error
         )
+    }
+
+    private func runModelOperationWithTimeout<T>(
+        _ operationName: String,
+        timeout overrideTimeout: TimeInterval? = nil,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        let timeout = overrideTimeout ?? modelOperationTimeout
+        let timeoutNanoseconds = UInt64(timeout * 1_000_000_000)
+        Logger.Model.debug("Starting model operation with timeout \(timeout)s: \(operationName)")
+
+        return try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: timeoutNanoseconds)
+                Logger.Model.error("Model operation timed out after \(timeout)s: \(operationName)")
+                throw MurmurixError.transcription(.timeout)
+            }
+
+            defer { group.cancelAll() }
+
+            let result = try await group.next()!
+            Logger.Model.debug("Completed model operation: \(operationName)")
+            return result
+        }
     }
 }

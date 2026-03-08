@@ -42,6 +42,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         Logger.Model.info("Loading WhisperKit model: \(name)")
 
         let modelFolder = ModelPaths.modelDir(for: name).path
+        Logger.Model.debug("WhisperKit load path for \(name): \(modelFolder)")
 
         let config = WhisperKitConfig(
             modelFolder: modelFolder,
@@ -60,12 +61,15 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     }
 
     func unloadModel(name: String) async {
+        Logger.Model.debug("Requested WhisperKit unload for model: \(name)")
         let pipe = lock.withLock {
             pipelines.removeValue(forKey: name)
         }
 
         if let pipe = pipe {
             await unloadPipeline(pipe, name: name)
+        } else {
+            Logger.Model.debug("WhisperKit unload skipped because model was not loaded: \(name)")
         }
     }
 
@@ -108,10 +112,14 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     }
 
     func downloadModel(_ name: String, progress: @escaping @Sendable (Double) -> Void) async throws {
+        let variant = "openai_whisper-\(name)"
         Logger.Model.info("Downloading WhisperKit model: \(name)")
+        Logger.Model.debug("WhisperKit download variant: \(variant)")
+        Logger.Model.debug("WhisperKit download base dir: \(ModelPaths.downloadBaseDir.path)")
+        Logger.Model.debug("WhisperKit repo dir: \(ModelPaths.repoDir.path)")
 
         _ = try await WhisperKit.download(
-            variant: "openai_whisper-\(name)",
+            variant: variant,
             downloadBase: ModelPaths.downloadBaseDir,
             from: "argmaxinc/whisperkit-coreml",
             progressCallback: { downloadProgress in
@@ -120,6 +128,7 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         )
 
         Logger.Model.info("WhisperKit model downloaded: \(name)")
+        Logger.Model.debug("WhisperKit downloaded model dir exists: \(FileManager.default.fileExists(atPath: ModelPaths.modelDir(for: name).path))")
     }
 
     private func unloadPipeline(_ pipeline: WhisperKit, name: String) async {

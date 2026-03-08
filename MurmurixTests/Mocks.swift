@@ -243,6 +243,7 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
     var downloadModelCallCount = 0
     var lastModelName: String?
     var lastLanguage: String?
+    var loadModelDelay: TimeInterval = 0
     var transcribeResult: Result<String, Error> = .success("Transcribed text")
 
     func isModelLoaded(name: String) -> Bool {
@@ -256,6 +257,9 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
     func loadModel(name: String) async throws {
         loadModelCallCount += 1
         lastModelName = name
+        if loadModelDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(loadModelDelay * 1_000_000_000))
+        }
         loadedModelNames.insert(name)
     }
 
@@ -485,6 +489,8 @@ func makeGeneralSettingsViewModel(
     transcriptionServiceFactory: @escaping () -> TranscriptionServiceProtocol = { MockTranscriptionService() },
     modelDirectory: @escaping (String) -> URL = { ModelPaths.modelDir(for: $0) },
     modelsRepositoryDirectory: @escaping () -> URL = { ModelPaths.repoDir },
+    modelLoadTimeout: TimeInterval = 600,
+    modelOperationTimeout: TimeInterval = 30,
     settings: SettingsStorageProtocol = MockSettings()
 ) -> GeneralSettingsViewModel {
     GeneralSettingsViewModel(
@@ -494,6 +500,8 @@ func makeGeneralSettingsViewModel(
         transcriptionServiceFactory: transcriptionServiceFactory,
         modelDirectory: modelDirectory,
         modelsRepositoryDirectory: modelsRepositoryDirectory,
+        modelLoadTimeout: modelLoadTimeout,
+        modelOperationTimeout: modelOperationTimeout,
         settings: settings
     )
 }

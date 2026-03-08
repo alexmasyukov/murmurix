@@ -367,6 +367,26 @@ struct GeneralSettingsViewModelModelTests {
         #expect(mockWhisperKit.downloadModelCallCount == 1)
     }
 
+    @Test func startDownloadTimeoutTransitionsToError() async throws {
+        let mockWhisperKit = MockWhisperKitService()
+        mockWhisperKit.loadModelDelay = 0.2
+        let viewModel = makeGeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelLoadTimeout: 0.05
+        )
+
+        viewModel.startDownload(for: "small")
+
+        try await Task.sleep(nanoseconds: 150_000_000)
+
+        #expect({
+            if case .error(let message) = viewModel.downloadStatus(for: "small") {
+                return message.localizedCaseInsensitiveContains("timed out")
+            }
+            return false
+        }(), "Expected timeout error after stalled compile/load")
+    }
+
     // MARK: - deleteModel (with temp filesystem)
 
     @Test func deleteModelRemovesDirectory() async {
