@@ -151,6 +151,7 @@ struct HistoryServiceTests {
 
 // MARK: - HistoryViewModel Tests
 
+@MainActor
 struct HistoryViewModelTests {
 
     private func createViewModel() -> (HistoryViewModel, MockHistoryService) {

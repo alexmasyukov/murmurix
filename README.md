@@ -2,7 +2,7 @@
 
 A native macOS menubar app for voice-to-text transcription using local WhisperKit (CoreML), OpenAI, or Google Gemini.
 
-**Version 4.1** | 57 production files | 298 tests | Pure Swift, no Python
+**Version 4.1.1** | 57 production files | 298 tests | Pure Swift, no Python
 
 ## Features
 

@@ -5,6 +5,7 @@
 
 import Foundation
 
+@MainActor
 protocol HistoryViewModelProtocol: ObservableObject {
     var records: [TranscriptionRecord] { get }
     var selectedRecord: TranscriptionRecord? { get set }
@@ -17,6 +18,7 @@ protocol HistoryViewModelProtocol: ObservableObject {
     func deleteRecord(_ record: TranscriptionRecord)
 }
 
+@MainActor
 final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
     @Published var records: [TranscriptionRecord] = []
     @Published var selectedRecord: TranscriptionRecord?
@@ -36,7 +38,7 @@ final class HistoryViewModel: ObservableObject, HistoryViewModelProtocol {
 
         // Defer selection update to next task turn to avoid re-entrant updates in one cycle.
         if selectedRecord == nil, let first = fetched.first {
-            pendingSelectionTask = Task { [weak self] in
+            pendingSelectionTask = Task { @MainActor [weak self] in
                 await Task.yield()
                 guard let self = self else { return }
                 guard !Task.isCancelled else { return }
