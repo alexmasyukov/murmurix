@@ -460,6 +460,39 @@ struct GeneralSettingsViewModelModelTests {
         #expect(!FileManager.default.fileExists(atPath: modelDir.path))
     }
 
+    @Test func deleteModelTargetsExactNameNotPrefixMatch() async {
+        // Catches a class of bug: if delete ever used a glob or hasPrefix match
+        // it could wipe out variants that share a common prefix (large-v2 vs
+        // large-v2_turbo vs large-v2_turbo_955MB). Stage all three on disk,
+        // delete one, and assert only that one disappears.
+        let mockWhisperKit = MockWhisperKitService()
+        let repoDir = makeTempModelRepo()
+        defer { try? FileManager.default.removeItem(at: repoDir) }
+
+        let plainV2 = tempModelDir(repoDir: repoDir, modelName: "large-v2")
+        let turboV2 = tempModelDir(repoDir: repoDir, modelName: "large-v2_turbo")
+        let turboV2Q = tempModelDir(repoDir: repoDir, modelName: "large-v2_turbo_955MB")
+        for dir in [plainV2, turboV2, turboV2Q] {
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+
+        let viewModel = makeGeneralSettingsViewModel(
+            whisperKitService: mockWhisperKit,
+            modelDirectory: { modelName in
+                repoDir.appendingPathComponent("openai_whisper-\(modelName)")
+            },
+            modelsRepositoryDirectory: { repoDir }
+        )
+
+        await viewModel.deleteModel("large-v2_turbo")
+
+        // Only large-v2_turbo should be gone. The plain v2 and the _955MB
+        // compressed variant must survive — they share a prefix.
+        #expect(!FileManager.default.fileExists(atPath: turboV2.path), "deleted variant must be removed")
+        #expect(FileManager.default.fileExists(atPath: plainV2.path), "large-v2 must NOT be touched")
+        #expect(FileManager.default.fileExists(atPath: turboV2Q.path), "large-v2_turbo_955MB must NOT be touched")
+    }
+
     @Test func deleteModelSkipsUnloadWhenNotLoaded() async {
         let mockWhisperKit = MockWhisperKitService()
         let repoDir = makeTempModelRepo()

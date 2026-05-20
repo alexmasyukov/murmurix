@@ -233,7 +233,7 @@ final class GeneralSettingsViewModel: ObservableObject {
             return
         }
 
-        do {
+        do {   
             let service = transcriptionServiceFactory()
             if !service.isModelLoaded(name: modelName) {
                 Logger.Model.debug("Local model test needs to load model first: \(modelName)")
