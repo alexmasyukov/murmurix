@@ -10,6 +10,22 @@ import Foundation
 import Carbon
 @testable import Murmurix
 
+// MARK: - Async test helpers
+
+/// Polls `check` until it returns true or `timeout` elapses. Replaces fragile fixed `Task.sleep` waits.
+@MainActor
+private func awaitUntil(
+    timeout: TimeInterval = 2.0,
+    pollInterval: TimeInterval = 0.01,
+    _ check: @MainActor () -> Bool
+) async {
+    let deadline = Date().addingTimeInterval(timeout)
+    while Date() < deadline {
+        if check() { return }
+        try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+    }
+}
+
 // MARK: - DownloadStatus Tests
 
 struct DownloadStatusTests {
@@ -310,8 +326,9 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.startDownload(for: "tiny")
 
-        // Wait for async download to complete
-        try await Task.sleep(nanoseconds: 200_000_000)
+        await awaitUntil(timeout: 2.0) {
+            mockWhisperKit.loadModelCallCount == 1
+        }
 
         #expect(mockWhisperKit.downloadModelCallCount == 1)
         #expect(mockWhisperKit.lastModelName == "tiny")
@@ -329,7 +346,9 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.startDownload(for: "tiny")
 
-        try await Task.sleep(nanoseconds: 200_000_000)
+        await awaitUntil(timeout: 2.0) {
+            mockWhisperKit.unloadModelCallCount == 1
+        }
 
         #expect(mockWhisperKit.unloadModelCallCount == 1)
     }
@@ -347,7 +366,9 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.startDownload(for: "tiny")
 
-        try await Task.sleep(nanoseconds: 200_000_000)
+        await awaitUntil(timeout: 2.0) {
+            mockWhisperKit.loadModelCallCount == 1
+        }
 
         #expect(mockWhisperKit.unloadModelCallCount == 0)
     }
@@ -362,14 +383,16 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.startDownload(for: "small")
 
-        try await Task.sleep(nanoseconds: 200_000_000)
+        await awaitUntil(timeout: 2.0) {
+            mockWhisperKit.downloadModelCallCount == 1
+        }
 
         #expect(mockWhisperKit.downloadModelCallCount == 1)
     }
 
     @Test func startDownloadTimeoutTransitionsToError() async throws {
         let mockWhisperKit = MockWhisperKitService()
-        mockWhisperKit.loadModelDelay = 0.2
+        mockWhisperKit.loadModelDelay = 0.5
         let viewModel = makeGeneralSettingsViewModel(
             whisperKitService: mockWhisperKit,
             modelLoadTimeout: 0.05
@@ -377,7 +400,10 @@ struct GeneralSettingsViewModelModelTests {
 
         viewModel.startDownload(for: "small")
 
-        try await Task.sleep(nanoseconds: 150_000_000)
+        await awaitUntil(timeout: 2.0) {
+            if case .error = viewModel.downloadStatus(for: "small") { return true }
+            return false
+        }
 
         #expect({
             if case .error(let message) = viewModel.downloadStatus(for: "small") {
@@ -605,7 +631,9 @@ struct RecordingCoordinatorModelControlTests {
 
         coordinator.reloadModel(name: "small")
 
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await awaitUntil(timeout: 2.0) {
+            transcriptionService.unloadModelCallCount == 1 && transcriptionService.loadModelCallCount == 1
+        }
 
         #expect(transcriptionService.unloadModelCallCount == 1)
         #expect(transcriptionService.loadModelCallCount == 1)
@@ -617,7 +645,9 @@ struct RecordingCoordinatorModelControlTests {
 
         coordinator.reloadModel(name: "small")
 
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await awaitUntil(timeout: 2.0) {
+            transcriptionService.unloadModelCallCount == 1
+        }
 
         #expect(transcriptionService.unloadModelCallCount == 1)
         #expect(transcriptionService.loadModelCallCount == 0)
@@ -628,7 +658,9 @@ struct RecordingCoordinatorModelControlTests {
 
         coordinator.unloadAllModels()
 
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await awaitUntil(timeout: 2.0) {
+            transcriptionService.unloadAllModelsCallCount == 1
+        }
 
         #expect(transcriptionService.unloadAllModelsCallCount == 1)
     }
