@@ -18,13 +18,25 @@ protocol MenuBarManagerDelegate: AnyObject {
 
 @MainActor
 final class MenuBarManager {
+    enum AccessibilityID {
+        static let statusItemButton = "murmurix.statusitem.button"
+        static let history = "menu.history"
+        static let settings = "menu.settings"
+        static let quit = "menu.quit"
+        static let cloudOpenAI = "menu.cloud.openai"
+        static let cloudGemini = "menu.cloud.gemini"
+        static func localModel(_ name: String) -> String { "menu.local.\(name)" }
+    }
+
     weak var delegate: MenuBarManagerDelegate?
 
-    private var statusItem: NSStatusItem?
-    private var menu: NSMenu?
-    private var localModelMenuItems: [String: NSMenuItem] = [:]
-    private var toggleCloudMenuItem: NSMenuItem?
-    private var toggleGeminiMenuItem: NSMenuItem?
+    // Exposed internal (not public) so MurmurixTests can reach into the menu
+    // tree via @testable. Production code should still go through delegate.
+    internal private(set) var statusItem: NSStatusItem?
+    internal private(set) var menu: NSMenu?
+    internal private(set) var localModelMenuItems: [String: NSMenuItem] = [:]
+    internal private(set) var toggleCloudMenuItem: NSMenuItem?
+    internal private(set) var toggleGeminiMenuItem: NSMenuItem?
     private let settings: SettingsStorageProtocol
 
     init(settings: SettingsStorageProtocol) {
@@ -70,6 +82,7 @@ final class MenuBarManager {
 
         if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Murmurix")
+            button.setAccessibilityIdentifier(AccessibilityID.statusItemButton)
         }
     }
 
@@ -87,7 +100,8 @@ final class MenuBarManager {
         let cloudMenuItem = makeCloudMenuItem(
             title: L10n.cloudRecordingOpenAI,
             action: #selector(handleToggleCloudRecording),
-            hotkey: settings.loadToggleCloudHotkey()
+            hotkey: settings.loadToggleCloudHotkey(),
+            identifier: AccessibilityID.cloudOpenAI
         )
         toggleCloudMenuItem = cloudMenuItem
         menu.addItem(cloudMenuItem)
@@ -95,19 +109,20 @@ final class MenuBarManager {
         let geminiMenuItem = makeCloudMenuItem(
             title: L10n.geminiRecording,
             action: #selector(handleToggleGeminiRecording),
-            hotkey: settings.loadToggleGeminiHotkey()
+            hotkey: settings.loadToggleGeminiHotkey(),
+            identifier: AccessibilityID.cloudGemini
         )
         toggleGeminiMenuItem = geminiMenuItem
         menu.addItem(geminiMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        menu.addItem(makeMenuItem(title: L10n.history, action: #selector(handleOpenHistory), keyEquivalent: "h"))
-        menu.addItem(makeMenuItem(title: L10n.settings, action: #selector(handleOpenSettings), keyEquivalent: ","))
+        menu.addItem(makeMenuItem(title: L10n.history, action: #selector(handleOpenHistory), keyEquivalent: "h", identifier: AccessibilityID.history))
+        menu.addItem(makeMenuItem(title: L10n.settings, action: #selector(handleOpenSettings), keyEquivalent: ",", identifier: AccessibilityID.settings))
 
         menu.addItem(NSMenuItem.separator())
 
-        menu.addItem(makeMenuItem(title: L10n.quit, action: #selector(handleQuit), keyEquivalent: "q"))
+        menu.addItem(makeMenuItem(title: L10n.quit, action: #selector(handleQuit), keyEquivalent: "q", identifier: AccessibilityID.quit))
 
         statusItem?.menu = menu
     }
@@ -138,20 +153,23 @@ final class MenuBarManager {
         )
         item.target = self
         item.representedObject = modelName
+        item.setAccessibilityIdentifier(AccessibilityID.localModel(modelName))
         applyHotkeyToMenuItem(item, hotkey: hotkey)
         return item
     }
 
-    private func makeCloudMenuItem(title: String, action: Selector, hotkey: Hotkey?) -> NSMenuItem {
+    private func makeCloudMenuItem(title: String, action: Selector, hotkey: Hotkey?, identifier: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
+        item.setAccessibilityIdentifier(identifier)
         applyHotkeyIfPresent(to: item, hotkey: hotkey)
         return item
     }
 
-    private func makeMenuItem(title: String, action: Selector, keyEquivalent: String) -> NSMenuItem {
+    private func makeMenuItem(title: String, action: Selector, keyEquivalent: String, identifier: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
         item.target = self
+        item.setAccessibilityIdentifier(identifier)
         return item
     }
 
