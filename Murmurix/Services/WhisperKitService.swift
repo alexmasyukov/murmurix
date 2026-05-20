@@ -95,10 +95,19 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         Logger.Model.debug("WhisperKit tokenizer base for \(name): \(tokenizerFolder.path)")
         Logger.Model.debug("WhisperKit auth token present for \(name): \(token != nil)")
 
+        // Energy-based VAD lets WhisperKit skip purely-silent audio chunks
+        // during decoding. Without it Whisper happily hallucinates filler
+        // phrases ("Субтитры сделал DimaTorzok", "Спасибо за просмотр", etc.
+        // from YouTube training data) over a silent tail when the user trails
+        // off at the end of recording. Defaults: 16 kHz, 100 ms frames,
+        // 0.02 energy threshold — matches what WhisperKit ships for VAD usage.
+        let vad = EnergyVAD()
+
         let config = WhisperKitConfig(
             modelToken: token,
             modelFolder: modelFolder,
             tokenizerFolder: tokenizerFolder,
+            voiceActivityDetector: vad,
             verbose: false,
             logLevel: .error,
             download: false
@@ -151,6 +160,15 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         options.language = language == "auto" ? nil : language
         options.task = .transcribe
         options.wordTimestamps = false
+        // Anti-hallucination on silent tails / pauses:
+        // - suppressBlank avoids Whisper emitting blank/whitespace tokens
+        //   that get expanded into invented filler phrases.
+        // - chunkingStrategy=.vad activates the EnergyVAD configured in the
+        //   pipeline so silent chunks are dropped before decoding.
+        // Defaults already cover compressionRatioThreshold=2.4,
+        // logProbThreshold=-1.0, noSpeechThreshold=0.6 — keep them.
+        options.suppressBlank = true
+        options.chunkingStrategy = .vad
 
         let results = try await pipe.transcribe(
             audioPath: audioURL.path,
