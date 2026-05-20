@@ -144,6 +144,7 @@ final class MockSettings: SettingsStorageProtocol, @unchecked Sendable {
     var openaiTranscriptionModel: String = "gpt-4o-transcribe"
     var geminiApiKey: String = ""
     var geminiModel: String = GeminiTranscriptionModel.flash2.rawValue
+    var huggingFaceToken: String = ""
 
     private var whisperModelSettingsMap: [String: WhisperModelSettings] = [:]
     private var toggleCloudHotkey: Hotkey?

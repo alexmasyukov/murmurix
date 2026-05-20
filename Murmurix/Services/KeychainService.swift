@@ -10,6 +10,7 @@ import Security
 enum KeychainKey: String, CaseIterable {
     case openaiApiKey = "openaiApiKey"
     case geminiApiKey = "geminiApiKey"
+    case huggingFaceToken = "huggingFaceToken"
 }
 
 final class KeychainService {

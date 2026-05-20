@@ -18,7 +18,9 @@ struct AppDependencies {
         let settings = Settings(defaults: .standard)
         let historyService = HistoryService.live()
         let promptPolicy = DefaultTranscriptionPromptPolicy()
-        let whisperKitService = WhisperKitService()
+        let whisperKitService = WhisperKitService(tokenProvider: { [weak settings] in
+            settings?.huggingFaceToken
+        })
         let openAIService = OpenAITranscriptionService(
             session: URLSession.shared,
             promptPolicy: promptPolicy

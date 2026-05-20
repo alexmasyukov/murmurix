@@ -21,6 +21,21 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     private var loadingTasks: [String: Task<Void, Error>] = [:]
     private let lock = NSLock()
 
+    /// Closure resolved at each download/load to read the current HuggingFace
+    /// token from settings. Keeps WhisperKitService free of a direct settings
+    /// reference and re-reads on every call so token updates take effect
+    /// without restarting the service.
+    private let tokenProvider: @Sendable () -> String?
+
+    init(tokenProvider: @escaping @Sendable () -> String? = { nil }) {
+        self.tokenProvider = tokenProvider
+    }
+
+    private func currentToken() -> String? {
+        guard let raw = tokenProvider(), !raw.isEmpty else { return nil }
+        return raw
+    }
+
     func isModelLoaded(name: String) -> Bool {
         lock.withLock {
             pipelines[name] != nil
@@ -75,10 +90,13 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         // resolves to ~/Documents/huggingface/. We redirect it to the same
         // Application Support tree so nothing app-managed lands in Documents.
         let tokenizerFolder = ModelPaths.downloadBaseDir
+        let token = currentToken()
         Logger.Model.debug("WhisperKit load path for \(name): \(modelFolder)")
         Logger.Model.debug("WhisperKit tokenizer base for \(name): \(tokenizerFolder.path)")
+        Logger.Model.debug("WhisperKit auth token present for \(name): \(token != nil)")
 
         let config = WhisperKitConfig(
+            modelToken: token,
             modelFolder: modelFolder,
             tokenizerFolder: tokenizerFolder,
             verbose: false,
@@ -148,15 +166,18 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
 
     func downloadModel(_ name: String, progress: @escaping @Sendable (Double) -> Void) async throws {
         let variant = "openai_whisper-\(name)"
+        let token = currentToken()
         Logger.Model.info("Downloading WhisperKit model: \(name)")
         Logger.Model.debug("WhisperKit download variant: \(variant)")
         Logger.Model.debug("WhisperKit download base dir: \(ModelPaths.downloadBaseDir.path)")
         Logger.Model.debug("WhisperKit repo dir: \(ModelPaths.repoDir.path)")
+        Logger.Model.debug("WhisperKit auth token present for download: \(token != nil)")
 
         _ = try await WhisperKit.download(
             variant: variant,
             downloadBase: ModelPaths.downloadBaseDir,
             from: "argmaxinc/whisperkit-coreml",
+            token: token,
             progressCallback: { downloadProgress in
                 progress(downloadProgress.fractionCompleted)
             }

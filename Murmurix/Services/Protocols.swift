@@ -60,6 +60,7 @@ protocol SettingsStorageProtocol: AnyObject, Sendable {
     var openaiTranscriptionModel: String { get set }
     var geminiApiKey: String { get set }
     var geminiModel: String { get set }
+    var huggingFaceToken: String { get set }
 
     func loadWhisperModelSettings() -> [String: WhisperModelSettings]
     func saveWhisperModelSettings(_ settings: [String: WhisperModelSettings])

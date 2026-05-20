@@ -39,6 +39,7 @@ struct GeneralSettingsView: View {
                 languageSection
                 keyboardShortcutsSection
                 debugSection
+                huggingFaceSection
                 localModelsSection
                 modelManagementSection
                 cloudSettingsSection
@@ -206,6 +207,34 @@ struct GeneralSettingsView: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .accessibilityLabel(Text(title))
+        }
+    }
+
+    // MARK: - HuggingFace token
+
+    private var huggingFaceSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: L10n.huggingFace)
+
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                Text(L10n.huggingFaceTokenLabel)
+                    .font(Typography.label)
+                    .foregroundColor(.white)
+
+                SecureField("hf_...", text: $settingsStore.huggingFaceToken)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: .infinity)
+
+                Text(L10n.huggingFaceTokenHint)
+                    .font(Typography.description)
+                    .foregroundColor(.gray)
+            }
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
         }
     }
 

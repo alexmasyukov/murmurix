@@ -76,6 +76,13 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var huggingFaceToken: String {
+        didSet {
+            guard huggingFaceToken != oldValue else { return }
+            settings.huggingFaceToken = huggingFaceToken
+        }
+    }
+
     @Published var toggleCloudHotkey: Hotkey? {
         didSet {
             guard toggleCloudHotkey != oldValue else { return }
@@ -107,6 +114,7 @@ final class SettingsStore: ObservableObject {
         self.geminiModel = settings.geminiModel
         self.openaiApiKey = settings.openaiApiKey
         self.geminiApiKey = settings.geminiApiKey
+        self.huggingFaceToken = settings.huggingFaceToken
         self.toggleCloudHotkey = settings.loadToggleCloudHotkey()
         self.toggleGeminiHotkey = settings.loadToggleGeminiHotkey()
         self.cancelHotkey = settings.loadCancelHotkey()

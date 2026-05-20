@@ -181,6 +181,23 @@ struct SettingsTests {
         #expect(settings.geminiModel == GeminiTranscriptionModel.flash.rawValue)
     }
 
+    @Test func huggingFaceTokenRoundTripsThroughKeychain() {
+        // Ensure a clean slot in case a prior run left state.
+        KeychainService.delete(KeychainKey.huggingFaceToken)
+        defer { KeychainService.delete(KeychainKey.huggingFaceToken) }
+
+        let settings = createSettings()
+        #expect(settings.huggingFaceToken == "", "Token should start empty when nothing stored")
+
+        settings.huggingFaceToken = "hf_test_token_value"
+        #expect(settings.huggingFaceToken == "hf_test_token_value")
+
+        // Setting an empty string deletes the key from Keychain.
+        settings.huggingFaceToken = ""
+        #expect(settings.huggingFaceToken == "")
+        #expect(!KeychainService.exists(KeychainKey.huggingFaceToken))
+    }
+
     // MARK: - Edge Cases
 
     @Test func loadCloudHotkeyFallsBackToDefaultWhenCorrupted() {

@@ -210,6 +210,21 @@ final class Settings: SettingsStorageProtocol, @unchecked Sendable {
         set { defaults.set(newValue, forKey: Keys.geminiModel) }
     }
 
+    // MARK: - HuggingFace Token
+
+    /// Personal HuggingFace access token (read-only `hf_...`). Used by WhisperKit
+    /// for authenticated model and tokenizer downloads to avoid anon rate limits.
+    var huggingFaceToken: String {
+        get { KeychainService.load(KeychainKey.huggingFaceToken) ?? "" }
+        set {
+            if newValue.isEmpty {
+                KeychainService.delete(KeychainKey.huggingFaceToken)
+            } else {
+                KeychainService.save(KeychainKey.huggingFaceToken, value: newValue)
+            }
+        }
+    }
+
     func loadToggleGeminiHotkey() -> Hotkey? {
         loadHotkey(key: Keys.toggleGeminiHotkey)
     }

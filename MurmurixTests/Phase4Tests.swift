@@ -15,14 +15,16 @@ struct KeychainKeyEnumTests {
 
     @Test func keychainKeyHasAllExpectedCases() {
         let allCases = KeychainKey.allCases
-        #expect(allCases.count == 2)
+        #expect(allCases.count == 3)
         #expect(allCases.contains(.openaiApiKey))
         #expect(allCases.contains(.geminiApiKey))
+        #expect(allCases.contains(.huggingFaceToken))
     }
 
     @Test func keychainKeyRawValuesAreCorrect() {
         #expect(KeychainKey.openaiApiKey.rawValue == "openaiApiKey")
         #expect(KeychainKey.geminiApiKey.rawValue == "geminiApiKey")
+        #expect(KeychainKey.huggingFaceToken.rawValue == "huggingFaceToken")
     }
 
     @Test func keychainKeyIsCaseIterable() {

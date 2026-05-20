@@ -23,6 +23,15 @@ enum L10n {
     static var modelManagement: String { tr("Model Management", "Управление моделями", "Gestión de modelos") }
     static var cloudOpenAI: String { tr("Cloud (OpenAI)", "Облако (OpenAI)", "Nube (OpenAI)") }
     static var cloudGemini: String { tr("Cloud (Gemini)", "Облако (Gemini)", "Nube (Gemini)") }
+    static var huggingFace: String { tr("HuggingFace", "HuggingFace", "HuggingFace") }
+    static var huggingFaceTokenLabel: String { tr("Access token", "Токен доступа", "Token de acceso") }
+    static var huggingFaceTokenHint: String {
+        tr(
+            "Optional. Faster model downloads with a personal hf_... read token.",
+            "Опционально. Ускоряет скачивание моделей через персональный hf_... read-токен.",
+            "Opcional. Acelera la descarga de modelos con un token personal hf_... de lectura."
+        )
+    }
     static var debug: String { tr("Debug", "Отладка", "Depuración") }
 
     // MARK: - Keyboard Shortcuts
