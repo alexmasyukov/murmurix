@@ -107,6 +107,11 @@ enum ModelPaths {
     static let useTempRepoEnv = "MURMURIX_USE_TEMP_MODEL_REPO"
     static let debugRepoRoot = "murmurix-dev-models"
     static let testRepoRoot = "murmurix-test-models"
+    // Production sub-folder under ~/Library/Application Support/
+    // Kept outside ~/Documents because Apple's "iCloud Drive: Desktop & Documents"
+    // virtualizes Documents and blocks reads while the file provider lazily downloads
+    // .mlmodelc bundles, which deadlocks WhisperKit on cold start after reboot.
+    static let releaseRepoRoot = "Murmurix"
     private static let repoSubpathDepth = 3
     private static let xctestConfigurationEnv = "XCTestConfigurationFilePath"
     private static let xctestBundlePathEnv = "XCTestBundlePath"
@@ -114,7 +119,6 @@ enum ModelPaths {
     static var repoDir: URL {
         repoDir(
             for: environment,
-            documentsDirectory: defaultDocumentsDirectory(),
             appSupportDirectory: defaultAppSupportDirectory()
         )
     }
@@ -142,7 +146,6 @@ enum ModelPaths {
 
     static func repoDir(
         for environment: [String: String],
-        documentsDirectory: URL,
         appSupportDirectory: URL
     ) -> URL {
         if let customRepoDir = customRepoDir(from: environment) {
@@ -155,7 +158,9 @@ enum ModelPaths {
                 .appendingPathComponent(repoSubpath)
         }
 
-        return documentsDirectory.appendingPathComponent(repoSubpath)
+        return appSupportDirectory
+            .appendingPathComponent(releaseRepoRoot)
+            .appendingPathComponent(repoSubpath)
     }
 
     private static func customRepoDir(from environment: [String: String]) -> URL? {
@@ -180,11 +185,6 @@ enum ModelPaths {
 
     private static func isRunningTests(environment: [String: String]) -> Bool {
         environment[xctestConfigurationEnv] != nil || environment[xctestBundlePathEnv] != nil
-    }
-
-    private static func defaultDocumentsDirectory() -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
     }
 
     private static func defaultAppSupportDirectory() -> URL {

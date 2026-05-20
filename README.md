@@ -28,8 +28,11 @@ A native macOS menubar app for voice-to-text transcription using local WhisperKi
 ## Whisper Models
 
 Models are downloaded via WhisperKit from Hugging Face and stored by build type:
-- `Debug` / tests: `$(TMPDIR)/murmurix-dev-models/huggingface/models/argmaxinc/whisperkit-coreml/`
-- `Release` (including DMG builds): `~/Documents/huggingface/models/argmaxinc/whisperkit-coreml/`
+- `Debug`: `~/Library/Application Support/murmurix-dev-models/huggingface/models/argmaxinc/whisperkit-coreml/`
+- `Tests`: `~/Library/Application Support/murmurix-test-models/huggingface/models/argmaxinc/whisperkit-coreml/`
+- `Release` (including DMG builds): `~/Library/Application Support/Murmurix/huggingface/models/argmaxinc/whisperkit-coreml/`
+
+> All paths live under `Application Support`, never under `~/Documents`. macOS iCloud Drive's "Desktop & Documents" sync virtualizes `~/Documents`, which blocks WhisperKit reads on cold start after reboot. `Application Support` is excluded from iCloud by Apple's own design.
 
 | Model | Size | Speed | Quality |
 |-------|------|-------|---------|
@@ -118,8 +121,9 @@ Delete all downloaded models at once.
 | API Keys | macOS Keychain | Persistent, encrypted |
 | History | `~/Library/Application Support/Murmurix/history.sqlite` | Persistent |
 | Audio files | `/tmp/` | Deleted after transcription |
-| WhisperKit models (Debug/tests) | `$(TMPDIR)/murmurix-dev-models/huggingface/models/argmaxinc/whisperkit-coreml/` | Isolated from production |
-| WhisperKit models (Release/DMG) | `~/Documents/huggingface/models/argmaxinc/whisperkit-coreml/` | Persistent |
+| WhisperKit models (Debug) | `~/Library/Application Support/murmurix-dev-models/huggingface/models/argmaxinc/whisperkit-coreml/` | Isolated from production |
+| WhisperKit models (Tests) | `~/Library/Application Support/murmurix-test-models/huggingface/models/argmaxinc/whisperkit-coreml/` | Isolated from production |
+| WhisperKit models (Release/DMG) | `~/Library/Application Support/Murmurix/huggingface/models/argmaxinc/whisperkit-coreml/` | Persistent, iCloud-safe |
 
 ### External Database Access
 

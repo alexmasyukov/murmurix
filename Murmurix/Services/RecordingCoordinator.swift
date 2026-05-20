@@ -219,9 +219,17 @@ final class RecordingCoordinator {
     // MARK: - Model Control
 
     func loadModelsIfNeeded() {
-        let modelSettings = settings.loadWhisperModelSettings()
-        for (modelName, ms) in modelSettings where ms.keepLoaded {
-            Task {
+        let modelsToLoad = settings.loadWhisperModelSettings()
+            .compactMap { $1.keepLoaded ? $0 : nil }
+            .sorted()
+
+        guard !modelsToLoad.isEmpty else { return }
+
+        // Sequential, not parallel — concurrent CoreML loads on a cold ANE
+        // serialize internally and can lock each other up after reboot.
+        Task { [weak self] in
+            guard let self else { return }
+            for modelName in modelsToLoad {
                 await self.loadModelWithLogging(name: modelName, action: "load")
             }
         }

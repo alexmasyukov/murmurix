@@ -185,6 +185,42 @@ enum L10n {
         case .medium: return "~800 MB"
         case .largeV2: return tr("~2.5 GB", "~2,5 ГБ", "~2,5 GB")
         case .largeV3: return tr("Best quality, ~2.5 GB", "Лучшее качество, ~2,5 ГБ", "Mejor calidad, ~2,5 GB")
+        case .largeV2Turbo:
+            return tr(
+                "Turbo: faster decoder, similar quality",
+                "Turbo: быстрый декодер, качество близко",
+                "Turbo: decodificador más rápido, calidad similar"
+            )
+        case .largeV2TurboCompressed:
+            return tr(
+                "Turbo, quantized ~955 MB",
+                "Turbo, квантизованная ~955 МБ",
+                "Turbo, cuantizada ~955 MB"
+            )
+        case .largeV3Turbo:
+            return tr(
+                "Turbo: faster decoder, top quality",
+                "Turbo: быстрый декодер, лучшее качество",
+                "Turbo: decodificador más rápido, máxima calidad"
+            )
+        case .largeV3TurboCompressed:
+            return tr(
+                "Turbo, quantized ~954 MB",
+                "Turbo, квантизованная ~954 МБ",
+                "Turbo, cuantizada ~954 MB"
+            )
+        case .largeV3TurboV20240930:
+            return tr(
+                "Newest turbo (2024-09-30)",
+                "Новейшая turbo (2024-09-30)",
+                "Turbo más reciente (2024-09-30)"
+            )
+        case .largeV3TurboV20240930Compressed:
+            return tr(
+                "Newest turbo, quantized ~632 MB",
+                "Новейшая turbo, квантизованная ~632 МБ",
+                "Turbo más reciente, cuantizada ~632 MB"
+            )
         }
     }
 }

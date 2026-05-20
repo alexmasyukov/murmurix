@@ -332,7 +332,7 @@ final class GeneralSettingsViewModel: ObservableObject {
         )
     }
 
-    private func runModelOperationWithTimeout<T>(
+    private func runModelOperationWithTimeout<T: Sendable>(
         _ operationName: String,
         timeout overrideTimeout: TimeInterval? = nil,
         operation: @escaping @Sendable () async throws -> T
@@ -341,21 +341,62 @@ final class GeneralSettingsViewModel: ObservableObject {
         let timeoutNanoseconds = UInt64(timeout * 1_000_000_000)
         Logger.Model.debug("Starting model operation with timeout \(timeout)s: \(operationName)")
 
-        return try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask {
-                try await operation()
-            }
-            group.addTask {
-                try await Task.sleep(nanoseconds: timeoutNanoseconds)
-                Logger.Model.error("Model operation timed out after \(timeout)s: \(operationName)")
-                throw MurmurixError.transcription(.timeout)
-            }
+        // structured TaskGroup blocks until *all* children finish — but
+        // WhisperKit's CoreML init does not honor Task cancellation, so a hung
+        // load would wedge the group forever. Race two detached Tasks via a
+        // single-resume continuation: whichever finishes first wins, the loser
+        // keeps running in the background but the caller is already unblocked.
+        let state = TimeoutRaceState<T>()
 
-            defer { group.cancelAll() }
+        Task.detached(priority: .userInitiated) {
+            do {
+                let value = try await operation()
+                state.tryComplete(.success(value))
+            } catch {
+                state.tryComplete(.failure(error))
+            }
+        }
 
-            let result = try await group.next()!
-            Logger.Model.debug("Completed model operation: \(operationName)")
-            return result
+        Task.detached {
+            try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+            Logger.Model.error("Model operation timed out after \(timeout)s: \(operationName)")
+            state.tryComplete(.failure(MurmurixError.transcription(.timeout)))
+        }
+
+        let result = try await state.waitForResult()
+        Logger.Model.debug("Completed model operation: \(operationName)")
+        return result
+    }
+}
+
+private final class TimeoutRaceState<T: Sendable>: @unchecked Sendable {
+    private var settled: Result<T, Error>?
+    private var continuation: CheckedContinuation<T, Error>?
+    private let lock = NSLock()
+
+    func tryComplete(_ result: Result<T, Error>) {
+        let continuationToResume: CheckedContinuation<T, Error>? = lock.withLock {
+            guard settled == nil else { return nil }
+            settled = result
+            let pending = continuation
+            continuation = nil
+            return pending
+        }
+        continuationToResume?.resume(with: result)
+    }
+
+    func waitForResult() async throws -> T {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<T, Error>) in
+            let alreadySettled: Result<T, Error>? = lock.withLock {
+                if let settled = settled {
+                    return settled
+                }
+                continuation = cont
+                return nil
+            }
+            if let alreadySettled = alreadySettled {
+                cont.resume(with: alreadySettled)
+            }
         }
     }
 }

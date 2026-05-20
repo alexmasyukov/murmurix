@@ -18,6 +18,7 @@ protocol WhisperKitServiceProtocol: AnyObject, Sendable {
 
 final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     private var pipelines: [String: WhisperKit] = [:]
+    private var loadingTasks: [String: Task<Void, Error>] = [:]
     private let lock = NSLock()
 
     func isModelLoaded(name: String) -> Bool {
@@ -33,7 +34,34 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     }
 
     func loadModel(name: String) async throws {
-        guard !isModelLoaded(name: name) else { return }
+        if isModelLoaded(name: name) { return }
+
+        // Reuse an in-flight Task if one is already loading the same model.
+        // Without this, concurrent callers (e.g. keep-loaded prewarm + a Test
+        // button press) each kick off their own WhisperKit(config), which
+        // serializes badly on a cold ANE and can deadlock after a reboot.
+        let task: Task<Void, Error> = lock.withLock {
+            if let existing = loadingTasks[name] {
+                Logger.Model.debug("Joining in-flight load for model: \(name)")
+                return existing
+            }
+            let newTask = Task { [weak self] () -> Void in
+                guard let self = self else { return }
+                try await self.performLoad(name: name)
+            }
+            loadingTasks[name] = newTask
+            return newTask
+        }
+
+        try await task.value
+    }
+
+    private func performLoad(name: String) async throws {
+        defer {
+            lock.withLock { _ = loadingTasks.removeValue(forKey: name) }
+        }
+
+        if isModelLoaded(name: name) { return }
 
         guard WhisperModel(rawValue: name)?.isInstalled == true else {
             throw MurmurixError.model(.notFound(name))

@@ -245,11 +245,11 @@ struct AppConstantsTests {
                 #expect(repoDir.path.contains(expectedTempRepoRoot(for: environment)))
                 #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
             } else {
-                #expect(repoDir.path.contains("Documents"))
+                #expect(repoDir.path.contains("Library/Application Support/\(ModelPaths.releaseRepoRoot)"))
                 #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
             }
 #else
-            #expect(repoDir.path.contains("Documents"))
+            #expect(repoDir.path.contains("Library/Application Support/\(ModelPaths.releaseRepoRoot)"))
             #expect(repoDir.path.contains("huggingface/models/argmaxinc/whisperkit-coreml"))
 #endif
         }
@@ -273,7 +273,6 @@ struct AppConstantsTests {
     }
 
     @Test func modelPathsCustomRepoHasHighestPriority() {
-        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
         let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
         let customPath = "/custom/models/repo"
 
@@ -282,7 +281,6 @@ struct AppConstantsTests {
                 ModelPaths.customRepoDirEnv: customPath,
                 ModelPaths.useTempRepoEnv: "1"
             ],
-            documentsDirectory: documentsDirectory,
             appSupportDirectory: appSupportDirectory
         )
 
@@ -290,12 +288,10 @@ struct AppConstantsTests {
     }
 
     @Test func modelPathsTempRepoCanBeForcedByEnvironment() {
-        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
         let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
 
         let repoDir = ModelPaths.repoDir(
             for: [ModelPaths.useTempRepoEnv: "1"],
-            documentsDirectory: documentsDirectory,
             appSupportDirectory: appSupportDirectory
         )
 
@@ -305,7 +301,6 @@ struct AppConstantsTests {
     }
 
     @Test func modelPathsUseDedicatedTestRootWhenXCTestEnvironmentIsPresent() {
-        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
         let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
 
         let repoDir = ModelPaths.repoDir(
@@ -313,7 +308,6 @@ struct AppConstantsTests {
                 ModelPaths.useTempRepoEnv: "1",
                 "XCTestConfigurationFilePath": "/tmp/session.xctestconfiguration"
             ],
-            documentsDirectory: documentsDirectory,
             appSupportDirectory: appSupportDirectory
         )
 
@@ -321,18 +315,23 @@ struct AppConstantsTests {
         #expect(repoDir.path.contains(ModelPaths.repoSubpath))
     }
 
-    @Test func modelPathsEnvZeroDisablesTempRepo() {
-        let documentsDirectory = URL(fileURLWithPath: "/Users/test/Documents")
+    @Test func modelPathsEnvZeroFallsBackToReleaseAppSupport() {
         let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
 
         let repoDir = ModelPaths.repoDir(
             for: [ModelPaths.useTempRepoEnv: "0"],
-            documentsDirectory: documentsDirectory,
             appSupportDirectory: appSupportDirectory
         )
 
-        #expect(repoDir.path.hasPrefix("/Users/test/Documents"))
+        #expect(repoDir.path.hasPrefix("/Users/test/Library/Application Support"))
+        #expect(repoDir.path.contains(ModelPaths.releaseRepoRoot))
         #expect(repoDir.path.contains(ModelPaths.repoSubpath))
+    }
+
+    @Test func modelPathsReleaseRepoRootIsNotDocuments() {
+        // Sanity check — Application Support must never alias under ~/Documents.
+        #expect(!ModelPaths.releaseRepoRoot.contains("Documents"))
+        #expect(ModelPaths.releaseRepoRoot == "Murmurix")
     }
 }
 
@@ -467,13 +466,19 @@ struct WhisperModelTests {
     @Test func allCasesContainsAllModels() {
         let allCases = WhisperModel.allCases
 
-        #expect(allCases.count == 6)
+        #expect(allCases.count == 12)
         #expect(allCases.contains(.tiny))
         #expect(allCases.contains(.base))
         #expect(allCases.contains(.small))
         #expect(allCases.contains(.medium))
         #expect(allCases.contains(.largeV2))
         #expect(allCases.contains(.largeV3))
+        #expect(allCases.contains(.largeV2Turbo))
+        #expect(allCases.contains(.largeV2TurboCompressed))
+        #expect(allCases.contains(.largeV3Turbo))
+        #expect(allCases.contains(.largeV3TurboCompressed))
+        #expect(allCases.contains(.largeV3TurboV20240930))
+        #expect(allCases.contains(.largeV3TurboV20240930Compressed))
     }
 
     @Test func displayNamesAreNotEmpty() {
