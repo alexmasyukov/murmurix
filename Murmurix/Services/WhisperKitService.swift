@@ -70,10 +70,17 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         Logger.Model.info("Loading WhisperKit model: \(name)")
 
         let modelFolder = ModelPaths.modelDir(for: name).path
+        // swift-transformers (used internally by WhisperKit) caches the
+        // tokenizer from openai/whisper-* under HubApi's default base, which
+        // resolves to ~/Documents/huggingface/. We redirect it to the same
+        // Application Support tree so nothing app-managed lands in Documents.
+        let tokenizerFolder = ModelPaths.downloadBaseDir
         Logger.Model.debug("WhisperKit load path for \(name): \(modelFolder)")
+        Logger.Model.debug("WhisperKit tokenizer base for \(name): \(tokenizerFolder.path)")
 
         let config = WhisperKitConfig(
             modelFolder: modelFolder,
+            tokenizerFolder: tokenizerFolder,
             verbose: false,
             logLevel: .error,
             download: false
