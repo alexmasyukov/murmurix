@@ -84,7 +84,20 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
             audioRecorder = try AVAudioRecorder(url: fileURL, settings: settings)
             audioRecorder?.delegate = self
             audioRecorder?.isMeteringEnabled = true
-            audioRecorder?.record()
+            // AVAudioRecorder.record() returns false when AVFoundation cannot
+            // open the input stream — most often this happens when TCC says
+            // the app is allowed but the underlying audio plumbing is stale
+            // after the .app bundle was replaced in /Applications/. Symptom:
+            // mic indicator never appears and meter values stay at zero.
+            // Without checking the return value we'd happily log "Recording
+            // started" and the user would see no waveform with no error.
+            let started = audioRecorder?.record() ?? false
+            guard started else {
+                Logger.Audio.error("AVAudioRecorder.record() returned false — TCC state may be stale. Reset Microphone for Murmurix in System Settings.")
+                audioRecorder = nil
+                currentRecordingURL = nil
+                return
+            }
             isRecording = true
             hadVoiceActivity = false  // Reset voice activity flag
 
