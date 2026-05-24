@@ -68,6 +68,19 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
             callback: { (proxy, type, event, refcon) -> Unmanaged<CGEvent>? in
                 guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
                 let manager = Unmanaged<GlobalHotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
+
+                // macOS silently disables an event tap if the callback ever
+                // takes too long, on heavy system load, or after sleep/wake.
+                // The disable arrives as a special event type and is delivered
+                // regardless of eventsOfInterest. Re-enable the tap so the
+                // hotkeys keep working — otherwise the user has to relaunch
+                // the app to get them back.
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    Logger.Hotkey.error("Event tap disabled by system (\(type.rawValue)), re-enabling")
+                    manager.reenableTap()
+                    return Unmanaged.passUnretained(event)
+                }
+
                 return manager.handleEvent(proxy: proxy, type: type, event: event)
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()
@@ -83,6 +96,13 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
         CGEvent.tapEnable(tap: tap, enable: true)
 
         Logger.Hotkey.info("GlobalHotkeyManager started")
+    }
+
+    /// Re-enables the event tap from inside the callback after macOS disables
+    /// it (tapDisabledByTimeout / tapDisabledByUserInput).
+    fileprivate func reenableTap() {
+        guard let tap = eventTap else { return }
+        CGEvent.tapEnable(tap: tap, enable: true)
     }
 
     func stop() {
