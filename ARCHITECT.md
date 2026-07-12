@@ -96,11 +96,13 @@ Murmurix/
     +-- AudioCompressor.swift    # WAV to M4A (AAC)
     +-- TranscriptionService.swift # Routes to WhisperKit/OpenAI/Gemini
     +-- WhisperKitService.swift  # Native CoreML inference
+    +-- SilenceTrimmer.swift     # Trims edge silence via EnergyVAD (anti-hallucination)
+    +-- HallucinationFilter.swift # Strips memorized subtitle filler from results
     +-- OpenAITranscriptionService.swift
     +-- GeminiTranscriptionService.swift
     +-- RecordingCoordinator.swift # Recording state machine
     +-- GlobalHotkeyManager.swift # CGEvent tap for shortcuts
-    +-- TextPaster.swift         # Clipboard + paste
+    +-- TextPaster.swift         # Clipboard-safe paste (snapshot + restore)
     +-- Repository.swift         # SQLiteDatabase + Repository
     +-- HistoryService.swift     # Delegates to Repository
     +-- KeychainService.swift    # Secure key storage
@@ -108,7 +110,7 @@ Murmurix/
     +-- MIMETypeResolver.swift   # Audio MIME types
 ```
 
-**57 Swift files, ~6000 lines of production code**
+**64 Swift files, ~6300 lines of production code**
 
 ## Localization
 
@@ -123,14 +125,34 @@ Enum-based `L10n.swift` with `tr(en, ru, es)` helper. No .lproj/.strings files.
 ### WhisperKitService
 Native CoreML speech recognition via WhisperKit.
 
-- `loadModel(name:)` — Load a CoreML model from `ModelPaths`:
-  - `Debug`/tests: `$(TMPDIR)/murmurix-dev-models/huggingface/...`
-  - `Release`: `~/Documents/huggingface/...`
+- `loadModel(name:)` — Load a CoreML model from `ModelPaths`. Prod and dev keep
+  **separate** directories (all under Application Support) so local development
+  and tests never touch the shipped production models; the dev repo is meant to
+  mirror the prod folder's model set. Selection is controlled by
+  `MURMURIX_USE_TEMP_MODEL_REPO` (`#if DEBUG` defaults to the dev repo unless set
+  to `0`), or overridden entirely with `MURMURIX_MODEL_REPO_DIR`:
+  - `Release`: `~/Library/Application Support/Murmurix/huggingface/...`
+  - `Debug` (dev repo): `~/Library/Application Support/murmurix-dev-models/huggingface/...`
+  - Tests: `~/Library/Application Support/murmurix-test-models/huggingface/...`
 - `unloadModel()` — Free memory
-- `transcribe(audioURL:language:)` — Run inference
+- `transcribe(audioURL:language:)` — Loads audio, trims edge silence via
+  `SilenceTrimmer`, then runs inference (falls back to file path on error)
 - `downloadModel(_:progress:)` — Download from Hugging Face
 
 Thread-safe with NSLock. Singleton with DI override via `WhisperKitServiceProtocol`.
+
+### SilenceTrimmer / HallucinationFilter
+Two layers that suppress Whisper's trailing-silence hallucinations (memorized
+YouTube-subtitle filler like "Продолжение следует...", "Спасибо за просмотр").
+WhisperKit's built-in VAD chunker only runs on audio longer than 30s, so short
+dictations reach the decoder whole — silent tail included.
+
+- `SilenceTrimmer.trim(_:)` — loads the recording into a 16kHz buffer and trims
+  leading/trailing silence via `EnergyVAD` before decoding, keeping internal
+  pauses and 0.2s edge padding. Applied to every local transcription.
+- `HallucinationFilter.clean(_:)` — deterministically strips known filler
+  phrases from the tail of the result. Local (WhisperKit) mode only — cloud
+  providers steer output with their own prompts and don't exhibit this.
 
 ### TranscriptionService
 Routes transcription requests based on mode:

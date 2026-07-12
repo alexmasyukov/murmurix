@@ -2,7 +2,7 @@
 
 A native macOS menubar app for voice-to-text transcription using local WhisperKit (CoreML), OpenAI, or Google Gemini.
 
-**Version 4.1.2** | 57 production files | 298 tests | Pure Swift, no Python
+**Version 4.3.0** | 64 production files | 388 tests | Pure Swift, no Python
 
 ## Features
 
@@ -13,7 +13,9 @@ A native macOS menubar app for voice-to-text transcription using local WhisperKi
 - **In-App Model Management** — Download, test, and delete Whisper models from Settings
 - **Keep Model Loaded** — Instant transcription by keeping WhisperKit in memory
 - **Voice Activity Detection** — Skips transcription if no voice detected
+- **Anti-Hallucination** — Trims leading/trailing silence before inference and filters memorized subtitle filler ("Продолжение следует...") that Whisper invents on silent tails
 - **Smart Text Insertion** — Pastes directly into focused text fields
+- **Clipboard-Safe Paste** — Snapshots and restores your original clipboard (text, images, files — any type) after inserting the result
 - **Animated UI** — Lottie cat animation during transcription, voice-reactive equalizer
 - **Transcription History** — SQLite database with statistics
 - **Multilingual Interface** — English, Russian, Spanish (switchable in Settings)
@@ -144,7 +146,7 @@ CREATE TABLE transcriptions (
 
 ## Testing
 
-298 tests using Apple's Swift Testing framework:
+388 tests using Apple's Swift Testing framework:
 
 ```bash
 xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=macOS' test
