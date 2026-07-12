@@ -71,7 +71,18 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
 
         case .local(let model):
             Logger.Transcription.info("Local mode (WhisperKit), model=\(model)")
-            return try await transcribeViaWhisperKit(audioURL: audioURL, language: language, model: model)
+            let raw = try await transcribeViaWhisperKit(audioURL: audioURL, language: language, model: model)
+
+            // Strip memorized subtitle-filler hallucinations ("Продолжение следует...",
+            // "Спасибо за просмотр") that Whisper appends over trailing silence. Its
+            // confidence/compression thresholds don't catch these, so this deterministic
+            // pass is the reliable backstop. Local (WhisperKit) only — the cloud
+            // providers steer output with their own prompts and don't need it.
+            let cleaned = HallucinationFilter.clean(raw)
+            if cleaned != raw {
+                Logger.Transcription.info("Hallucination filter trimmed trailing filler phrase(s)")
+            }
+            return cleaned.isEmpty ? "(no speech detected)" : cleaned
         }
     }
 

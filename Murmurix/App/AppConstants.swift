@@ -71,6 +71,9 @@ enum AudioConfig {
     static let voiceActivityThreshold: Float = 0.33
     static let meterUpdateInterval: TimeInterval = 0.05
     static let sampleRate: Double = 16000.0
+    /// Sample rate WhisperKit resamples every input to. Used when trimming silence
+    /// off the loaded float buffer so frame math lines up with the decoder.
+    static let whisperSampleRate: Int = 16000
 }
 
 // MARK: - Window Sizes

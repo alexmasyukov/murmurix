@@ -170,16 +170,36 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         options.suppressBlank = true
         options.chunkingStrategy = .vad
 
-        let results = try await pipe.transcribe(
-            audioPath: audioURL.path,
-            decodeOptions: options
-        )
+        let results = try await transcribeTrimmed(pipe: pipe, audioURL: audioURL, options: options)
 
         let text = results.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         return text.isEmpty ? "(no speech detected)" : text
+    }
+
+    /// Loads the recording into a 16 kHz float buffer, trims the leading/trailing
+    /// silence (WhisperKit's own VAD chunker skips clips shorter than 30s, so the
+    /// silent tail is what makes Whisper hallucinate filler phrases), and decodes the
+    /// trimmed buffer. On any failure loading/trimming, falls back to decoding the file
+    /// directly so a hiccup in the trim path never blocks transcription.
+    private func transcribeTrimmed(
+        pipe: WhisperKit,
+        audioURL: URL,
+        options: DecodingOptions
+    ) async throws -> [TranscriptionResult] {
+        do {
+            let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audioURL.path)
+            let trimmed = SilenceTrimmer.trim(samples, sampleRate: AudioConfig.whisperSampleRate)
+            Logger.Transcription.debug(
+                "Silence trim: \(samples.count) -> \(trimmed.count) samples (\(String(format: "%.1f", Double(samples.count - trimmed.count) / Double(AudioConfig.whisperSampleRate)))s removed)"
+            )
+            return try await pipe.transcribe(audioArray: trimmed, decodeOptions: options)
+        } catch {
+            Logger.Transcription.error("Silence-trim path failed, decoding file directly: \(error.localizedDescription)")
+            return try await pipe.transcribe(audioPath: audioURL.path, decodeOptions: options)
+        }
     }
 
     func downloadModel(_ name: String, progress: @escaping @Sendable (Double) -> Void) async throws {
