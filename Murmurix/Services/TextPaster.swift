@@ -333,9 +333,13 @@ final class TextPaster {
 
     /// Paste text by putting it in clipboard and simulating Cmd+V
     static func paste(_ text: String) {
-        // Save current clipboard content
         let pasteboard = NSPasteboard.general
-        let previousContents = pasteboard.string(forType: .string)
+
+        // Snapshot the FULL clipboard (every item and every representation) before we
+        // overwrite it — text, images, files, RTF, HTML, whatever the user had there.
+        // The old code only saved `.string`, so any non-text content (or an empty
+        // clipboard) was silently destroyed by our paste.
+        let previousItems = capturePasteboard(pasteboard)
 
         // Put new text in clipboard
         setPasteboardString(text, on: pasteboard)
@@ -345,12 +349,41 @@ final class TextPaster {
             // Simulate Cmd+V
             simulatePaste()
 
-            // Optionally restore previous clipboard after a delay
-            if let previous = previousContents {
-                scheduleMain(after: clipboardRestoreDelay) {
-                    setPasteboardString(previous, on: pasteboard)
+            // Restore the original clipboard after the paste has been consumed.
+            scheduleMain(after: clipboardRestoreDelay) {
+                restorePasteboard(previousItems, on: pasteboard)
+            }
+        }
+    }
+
+    /// Captures a deep copy of every pasteboard item so it survives `clearContents()`.
+    /// Returns fresh `NSPasteboardItem`s (the originals are invalidated once the
+    /// pasteboard is cleared), each carrying all data representations we could read.
+    /// Internal (not private) so it can be exercised on a scratch pasteboard in tests.
+    static func capturePasteboard(_ pasteboard: NSPasteboard) -> [NSPasteboardItem] {
+        guard let items = pasteboard.pasteboardItems else { return [] }
+        return items.compactMap { item in
+            let copy = NSPasteboardItem()
+            var copiedAny = false
+            for type in item.types {
+                // data(forType:) forces lazy providers to materialize their bytes.
+                if let data = item.data(forType: type) {
+                    copy.setData(data, forType: type)
+                    copiedAny = true
                 }
             }
+            return copiedAny ? copy : nil
+        }
+    }
+
+    /// Restores a previously captured clipboard snapshot, replacing whatever we put
+    /// there. An empty snapshot means the clipboard was originally empty (or held only
+    /// unreadable content) — clearing is the faithful restore in that case.
+    /// Internal (not private) so it can be exercised on a scratch pasteboard in tests.
+    static func restorePasteboard(_ items: [NSPasteboardItem], on pasteboard: NSPasteboard) {
+        pasteboard.clearContents()
+        if !items.isEmpty {
+            pasteboard.writeObjects(items)
         }
     }
 
