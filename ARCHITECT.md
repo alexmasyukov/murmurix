@@ -132,8 +132,7 @@ Native CoreML speech recognition via WhisperKit.
   `MURMURIX_USE_TEMP_MODEL_REPO` (`#if DEBUG` defaults to the dev repo unless set
   to `0`), or overridden entirely with `MURMURIX_MODEL_REPO_DIR`:
   - `Release`: `~/Library/Application Support/Murmurix/huggingface/...`
-  - `Debug` (dev repo): `~/Library/Application Support/murmurix-dev-models/huggingface/...`
-  - Tests: `~/Library/Application Support/murmurix-test-models/huggingface/...`
+  - `Debug` + Tests (shared dev repo): `~/Library/Application Support/murmurix-dev-models/huggingface/...`
 - `unloadModel()` — Free memory
 - `transcribe(audioURL:language:)` — Loads audio, trims edge silence via
   `SilenceTrimmer`, then runs inference (falls back to file path on error)

@@ -108,16 +108,16 @@ enum ModelPaths {
     static let repoSubpath = "huggingface/models/argmaxinc/whisperkit-coreml"
     static let customRepoDirEnv = "MURMURIX_MODEL_REPO_DIR"
     static let useTempRepoEnv = "MURMURIX_USE_TEMP_MODEL_REPO"
+    // Debug and tests share ONE non-production repo so tests see the same model set
+    // developers work with locally. Kept separate from the prod folder below so local
+    // work never touches the shipped models.
     static let debugRepoRoot = "murmurix-dev-models"
-    static let testRepoRoot = "murmurix-test-models"
     // Production sub-folder under ~/Library/Application Support/
     // Kept outside ~/Documents because Apple's "iCloud Drive: Desktop & Documents"
     // virtualizes Documents and blocks reads while the file provider lazily downloads
     // .mlmodelc bundles, which deadlocks WhisperKit on cold start after reboot.
     static let releaseRepoRoot = "Murmurix"
     private static let repoSubpathDepth = 3
-    private static let xctestConfigurationEnv = "XCTestConfigurationFilePath"
-    private static let xctestBundlePathEnv = "XCTestBundlePath"
 
     static var repoDir: URL {
         repoDir(
@@ -157,7 +157,7 @@ enum ModelPaths {
 
         if shouldUseTempRepo(environment: environment) {
             return appSupportDirectory
-                .appendingPathComponent(tempRepoRoot(for: environment))
+                .appendingPathComponent(debugRepoRoot)
                 .appendingPathComponent(repoSubpath)
         }
 
@@ -180,14 +180,6 @@ enum ModelPaths {
 #else
         return false
 #endif
-    }
-
-    private static func tempRepoRoot(for environment: [String: String]) -> String {
-        isRunningTests(environment: environment) ? testRepoRoot : debugRepoRoot
-    }
-
-    private static func isRunningTests(environment: [String: String]) -> Bool {
-        environment[xctestConfigurationEnv] != nil || environment[xctestBundlePathEnv] != nil
     }
 
     private static func defaultAppSupportDirectory() -> URL {

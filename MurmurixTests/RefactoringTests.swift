@@ -118,10 +118,8 @@ struct MurmurixErrorTests {
 
 struct AppConstantsTests {
     private func expectedTempRepoRoot(for environment: [String: String]) -> String {
-        if environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil {
-            return ModelPaths.testRepoRoot
-        }
-        return ModelPaths.debugRepoRoot
+        // Debug and tests share one non-production repo.
+        ModelPaths.debugRepoRoot
     }
 
     // MARK: - Layout
@@ -300,7 +298,9 @@ struct AppConstantsTests {
         #expect(repoDir.path.contains(ModelPaths.repoSubpath))
     }
 
-    @Test func modelPathsUseDedicatedTestRootWhenXCTestEnvironmentIsPresent() {
+    @Test func modelPathsUseSharedDevRootUnderXCTestEnvironment() {
+        // Debug and tests share one non-production repo (murmurix-dev-models), so an
+        // XCTest environment resolves to the same dev root, not a separate test root.
         let appSupportDirectory = URL(fileURLWithPath: "/Users/test/Library/Application Support")
 
         let repoDir = ModelPaths.repoDir(
@@ -311,7 +311,7 @@ struct AppConstantsTests {
             appSupportDirectory: appSupportDirectory
         )
 
-        #expect(repoDir.path.contains(ModelPaths.testRepoRoot))
+        #expect(repoDir.path.contains(ModelPaths.debugRepoRoot))
         #expect(repoDir.path.contains(ModelPaths.repoSubpath))
     }
 
