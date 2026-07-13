@@ -136,12 +136,20 @@ class GlobalHotkeyManager: HotkeyManagerProtocol {
         let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
         let carbonModifiers = Self.carbonModifiers(from: event.flags)
 
-        if let matchedAction = matchedHotkeyAction(for: keyCode, modifiers: carbonModifiers) {
-            dispatchMatchedHotkey(matchedAction)
-            return nil
+        guard let matchedAction = matchedHotkeyAction(for: keyCode, modifiers: carbonModifiers) else {
+            return Unmanaged.passUnretained(event)
         }
 
-        return Unmanaged.passUnretained(event)
+        // Swallow the matched hotkey event either way, but only ACT on the initial
+        // press. macOS delivers repeated keyDowns while a key is held (auto-repeat);
+        // without this guard, holding the hotkey a moment too long fires the toggle
+        // several times — recording starts, immediately stops, maybe starts again —
+        // which shows up as the mic icon flickering and a delayed/duplicated start.
+        let isAutoRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+        if !isAutoRepeat {
+            dispatchMatchedHotkey(matchedAction)
+        }
+        return nil
     }
 
     private func requestAccessibilityPermissions() {
