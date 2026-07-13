@@ -2,7 +2,7 @@
 
 A native macOS menubar app for voice-to-text transcription using local WhisperKit (CoreML), OpenAI, or Google Gemini.
 
-**Version 4.3.3** | 64 production files | 391 tests | Pure Swift, no Python
+**Version 4.4.0** | 66 production files | 403 tests | Pure Swift, no Python
 
 ## Features
 
@@ -16,6 +16,7 @@ A native macOS menubar app for voice-to-text transcription using local WhisperKi
 - **Anti-Hallucination** — Trims leading/trailing silence before inference and filters memorized subtitle filler ("Продолжение следует...") that Whisper invents on silent tails
 - **Smart Text Insertion** — Pastes directly into focused text fields
 - **Clipboard-Safe Paste** — Snapshots and restores your original clipboard (text, images, files — any type) after inserting the result
+- **Local HTTP API** — Other apps can POST audio to `127.0.0.1` and get a transcription back, reusing the in-memory models and full pipeline (see below)
 - **Animated UI** — Lottie cat animation during transcription, voice-reactive equalizer
 - **Transcription History** — SQLite database with statistics
 - **Multilingual Interface** — English, Russian, Spanish (switchable in Settings)
@@ -163,6 +164,36 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=m
 | MurmurixTests | 25 | HistoryViewModel, ResultWindowController |
 | NewFunctionalityTests | 69 | Model management, timer, migration, enums |
 | IntegrationTests | 3 | End-to-end tests |
+
+## Local HTTP API
+
+Enable **Settings → API → Local API server** to let other apps transcribe audio through Murmurix, reusing the models it already keeps in memory instead of each app loading its own copy. The server binds to `127.0.0.1` only (loopback). Default port `51789` (configurable in Settings).
+
+Audio is decoded to a 16 kHz mono buffer **in memory** — nothing is written to disk. Requests are queued and processed one at a time (the Apple Neural Engine is a shared resource). The same pipeline as recording applies: edge-silence trimming and the hallucination filter.
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/health` | Liveness check → `{"status":"ok","app":"Murmurix"}` |
+| `GET`  | `/v1/models` | Installed and loaded models → `{"installed":[...],"loaded":[...]}` |
+| `POST` | `/v1/transcribe?model=<name>&language=<ru\|en\|auto>` | Transcribe the request body → `{"text":"..."}` |
+
+`POST /v1/transcribe` takes the audio as the **raw request body**: a WAV (PCM 16-bit or Float32, any sample rate / channel count — down-mixed and resampled to 16 kHz mono), or raw Float32 mono @ 16 kHz. `model` is required (a model name as shown in `/v1/models`); `language` defaults to `auto`.
+
+### Example
+
+```bash
+# List available models
+curl http://127.0.0.1:51789/v1/models
+
+# Transcribe a WAV file
+curl -X POST "http://127.0.0.1:51789/v1/transcribe?model=large-v3-v20240930_turbo_632MB&language=ru" \
+  --data-binary @recording.wav -H "Content-Type: audio/wav"
+# → {"text":"..."}
+```
+
+Errors return JSON `{"error":"..."}` with status `400` (bad request — e.g. missing `model` or undecodable audio) or `500` (transcription failure).
 
 ## Release Build (DMG)
 

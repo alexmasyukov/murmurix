@@ -102,6 +102,8 @@ Murmurix/
     +-- GeminiTranscriptionService.swift
     +-- RecordingCoordinator.swift # Recording state machine
     +-- GlobalHotkeyManager.swift # CGEvent tap for shortcuts
+    +-- APIServer.swift          # Local HTTP API (Swifter) + SerialTranscriber queue
+    +-- AudioDecoder.swift       # In-memory WAV/PCM -> 16 kHz mono float
     +-- TextPaster.swift         # Clipboard-safe paste (snapshot + restore)
     +-- Repository.swift         # SQLiteDatabase + Repository
     +-- HistoryService.swift     # Delegates to Repository
@@ -110,7 +112,7 @@ Murmurix/
     +-- MIMETypeResolver.swift   # Audio MIME types
 ```
 
-**64 Swift files, ~6300 lines of production code**
+**66 Swift files, ~6700 lines of production code**
 
 ## Localization
 
@@ -154,6 +156,21 @@ dictations reach the decoder whole — silent tail included.
 - `HallucinationFilter.clean(_:)` — deterministically strips known filler
   phrases from the tail of the result. Local (WhisperKit) mode only — cloud
   providers steer output with their own prompts and don't exhibit this.
+
+### APIServer / AudioDecoder
+Optional local HTTP API (Swifter) so other apps reuse Murmurix's in-memory
+models instead of loading their own. Bound to `127.0.0.1` only; toggle + port in
+Settings (default 51789). Started/stopped from `AppDelegate` via
+`apiServerSettingsDidChange`.
+
+- Routes: `GET /health`, `GET /v1/models`,
+  `POST /v1/transcribe?model=&language=` with audio as the request body.
+- `AudioDecoder` turns the body (WAV PCM16/Float32 or raw Float32) into a 16 kHz
+  mono buffer **in memory** — API requests never touch disk.
+- `SerialTranscriber` (actor) serializes requests into a queue so concurrent
+  callers don't fight over the ANE.
+- Handlers call `TranscriptionService.transcribe(samples:)`, the in-memory path
+  shared with the file/mic route (same trim + hallucination filter).
 
 ### TranscriptionService
 Routes transcription requests based on mode:
