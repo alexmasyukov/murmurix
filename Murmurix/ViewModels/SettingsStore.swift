@@ -48,6 +48,22 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var apiServerEnabled: Bool {
+        didSet {
+            guard apiServerEnabled != oldValue else { return }
+            settings.apiServerEnabled = apiServerEnabled
+            NotificationCenter.default.post(name: .apiServerSettingsDidChange, object: nil)
+        }
+    }
+
+    @Published var apiServerPort: Int {
+        didSet {
+            guard apiServerPort != oldValue else { return }
+            settings.apiServerPort = apiServerPort
+            NotificationCenter.default.post(name: .apiServerSettingsDidChange, object: nil)
+        }
+    }
+
     @Published var openaiTranscriptionModel: String {
         didSet {
             guard openaiTranscriptionModel != oldValue else { return }
@@ -110,6 +126,8 @@ final class SettingsStore: ObservableObject {
         self.appLanguage = AppLanguage.normalizedRawValue(from: settings.appLanguage)
         self.focusDebugNotificationsEnabled = settings.focusDebugNotificationsEnabled
         self.alwaysPasteEnabled = settings.alwaysPasteEnabled
+        self.apiServerEnabled = settings.apiServerEnabled
+        self.apiServerPort = settings.apiServerPort
         self.openaiTranscriptionModel = settings.openaiTranscriptionModel
         self.geminiModel = settings.geminiModel
         self.openaiApiKey = settings.openaiApiKey

@@ -86,6 +86,21 @@ final class TranscriptionService: TranscriptionServiceProtocol, Sendable {
         }
     }
 
+    /// In-memory transcription for the API server: audio already decoded to a 16 kHz
+    /// mono float buffer, local WhisperKit only (no disk, no temp files). Shares the
+    /// same hallucination filter as the file path.
+    func transcribe(samples: [Float], language: String, model: String) async throws -> String {
+        if !whisperKitService.isModelLoaded(name: model) {
+            try await whisperKitService.loadModel(name: model)
+        }
+        let raw = try await whisperKitService.transcribe(samples: samples, language: language, model: model)
+        let cleaned = HallucinationFilter.clean(raw)
+        if cleaned != raw {
+            Logger.Transcription.info("Hallucination filter trimmed trailing filler phrase(s)")
+        }
+        return cleaned.isEmpty ? "(no speech detected)" : cleaned
+    }
+
     // MARK: - WhisperKit Transcription
 
     private func transcribeViaWhisperKit(audioURL: URL, language: String, model: String) async throws -> String {

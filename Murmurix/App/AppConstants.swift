@@ -76,6 +76,14 @@ enum AudioConfig {
     static let whisperSampleRate: Int = 16000
 }
 
+// MARK: - Local API Server
+
+enum APIConfig {
+    /// Default port for the local transcription API. Chosen from the dynamic/private
+    /// range (49152–65535) where collisions with other services are unlikely.
+    static let defaultServerPort: Int = 51789
+}
+
 // MARK: - Window Sizes
 
 enum WindowSize {

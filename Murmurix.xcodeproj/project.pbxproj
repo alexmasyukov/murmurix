@@ -10,6 +10,7 @@
 		5627C1552EF3AFD000106B82 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 5627C1542EF3AFD000106B82 /* Lottie */; };
 		5627C1562EF3B00000106B83 /* GoogleGenerativeAI in Frameworks */ = {isa = PBXBuildFile; productRef = 5627C1572EF3B00000106B83 /* GoogleGenerativeAI */; };
 		5627C15B2EF3B10000106B87 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5627C15A2EF3B10000106B86 /* WhisperKit */; };
+		5627C15C2EF3B20000106B90 /* Swifter in Frameworks */ = {isa = PBXBuildFile; productRef = 5627C15D2EF3B20000106B91 /* Swifter */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +75,7 @@
 				5627C1552EF3AFD000106B82 /* Lottie in Frameworks */,
 				5627C1562EF3B00000106B83 /* GoogleGenerativeAI in Frameworks */,
 				5627C15B2EF3B10000106B87 /* WhisperKit in Frameworks */,
+				5627C15C2EF3B20000106B90 /* Swifter in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,6 +139,7 @@
 				5627C1542EF3AFD000106B82 /* Lottie */,
 				5627C1572EF3B00000106B83 /* GoogleGenerativeAI */,
 				5627C15A2EF3B10000106B86 /* WhisperKit */,
+				5627C15D2EF3B20000106B91 /* Swifter */,
 			);
 			productName = Murmurix;
 			productReference = 564D384F2EF3119300598DBA /* Murmurix.app */;
@@ -224,6 +227,7 @@
 				5627C1532EF3AED100106B82 /* XCRemoteSwiftPackageReference "lottie-ios" */,
 				5627C1582EF3B00000106B84 /* XCRemoteSwiftPackageReference "generative-ai-swift" */,
 				5627C1592EF3B10000106B85 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+				5627C15E2EF3B20000106B92 /* XCRemoteSwiftPackageReference "swifter" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 564D38502EF3119300598DBA /* Products */;
@@ -607,6 +611,14 @@
 				minimumVersion = 0.9.0;
 			};
 		};
+		5627C15E2EF3B20000106B92 /* XCRemoteSwiftPackageReference "swifter" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/httpswift/swifter.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -624,6 +636,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5627C1592EF3B10000106B85 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = WhisperKit;
+		};
+		5627C15D2EF3B20000106B91 /* Swifter */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5627C15E2EF3B20000106B92 /* XCRemoteSwiftPackageReference "swifter" */;
+			productName = Swifter;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

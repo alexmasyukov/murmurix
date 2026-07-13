@@ -25,6 +25,7 @@ protocol TranscriptionServiceProtocol: Sendable {
     func unloadModel(name: String) async
     func unloadAllModels() async
     func transcribe(audioURL: URL, language: String, mode: TranscriptionMode) async throws -> String
+    func transcribe(samples: [Float], language: String, model: String) async throws -> String
 }
 
 // MARK: - Hotkey Management
@@ -56,6 +57,8 @@ protocol SettingsStorageProtocol: AnyObject, Sendable {
     var appLanguage: String { get set }
     var focusDebugNotificationsEnabled: Bool { get set }
     var alwaysPasteEnabled: Bool { get set }
+    var apiServerEnabled: Bool { get set }
+    var apiServerPort: Int { get set }
     var openaiApiKey: String { get set }
     var openaiTranscriptionModel: String { get set }
     var geminiApiKey: String { get set }

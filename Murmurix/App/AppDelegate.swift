@@ -58,6 +58,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioRecorder: (any AudioRecorderProtocol)?
     private var transcriptionService: (any TranscriptionServiceProtocol)?
     private var coordinator: RecordingCoordinator?
+    private var apiServer: APIServer?
 
     private var lastRecordId: UUID?
     private var shouldPasteDirectly = false
@@ -88,6 +89,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupManagers()
         setupHotkeys()
         setupNotifications()
+        setupAPIServer()
 
         coordinator?.loadModelsIfNeeded()
 
@@ -101,7 +103,50 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.unloadAllModels()
         hotkeyManager?.stop()
+        apiServer?.stop()
+        NotificationCenter.default.removeObserver(self, name: .apiServerSettingsDidChange, object: nil)
         AppLanguage.removeDidChangeObserver(self)
+    }
+
+    // MARK: - API Server
+
+    @MainActor
+    private func setupAPIServer() {
+        guard let transcriptionService else { return }
+        apiServer = APIServer(
+            transcriptionService: transcriptionService,
+            modelsProvider: {
+                let installed = WhisperModel.allCases.filter { $0.isInstalled }.map { $0.rawValue }
+                let loaded = transcriptionService.loadedModelNames()
+                return (installed: installed, loaded: loaded)
+            }
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAPIServerSettingsDidChange),
+            name: .apiServerSettingsDidChange,
+            object: nil
+        )
+        applyAPIServerState()
+    }
+
+    @objc
+    private func handleAPIServerSettingsDidChange() {
+        runOnMain { delegate in
+            delegate.applyAPIServerState()
+        }
+    }
+
+    @MainActor
+    private func applyAPIServerState() {
+        guard let apiServer else { return }
+        apiServer.stop()
+        guard settings.apiServerEnabled else {
+            Logger.Transcription.info("API server disabled")
+            return
+        }
+        let port = UInt16(clamping: settings.apiServerPort)
+        apiServer.start(port: port)
     }
 
     // MARK: - Setup

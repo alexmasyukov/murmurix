@@ -98,6 +98,26 @@ final class MockTranscriptionService: TranscriptionServiceProtocol, @unchecked S
             throw error
         }
     }
+
+    var lastSamples: [Float]?
+
+    func transcribe(samples: [Float], language: String, model: String) async throws -> String {
+        transcribeCallCount += 1
+        lastSamples = samples
+        lastLanguage = language
+        lastMode = .local(model: model)
+
+        if transcriptionDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(transcriptionDelay * 1_000_000_000))
+        }
+
+        switch transcriptionResult {
+        case .success(let text):
+            return text
+        case .failure(let error):
+            throw error
+        }
+    }
 }
 
 // MARK: - Mock History Service
@@ -140,6 +160,8 @@ final class MockSettings: SettingsStorageProtocol, @unchecked Sendable {
     var appLanguage: String = AppLanguage.defaultRawValue
     var focusDebugNotificationsEnabled: Bool = false
     var alwaysPasteEnabled: Bool = false
+    var apiServerEnabled: Bool = false
+    var apiServerPort: Int = 51789
     var openaiApiKey: String = ""
     var openaiTranscriptionModel: String = "gpt-4o-transcribe"
     var geminiApiKey: String = ""
@@ -276,6 +298,19 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
 
     func transcribe(audioURL: URL, language: String, model: String) async throws -> String {
         transcribeCallCount += 1
+        lastLanguage = language
+        lastModelName = model
+        switch transcribeResult {
+        case .success(let text): return text
+        case .failure(let error): throw error
+        }
+    }
+
+    var lastSamples: [Float]?
+
+    func transcribe(samples: [Float], language: String, model: String) async throws -> String {
+        transcribeCallCount += 1
+        lastSamples = samples
         lastLanguage = language
         lastModelName = model
         switch transcribeResult {

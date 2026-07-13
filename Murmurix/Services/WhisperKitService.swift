@@ -13,6 +13,7 @@ protocol WhisperKitServiceProtocol: AnyObject, Sendable {
     func unloadModel(name: String) async
     func unloadAllModels() async
     func transcribe(audioURL: URL, language: String, model: String) async throws -> String
+    func transcribe(samples: [Float], language: String, model: String) async throws -> String
     func downloadModel(_ name: String, progress: @escaping @Sendable (Double) -> Void) async throws
 }
 
@@ -148,14 +149,41 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     }
 
     func transcribe(audioURL: URL, language: String, model: String) async throws -> String {
-        let pipe = lock.withLock {
-            pipelines[model]
+        // Prefer the in-memory buffer path so file and API transcription share one
+        // trim+decode code path. Only load-failures fall back to letting WhisperKit
+        // read the file directly; a decode error is a real error and propagates.
+        let samples: [Float]
+        do {
+            samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audioURL.path)
+        } catch {
+            Logger.Transcription.error("Buffer load failed, decoding file directly: \(error.localizedDescription)")
+            let pipe = try resolvePipeline(model)
+            let results = try await pipe.transcribe(audioPath: audioURL.path, decodeOptions: makeOptions(language: language))
+            return resultText(from: results)
         }
+        return try await transcribe(samples: samples, language: language, model: model)
+    }
 
-        guard let pipe = pipe else {
-            throw MurmurixError.transcription(.modelNotLoaded)
-        }
+    /// Transcribes an already-decoded 16 kHz mono float buffer. This is the path the
+    /// API server uses — audio arrives over HTTP, is decoded to samples in memory, and
+    /// never touches disk. Trims edge silence, then decodes.
+    func transcribe(samples: [Float], language: String, model: String) async throws -> String {
+        let pipe = try resolvePipeline(model)
+        let trimmed = SilenceTrimmer.trim(samples, sampleRate: AudioConfig.whisperSampleRate)
+        Logger.Transcription.debug(
+            "Silence trim: \(samples.count) -> \(trimmed.count) samples (\(String(format: "%.1f", Double(samples.count - trimmed.count) / Double(AudioConfig.whisperSampleRate)))s removed)"
+        )
+        let results = try await pipe.transcribe(audioArray: trimmed, decodeOptions: makeOptions(language: language))
+        return resultText(from: results)
+    }
 
+    private func resolvePipeline(_ model: String) throws -> WhisperKit {
+        let pipe = lock.withLock { pipelines[model] }
+        guard let pipe else { throw MurmurixError.transcription(.modelNotLoaded) }
+        return pipe
+    }
+
+    private func makeOptions(language: String) -> DecodingOptions {
         var options = DecodingOptions()
         options.language = language == "auto" ? nil : language
         options.task = .transcribe
@@ -169,37 +197,14 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
         // logProbThreshold=-1.0, noSpeechThreshold=0.6 — keep them.
         options.suppressBlank = true
         options.chunkingStrategy = .vad
+        return options
+    }
 
-        let results = try await transcribeTrimmed(pipe: pipe, audioURL: audioURL, options: options)
-
+    private func resultText(from results: [TranscriptionResult]) -> String {
         let text = results.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-
         return text.isEmpty ? "(no speech detected)" : text
-    }
-
-    /// Loads the recording into a 16 kHz float buffer, trims the leading/trailing
-    /// silence (WhisperKit's own VAD chunker skips clips shorter than 30s, so the
-    /// silent tail is what makes Whisper hallucinate filler phrases), and decodes the
-    /// trimmed buffer. On any failure loading/trimming, falls back to decoding the file
-    /// directly so a hiccup in the trim path never blocks transcription.
-    private func transcribeTrimmed(
-        pipe: WhisperKit,
-        audioURL: URL,
-        options: DecodingOptions
-    ) async throws -> [TranscriptionResult] {
-        do {
-            let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audioURL.path)
-            let trimmed = SilenceTrimmer.trim(samples, sampleRate: AudioConfig.whisperSampleRate)
-            Logger.Transcription.debug(
-                "Silence trim: \(samples.count) -> \(trimmed.count) samples (\(String(format: "%.1f", Double(samples.count - trimmed.count) / Double(AudioConfig.whisperSampleRate)))s removed)"
-            )
-            return try await pipe.transcribe(audioArray: trimmed, decodeOptions: options)
-        } catch {
-            Logger.Transcription.error("Silence-trim path failed, decoding file directly: \(error.localizedDescription)")
-            return try await pipe.transcribe(audioPath: audioURL.path, decodeOptions: options)
-        }
     }
 
     func downloadModel(_ name: String, progress: @escaping @Sendable (Double) -> Void) async throws {

@@ -7,6 +7,7 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @State private var showDeleteAllConfirmation = false
+    @State private var apiReachable = false
 
     @StateObject private var viewModel: GeneralSettingsViewModel
     @StateObject private var settingsStore: SettingsStore
@@ -39,6 +40,7 @@ struct GeneralSettingsView: View {
                 languageSection
                 keyboardShortcutsSection
                 debugSection
+                apiSection
                 huggingFaceSection
                 localModelsSection
                 modelManagementSection
@@ -187,6 +189,129 @@ struct GeneralSettingsView: View {
             .cornerRadius(Layout.CornerRadius.card)
             .padding(.horizontal, Layout.Padding.standard)
             .padding(.bottom, Layout.Padding.section)
+        }
+    }
+
+    // MARK: - API
+
+    private var apiSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: L10n.apiSectionTitle)
+
+            VStack(alignment: .leading, spacing: Layout.Spacing.tiny) {
+                HStack(alignment: .top, spacing: Layout.Spacing.item) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(L10n.apiServerTitle)
+                                .font(Typography.label)
+                                .foregroundColor(.white)
+                            apiStatusBadge
+                        }
+                        Text(L10n.apiServerDescription)
+                            .font(Typography.description)
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Toggle("", isOn: $settingsStore.apiServerEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+
+                if settingsStore.apiServerEnabled {
+                    Divider()
+                        .background(AppColors.divider)
+                        .padding(.vertical, Layout.Spacing.tiny)
+                    apiServerDetails
+                }
+            }
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.vertical, Layout.Padding.vertical)
+            .background(AppColors.cardBackground)
+            .cornerRadius(Layout.CornerRadius.card)
+            .padding(.horizontal, Layout.Padding.standard)
+            .padding(.bottom, Layout.Padding.section)
+        }
+        .task(id: apiStatusTaskID) {
+            await refreshAPIStatus()
+        }
+    }
+
+    private static let portFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .none
+        f.minimum = 1024
+        f.maximum = 65535
+        f.allowsFloats = false
+        f.usesGroupingSeparator = false
+        return f
+    }()
+
+    private var apiStatusTaskID: String {
+        "\(settingsStore.apiServerEnabled)-\(settingsStore.apiServerPort)"
+    }
+
+    private var apiStatusBadge: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(apiReachable ? Color.green : Color.gray)
+                .frame(width: 8, height: 8)
+            Text(apiReachable ? L10n.apiServerStatusRunning : L10n.apiServerStatusStopped)
+                .font(Typography.caption)
+                .foregroundColor(apiReachable ? .green : .gray)
+        }
+    }
+
+    private var apiServerDetails: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: Layout.Spacing.item) {
+                Text(L10n.apiServerPort)
+                    .font(Typography.label)
+                    .foregroundColor(.white)
+                TextField("", value: $settingsStore.apiServerPort, formatter: Self.portFormatter)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 90)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                endpointRow(method: "GET", path: "/health")
+                endpointRow(method: "GET", path: "/v1/models")
+                endpointRow(method: "POST", path: "/v1/transcribe?model=<name>&language=ru")
+            }
+        }
+    }
+
+    private func endpointRow(method: String, path: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(method)
+                .font(Typography.caption.monospaced())
+                .foregroundColor(method == "GET" ? .green : .orange)
+                .frame(width: 36, alignment: .leading)
+            Text("http://127.0.0.1:\(settingsStore.apiServerPort)\(path)")
+                .font(Typography.caption.monospaced())
+                .foregroundColor(.gray)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Pings the local /health endpoint so the badge reflects whether the server is
+    /// actually listening (e.g. it stays "Выключено" if the port was already taken),
+    /// not just the setting value.
+    private func refreshAPIStatus() async {
+        guard settingsStore.apiServerEnabled else {
+            apiReachable = false
+            return
+        }
+        // Give the server a moment to (re)bind after a toggle or port change.
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(settingsStore.apiServerPort)/health")!)
+        request.timeoutInterval = 1.5
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            apiReachable = (response as? HTTPURLResponse)?.statusCode == 200
+        } catch {
+            apiReachable = false
         }
     }
 

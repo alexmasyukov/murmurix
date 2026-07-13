@@ -64,6 +64,31 @@ enum L10n {
         )
     }
 
+    // MARK: - API
+
+    static var apiSectionTitle: String {
+        tr("API", "API", "API")
+    }
+    static var apiServerTitle: String {
+        tr("Local API server", "Локальный API-сервер", "Servidor API local")
+    }
+    static var apiServerDescription: String {
+        tr(
+            "Let other apps POST audio to 127.0.0.1 and get a transcription back, using the same models and pipeline as recording.",
+            "Позволяет другим приложениям отправлять аудио на 127.0.0.1 и получать транскрипцию, используя те же модели и обработку, что и запись.",
+            "Permite que otras apps envíen audio a 127.0.0.1 y reciban una transcripción, usando los mismos modelos y proceso que la grabación."
+        )
+    }
+    static var apiServerStatusRunning: String {
+        tr("Running", "Работает", "Activo")
+    }
+    static var apiServerStatusStopped: String {
+        tr("Off", "Выключено", "Apagado")
+    }
+    static var apiServerPort: String {
+        tr("Port", "Порт", "Puerto")
+    }
+
     // MARK: - Recognition
 
     static var language: String { tr("Language", "Язык", "Idioma") }
