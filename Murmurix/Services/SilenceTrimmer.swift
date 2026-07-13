@@ -25,6 +25,25 @@ enum SilenceTrimmer {
     /// or the decay of the last one.
     static let edgePaddingSeconds: Double = 0.2
 
+    /// Recordings at or below this length are passed through untouched. Single-word
+    /// dictations are often under ~2.5s, and on such a short clip EnergyVAD can easily
+    /// mis-bound the one word and trim away most of it, leaving nothing for the decoder
+    /// (symptom: a one-word recording transcribes to empty). Trailing-silence
+    /// hallucinations are a long-recording problem anyway, so there's nothing to gain
+    /// from trimming here.
+    static let minTrimDurationSeconds: Double = 2.5
+
+    /// Whether a buffer of `sampleCount` samples is long enough to trim. Pure and
+    /// testable without loading WhisperKit.
+    static func shouldTrim(
+        sampleCount: Int,
+        sampleRate: Int,
+        minDurationSeconds: Double = minTrimDurationSeconds
+    ) -> Bool {
+        guard sampleCount > 0, sampleRate > 0 else { return false }
+        return Double(sampleCount) / Double(sampleRate) > minDurationSeconds
+    }
+
     /// Trims edge silence. If no voice is detected (VAD finds no active segments) the
     /// array is returned unchanged — deciding "this is silence" is left to the layers
     /// above (the `hadVoiceActivity` gate and Whisper's own thresholds).
@@ -34,6 +53,10 @@ enum SilenceTrimmer {
         vad: VoiceActivityDetector = EnergyVAD()
     ) -> [Float] {
         guard !samples.isEmpty else { return samples }
+        // Leave short recordings (single-word dictations) completely alone.
+        guard shouldTrim(sampleCount: samples.count, sampleRate: sampleRate) else {
+            return samples
+        }
         let activeChunks = vad.calculateActiveChunks(in: samples)
         guard let range = voiceRange(
             activeChunks: activeChunks,

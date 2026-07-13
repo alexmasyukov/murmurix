@@ -105,4 +105,23 @@ struct SilenceTrimmerTests {
         )
         #expect(range == nil)
     }
+
+    @Test func shortRecordingsAreNotTrimmed() {
+        // 1s single-word dictation — must be left untouched.
+        #expect(SilenceTrimmer.shouldTrim(sampleCount: 16_000, sampleRate: sampleRate) == false)
+        // Exactly at the 2.5s threshold — still not trimmed (boundary is exclusive).
+        #expect(SilenceTrimmer.shouldTrim(sampleCount: 40_000, sampleRate: sampleRate) == false)
+    }
+
+    @Test func longerRecordingsAreTrimmed() {
+        // 2.6s — just over the threshold, trimming applies.
+        #expect(SilenceTrimmer.shouldTrim(sampleCount: 41_600, sampleRate: sampleRate) == true)
+        // 60s long recording.
+        #expect(SilenceTrimmer.shouldTrim(sampleCount: 960_000, sampleRate: sampleRate) == true)
+    }
+
+    @Test func shouldTrimHandlesDegenerateInput() {
+        #expect(SilenceTrimmer.shouldTrim(sampleCount: 0, sampleRate: sampleRate) == false)
+        #expect(SilenceTrimmer.shouldTrim(sampleCount: 16_000, sampleRate: 0) == false)
+    }
 }

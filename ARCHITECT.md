@@ -148,7 +148,9 @@ dictations reach the decoder whole — silent tail included.
 
 - `SilenceTrimmer.trim(_:)` — loads the recording into a 16kHz buffer and trims
   leading/trailing silence via `EnergyVAD` before decoding, keeping internal
-  pauses and 0.2s edge padding. Applied to every local transcription.
+  pauses and 0.2s edge padding. Recordings ≤2.5s (single-word dictations) are
+  passed through untouched — on such short clips EnergyVAD can mis-bound the one
+  word and trim it away, leaving nothing to decode.
 - `HallucinationFilter.clean(_:)` — deterministically strips known filler
   phrases from the tail of the result. Local (WhisperKit) mode only — cloud
   providers steer output with their own prompts and don't exhibit this.
