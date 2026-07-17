@@ -92,6 +92,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupAPIServer()
 
         coordinator?.loadModelsIfNeeded()
+        audioRecorder?.prepare()
 
         AppLanguage.addDidChangeObserver(
             self,
@@ -271,11 +272,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let coordinator else { return }
 
         if coordinator.state == .idle {
-            let focusContext = TextPaster.focusedContext()
-            shouldPasteDirectly = settings.alwaysPasteEnabled || focusContext.isTextInput
-            focusContextAtRecordingStart = focusContext
             currentRecordingMode = mode
         }
+        // Nothing may run before this call: everything here delays the microphone,
+        // and whatever the user says in the meantime is gone. Focus detection used
+        // to sit right here — see recordingDidStart().
         coordinator.toggleRecording(mode: currentRecordingMode)
     }
 
@@ -574,6 +575,15 @@ extension AppDelegate: MenuBarManagerDelegate {
 extension AppDelegate: RecordingCoordinatorDelegate {
     func recordingDidStart() {
         guard let audioRecorder else { return }
+
+        // Capture focus once the microphone is already live, but before our own
+        // recording window can take it away — the ordering the paste step needs.
+        // AXUIElementCopyAttributeValue is a synchronous IPC round-trip into the
+        // focused app: a busy Chrome/Electron/JetBrains target can stall the main
+        // thread for hundreds of ms, and it used to do so *ahead* of record().
+        let focusContext = TextPaster.focusedContext()
+        shouldPasteDirectly = settings.alwaysPasteEnabled || focusContext.isTextInput
+        focusContextAtRecordingStart = focusContext
 
         hotkeyManager?.isRecording = true
         windowManager?.showRecordingWindow(

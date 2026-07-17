@@ -12,6 +12,9 @@ protocol AudioRecorderProtocol: AnyObject {
     var audioLevel: Float { get }
     var hadVoiceActivity: Bool { get }  // True if audio level exceeded threshold during recording
 
+    /// Primes the recorder ahead of the next `startRecording()` so the hotkey press
+    /// isn't paying for audio-stack setup. Safe to call repeatedly.
+    func prepare()
     func startRecording()
     func stopRecording() -> URL
 }

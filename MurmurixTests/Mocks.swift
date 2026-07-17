@@ -15,7 +15,12 @@ final class MockAudioRecorder: AudioRecorderProtocol {
 
     var startRecordingCallCount = 0
     var stopRecordingCallCount = 0
+    var prepareCallCount = 0
     var recordingURL = URL(fileURLWithPath: "/tmp/test.wav")
+
+    func prepare() {
+        prepareCallCount += 1
+    }
 
     func startRecording() {
         startRecordingCallCount += 1

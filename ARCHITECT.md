@@ -201,6 +201,24 @@ idle --> recording --> transcribing --> idle
 - Cleans up audio files after transcription
 - Voice activity detection (skips if no speech)
 
+### AudioRecorder — start latency
+The hotkey path to `record()` is a hard latency budget: anything on it is speech
+the user has already spoken and we never captured. Measured end-to-end (keypress
+→ microphone actually recording): **median 23ms, p90 28ms**.
+
+Two things keep it there, and both are easy to undo by accident:
+
+- `prepare()` builds the `AVAudioRecorder` and calls `prepareToRecord()` ahead of
+  time — at launch and after every stop. A cold `record()` that does its own file
+  and audio-queue setup costs ~83ms and loses ~69ms of audio; pre-primed, it
+  returns in ~25ms. `prepareToRecord()` does not open the input, so no microphone
+  indicator appears and nothing is captured until `record()` runs.
+- **No Accessibility calls before `record()`.** `TextPaster.focusedContext()` is a
+  synchronous IPC round-trip into the focused app; a busy Chrome/Electron/JetBrains
+  target stalls the main thread for hundreds of ms. It used to run ahead of
+  `record()` and is now in `AppDelegate.recordingDidStart()` — after the microphone
+  is live, still before our own window can steal focus.
+
 ### GlobalHotkeyManager
 System-wide keyboard shortcuts via CGEvent tap:
 
@@ -299,6 +317,6 @@ Centralized via `os.log` with categories:
 
 ## Testing
 
-298 tests (12 test files) using Swift Testing framework (`@Test`, `#expect`).
+403 tests using Swift Testing framework (`@Test`, `#expect`).
 
 Coverage: services, ViewModels, models, settings, error hierarchy, constants, DI, recording state machine, file cleanup, transcription modes, model management, settings migration.
