@@ -75,17 +75,32 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     /// when the app quit or crashed mid-flight, or from the pre-primed recorder's
     /// stub file (prepareToRecord() creates it). Call once at launch, before
     /// `prepare()` creates the stub for this run.
-    static func sweepStaleRecordings() {
+    ///
+    /// Only files older than `minAge` are removed. The temp directory is shared
+    /// with any *other* live Murmurix process — a second instance during an app
+    /// update, or the test host (the test suite runs inside Murmurix.app, so its
+    /// launch executes this sweep too). Deleting a fresh file out from under that
+    /// process leaves its AVAudioRecorder writing into an unlinked inode: recording
+    /// "works" but the path no longer exists when transcription tries to read it
+    /// ("Resource path does not exist"). Crash leftovers are old by the next
+    /// launch, so the age guard costs nothing.
+    static func sweepStaleRecordings(
+        in directory: URL = FileManager.default.temporaryDirectory,
+        olderThan minAge: TimeInterval = 3600
+    ) {
         let fileManager = FileManager.default
-        let tempDir = fileManager.temporaryDirectory
         guard let files = try? fileManager.contentsOfDirectory(
-            at: tempDir,
-            includingPropertiesForKeys: nil,
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
             options: [.skipsHiddenFiles]
         ) else { return }
 
+        let cutoff = Date().addingTimeInterval(-minAge)
         var removed = 0
         for url in files where url.lastPathComponent.hasPrefix("murmurix_recording_") {
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate
+            guard let modified, modified < cutoff else { continue }
             do {
                 try fileManager.removeItem(at: url)
                 removed += 1
@@ -143,8 +158,17 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
 
         // Use the recorder primed after the last recording; only build one here if
         // the warm-up never ran (first launch before prepare(), or it failed).
-        let fileURL = preparedURL ?? makeRecordingURL()
-        let warm = preparedRecorder
+        // If the prepared stub file vanished from disk (another Murmurix process —
+        // an updater's second instance or the test host — swept the temp directory),
+        // the warm recorder would happily record into the unlinked inode and the
+        // path would not exist at transcription time. Fall back to a cold start.
+        var warm = preparedRecorder
+        var fileURL = preparedURL ?? makeRecordingURL()
+        if let preparedURL, !FileManager.default.fileExists(atPath: preparedURL.path) {
+            Logger.Audio.error("Prepared recording file vanished, falling back to cold start: \(preparedURL.path)")
+            warm = nil
+            fileURL = makeRecordingURL()
+        }
         preparedRecorder = nil
         preparedURL = nil
         currentRecordingURL = fileURL

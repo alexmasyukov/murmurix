@@ -2,7 +2,7 @@
 
 A native macOS menubar app for voice-to-text transcription using local WhisperKit (CoreML), OpenAI, or Google Gemini.
 
-**Version 4.4.1** | 66 production files | 403 tests | Pure Swift, no Python
+**Version 4.4.1** | 66 production files | 418 tests | Pure Swift, no Python
 
 ## Features
 
@@ -10,10 +10,10 @@ A native macOS menubar app for voice-to-text transcription using local WhisperKi
 - **Cloud Transcription (OpenAI)** — gpt-4o-transcribe / gpt-4o-mini-transcribe
 - **Cloud Transcription (Gemini)** — Gemini 2.0 Flash / 1.5 Flash / 1.5 Pro
 - **Per-Model Hotkeys** — Assign individual hotkeys to each local model and cloud mode
-- **In-App Model Management** — Download, test, and delete Whisper models from Settings
-- **Keep Model Loaded** — Instant transcription by keeping WhisperKit in memory
+- **In-App Model Management** — Download, test, and delete Whisper models from Settings; the Test button reports its phase step by step with an elapsed counter (CoreML load can take a while on a cold cache)
+- **Keep Model Loaded** — Instant transcription by keeping WhisperKit in memory, with a live status indicator (in memory / loading / not loaded) polled from the real service state
 - **Voice Activity Detection** — Skips transcription if no voice detected
-- **Anti-Hallucination** — Trims leading/trailing silence before inference and filters memorized subtitle filler ("Продолжение следует...") that Whisper invents on silent tails
+- **Anti-Hallucination** — Trims leading/trailing silence before inference (edges are only cut when ≥1s of silence is actually removed, so speech right before the hotkey press survives) and filters memorized subtitle filler ("Продолжение следует...") that Whisper invents over silent tails and long mid-dictation pauses
 - **Smart Text Insertion** — Pastes directly into focused text fields
 - **Clipboard-Safe Paste** — Snapshots and restores your original clipboard (text, images, files — any type) after inserting the result
 - **Local HTTP API** — Other apps can POST audio to `127.0.0.1` and get a transcription back, reusing the in-memory models and full pipeline (see below)
@@ -122,7 +122,7 @@ Delete all downloaded models at once.
 | Settings | `~/Library/Preferences/` | Persistent |
 | API Keys | macOS Keychain | Persistent, encrypted |
 | History | `~/Library/Application Support/Murmurix/history.sqlite` | Persistent |
-| Audio files | `/tmp/` | Deleted after transcription |
+| Audio files | user temp dir (`$TMPDIR`) | Deleted after transcription; crash leftovers older than 1h swept at launch |
 | WhisperKit models (Debug + Tests) | `~/Library/Application Support/murmurix-dev-models/huggingface/models/argmaxinc/whisperkit-coreml/` | Shared dev repo, isolated from production |
 | WhisperKit models (Release/DMG) | `~/Library/Application Support/Murmurix/huggingface/models/argmaxinc/whisperkit-coreml/` | Persistent, iCloud-safe |
 
@@ -145,25 +145,22 @@ CREATE TABLE transcriptions (
 
 ## Testing
 
-403 tests using Apple's Swift Testing framework:
+418 tests using Apple's Swift Testing framework:
 
 ```bash
 xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=macOS' test
 ```
 
-| Suite | Tests | Description |
-|-------|-------|-------------|
-| RecordingCoordinatorTests | 20 | Recording state machine, modes, file cleanup |
-| Phase1Tests | 55 | AudioTestUtility, MIMETypeResolver, mocks |
-| Phase2Tests | 20 | URLSession abstractions |
-| Phase3Tests | 18 | ViewModel API testing, Settings DI |
-| Phase4Tests | 8 | KeychainKey enum |
-| RefactoringTests | 42 | Error hierarchy, constants, DB, Logger, DI |
-| SettingsTests | 13 | Settings persistence and defaults |
-| GeminiTests | 13 | Gemini integration |
-| MurmurixTests | 25 | HistoryViewModel, ResultWindowController |
-| NewFunctionalityTests | 69 | Model management, timer, migration, enums |
-| IntegrationTests | 3 | End-to-end tests |
+| Area | Tests | Covers |
+|------|-------|--------|
+| Settings & model management | 95 | Settings persistence/migration, GeneralSettingsViewModel, download/test flows |
+| Recording flow & hotkeys | 75 | RecordingCoordinator, flow reducer, timer, hotkey managers |
+| Audio & anti-hallucination | 59 | AudioRecorder, decoder/compressor, SilenceTrimmer, HallucinationFilter |
+| Transcription services | 56 | WhisperKit/OpenAI/Gemini clients, prompt policy, serial transcriber |
+| Infrastructure | 48 | Error hierarchy, constants, Logger, DI, URLSession mocks |
+| History & storage | 38 | SQLite repository, HistoryService/ViewModel, Keychain |
+| UI & windows | 30 | Menu bar, result window, positioning, TextPaster, clipboard restore |
+| Local HTTP API | 17 | APIServer endpoints, MIME resolution |
 
 ## Local HTTP API
 

@@ -345,6 +345,34 @@ struct HotkeyTests {
 
 struct AudioRecorderTests {
 
+    /// The sweep must never delete fresh files: the temp directory is shared with
+    /// other live Murmurix processes (updater's second instance, the test host),
+    /// and a fresh file may be an in-flight recording or the prepared stub.
+    @Test func sweepRemovesOnlyOldRecordingFiles() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("murmurix-sweep-test-\(UUID().uuidString)")
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: dir) }
+
+        let oldFile = dir.appendingPathComponent("murmurix_recording_old.wav")
+        let freshFile = dir.appendingPathComponent("murmurix_recording_fresh.wav")
+        let unrelatedOldFile = dir.appendingPathComponent("other_old.wav")
+        for url in [oldFile, freshFile, unrelatedOldFile] {
+            fm.createFile(atPath: url.path, contents: Data("x".utf8))
+        }
+        let twoHoursAgo = Date().addingTimeInterval(-7200)
+        for url in [oldFile, unrelatedOldFile] {
+            try fm.setAttributes([.modificationDate: twoHoursAgo], ofItemAtPath: url.path)
+        }
+
+        AudioRecorder.sweepStaleRecordings(in: dir, olderThan: 3600)
+
+        #expect(fm.fileExists(atPath: oldFile.path) == false, "old recording must be swept")
+        #expect(fm.fileExists(atPath: freshFile.path) == true, "fresh recording must survive")
+        #expect(fm.fileExists(atPath: unrelatedOldFile.path) == true, "non-recording files must be untouched")
+    }
+
     @Test func mockAudioRecorderStartsAndStops() {
         let recorder = MockAudioRecorder()
 

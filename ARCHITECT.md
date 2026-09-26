@@ -226,7 +226,29 @@ Two things keep it there, and both are easy to undo by accident:
   synchronous IPC round-trip into the focused app; a busy Chrome/Electron/JetBrains
   target stalls the main thread for hundreds of ms. It used to run ahead of
   `record()` and is now in `AppDelegate.recordingDidStart()` — after the microphone
-  is live, still before our own window can steal focus.
+  is live and after the recording window is shown (the window is a borderless
+  NSWindow that never becomes key, so ordering it front does not steal the target
+  app's focus; showing it first keeps the UI from looking frozen during the AX
+  round-trip).
+
+### AudioRecorder — temp files and shared-directory safety
+Recordings live in the user temp directory as `murmurix_recording_*.wav` and are
+deleted right after transcription (success, failure, cancel, or no-voice). Two
+guards protect the shared directory:
+
+- `sweepStaleRecordings()` at launch removes crash leftovers, but **only files
+  older than 1 hour**. The temp dir is shared with any other live Murmurix
+  process — a second instance during an app update, or the test host (the test
+  suite runs inside Murmurix.app, so its launch executes the sweep too). Deleting
+  a fresh file out from under that process leaves its AVAudioRecorder writing
+  into an unlinked inode: recording "works", but the path is gone when
+  transcription reads it ("Resource path does not exist").
+- `startRecording()` falls back to a cold start when the prepared stub file has
+  vanished from disk, instead of recording into the unlinked inode.
+
+`stopRecording()` logs the capture deficit — `captured Xs of Ys wall` — so a
+late microphone spin-up (speech never captured at the start) is visible in logs;
+a deficit over 0.3s is logged as an error.
 
 ### GlobalHotkeyManager
 System-wide keyboard shortcuts via CGEvent tap:
@@ -326,6 +348,6 @@ Centralized via `os.log` with categories:
 
 ## Testing
 
-403 tests using Swift Testing framework (`@Test`, `#expect`).
+418 tests using Swift Testing framework (`@Test`, `#expect`).
 
 Coverage: services, ViewModels, models, settings, error hierarchy, constants, DI, recording state machine, file cleanup, transcription modes, model management, settings migration.
