@@ -176,12 +176,35 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     /// Transcribes an already-decoded 16 kHz mono float buffer. This is the path the
     /// API server uses — audio arrives over HTTP, is decoded to samples in memory, and
     /// never touches disk. Trims edge silence, then decodes.
+    /// Silence appended after the speech for recordings that exceed Whisper's 30s
+    /// window. Two reasons: WhisperKit's VADAudioChunker stops its chunk loop at
+    /// `seekClipEnd - windowPadding` (1s), so when a chunk boundary lands inside the
+    /// final second, up to 1s of REAL tail audio is silently never transcribed —
+    /// with this pad the droppable second is our silence, not speech. It also gives
+    /// the decoder a soft landing after the last word instead of a hard clip end.
+    private static let longAudioTailPadSeconds: Double = 1.2
+
     func transcribe(samples: [Float], language: String, model: String) async throws -> String {
         let pipe = try resolvePipeline(model)
-        let trimmed = SilenceTrimmer.trim(samples, sampleRate: AudioConfig.whisperSampleRate)
-        Logger.Transcription.debug(
-            "Silence trim: \(samples.count) -> \(trimmed.count) samples (\(String(format: "%.1f", Double(samples.count - trimmed.count) / Double(AudioConfig.whisperSampleRate)))s removed)"
+        let sampleRate = AudioConfig.whisperSampleRate
+        var trimmed = SilenceTrimmer.trim(samples, sampleRate: sampleRate)
+        // Info, not debug: "why did my ending disappear" is undebuggable without a
+        // persisted record of how much the trimmer actually cut.
+        Logger.Transcription.info(
+            "Silence trim: \(String(format: "%.1f", Double(samples.count) / Double(sampleRate)))s -> \(String(format: "%.1f", Double(trimmed.count) / Double(sampleRate)))s (removed \(String(format: "%.1f", Double(samples.count - trimmed.count) / Double(sampleRate)))s)"
         )
+
+        let windowSamples = 30 * sampleRate
+        if trimmed.count > windowSamples {
+            trimmed.append(contentsOf: [Float](
+                repeating: 0,
+                count: Int(Self.longAudioTailPadSeconds * Double(sampleRate))
+            ))
+            Logger.Transcription.info(
+                "Appended \(String(format: "%.1f", Self.longAudioTailPadSeconds))s tail pad (audio exceeds 30s window, protects the final second from VADAudioChunker's end-of-clip drop)"
+            )
+        }
+
         let results = try await pipe.transcribe(audioArray: trimmed, decodeOptions: makeOptions(language: language))
         return resultText(from: results)
     }

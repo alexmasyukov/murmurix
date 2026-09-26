@@ -41,6 +41,23 @@ enum SilenceTrimmer {
     /// this, so nothing is cut at all.
     static let minEdgeCutSeconds: Double = 1.0
 
+    /// Two-threshold (hysteresis) VAD. Speech is *found* with the hard threshold
+    /// (EnergyVAD's default 0.02), but the edges are then *extended* through frames
+    /// that clear the soft threshold. Phrase endings decay in volume: the last
+    /// word of a sentence often meters between these two values, and with a single
+    /// hard threshold it reads as silence — so a pause before the hotkey press
+    /// put it inside the trimmed region. The soft threshold sits above a quiet
+    /// room's noise floor, so real silence still ends the extension.
+    static let hardEnergyThreshold: Float = 0.02
+    static let softEnergyThreshold: Float = 0.008
+
+    /// Cap on how far an edge can be extended through soft-threshold frames, so
+    /// steady background noise (fan, street) can't defeat trimming entirely.
+    static let maxSoftExtensionSeconds: Double = 3.0
+
+    /// VAD frame length in seconds (EnergyVAD's default).
+    static let vadFrameSeconds: Double = 0.1
+
     /// Recordings at or below this length are passed through untouched. Single-word
     /// dictations are often under ~2.5s, and on such a short clip EnergyVAD can easily
     /// mis-bound the one word and trim away most of it, leaving nothing for the decoder
@@ -65,17 +82,37 @@ enum SilenceTrimmer {
     /// above (the `hadVoiceActivity` gate and Whisper's own thresholds).
     static func trim(
         _ samples: [Float],
-        sampleRate: Int = 16000,
-        vad: VoiceActivityDetector = EnergyVAD()
+        sampleRate: Int = 16000
     ) -> [Float] {
         guard !samples.isEmpty else { return samples }
         // Leave short recordings (single-word dictations) completely alone.
         guard shouldTrim(sampleCount: samples.count, sampleRate: sampleRate) else {
             return samples
         }
-        let activeChunks = vad.calculateActiveChunks(in: samples)
+
+        let frameLength = Float(vadFrameSeconds)
+        let hardFrames = EnergyVAD(
+            sampleRate: sampleRate, frameLength: frameLength, energyThreshold: hardEnergyThreshold
+        ).voiceActivity(in: samples)
+        let softFrames = EnergyVAD(
+            sampleRate: sampleRate, frameLength: frameLength, energyThreshold: softEnergyThreshold
+        ).voiceActivity(in: samples)
+        let maxExtensionFrames = Int(maxSoftExtensionSeconds / vadFrameSeconds)
+        guard let frameRange = voicedFrameRange(
+            hard: hardFrames,
+            soft: softFrames,
+            maxExtensionFrames: maxExtensionFrames
+        ) else {
+            return samples
+        }
+
+        let frameSamples = Int(vadFrameSeconds * Double(sampleRate))
+        let activeChunk = (
+            startIndex: frameRange.lowerBound * frameSamples,
+            endIndex: min(samples.count, frameRange.upperBound * frameSamples)
+        )
         guard let range = voiceRange(
-            activeChunks: activeChunks,
+            activeChunks: [activeChunk],
             totalSamples: samples.count,
             sampleRate: sampleRate
         ) else {
@@ -91,6 +128,38 @@ enum SilenceTrimmer {
             return samples
         }
         return Array(samples[guarded])
+    }
+
+    /// Pure hysteresis core: the frame range from the first to the last frame that
+    /// clears the hard threshold, with each edge extended outward through frames
+    /// that clear the soft threshold (up to `maxExtensionFrames` per edge).
+    /// Returns `nil` when no frame clears the hard threshold.
+    static func voicedFrameRange(
+        hard: [Bool],
+        soft: [Bool],
+        maxExtensionFrames: Int
+    ) -> Range<Int>? {
+        guard hard.count == soft.count,
+              let firstHard = hard.firstIndex(of: true),
+              let lastHard = hard.lastIndex(of: true) else {
+            return nil
+        }
+
+        var start = firstHard
+        var extended = 0
+        while start > 0, soft[start - 1], extended < maxExtensionFrames {
+            start -= 1
+            extended += 1
+        }
+
+        var end = lastHard
+        extended = 0
+        while end + 1 < soft.count, soft[end + 1], extended < maxExtensionFrames {
+            end += 1
+            extended += 1
+        }
+
+        return start..<(end + 1)
     }
 
     /// Per-edge guard: an edge cut smaller than `minEdgeCutSeconds` is dropped and

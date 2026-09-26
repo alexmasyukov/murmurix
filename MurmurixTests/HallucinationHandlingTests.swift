@@ -206,4 +206,48 @@ struct SilenceTrimmerTests {
         #expect(SilenceTrimmer.shouldTrim(sampleCount: 0, sampleRate: sampleRate) == false)
         #expect(SilenceTrimmer.shouldTrim(sampleCount: 16_000, sampleRate: 0) == false)
     }
+
+    // MARK: - Hysteresis (two-threshold) edge detection
+    // Phrase endings decay in volume: the last word often clears only the soft
+    // threshold, and a single hard threshold would trim it as "silence".
+
+    @Test func voicedFrameRangeExtendsTrailingEdgeThroughQuietSpeech() {
+        // Frames: silence, loud speech, trailing quiet speech (soft only), silence.
+        let hard = [false, true, true, false, false, false]
+        let soft = [false, true, true, true, true, false]
+        let range = SilenceTrimmer.voicedFrameRange(hard: hard, soft: soft, maxExtensionFrames: 30)
+        #expect(range == 1..<5)
+    }
+
+    @Test func voicedFrameRangeExtendsLeadingEdgeThroughQuietSpeech() {
+        // Quiet attack of the first word before it clears the hard threshold.
+        let hard = [false, false, true, true, false]
+        let soft = [false, true, true, true, false]
+        let range = SilenceTrimmer.voicedFrameRange(hard: hard, soft: soft, maxExtensionFrames: 30)
+        #expect(range == 1..<4)
+    }
+
+    @Test func voicedFrameRangeCapsExtensionAgainstSteadyNoise() {
+        // Steady background noise clears the soft threshold everywhere; the cap
+        // keeps trimming useful.
+        let hard = [false, false, false, true, false, false, false, false]
+        let soft = [Bool](repeating: true, count: 8)
+        let range = SilenceTrimmer.voicedFrameRange(hard: hard, soft: soft, maxExtensionFrames: 2)
+        // Hard frame at 3, cap 2 per edge: start 3→1, end 3→5 (half-open 1..<6).
+        #expect(range == 1..<6)
+    }
+
+    @Test func voicedFrameRangeNilWithoutHardSpeech() {
+        let soft = [true, true, true]
+        let hard = [false, false, false]
+        #expect(SilenceTrimmer.voicedFrameRange(hard: hard, soft: soft, maxExtensionFrames: 30) == nil)
+    }
+
+    @Test func voicedFrameRangeStopsExtensionAtRealSilence() {
+        // A genuine pause (below soft) before the hotkey press: no extension.
+        let hard = [true, true, false, false]
+        let soft = [true, true, false, false]
+        let range = SilenceTrimmer.voicedFrameRange(hard: hard, soft: soft, maxExtensionFrames: 30)
+        #expect(range == 0..<2)
+    }
 }
