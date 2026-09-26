@@ -6,10 +6,6 @@
 import Cocoa
 import SwiftUI
 
-class ModelStatusModel: ObservableObject {
-    @Published var loadedModels: Set<String> = []
-}
-
 @MainActor
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onModelToggle: ((String, Bool) -> Void)?
@@ -18,15 +14,11 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onWindowOpen: (() -> Void)?
     var onWindowClose: (() -> Void)?
 
-    private let modelStatus = ModelStatusModel()
-    private let modelStatusUpdateDelay: TimeInterval = 1
     private var isObservingLanguageChanges = false
-    private var modelStatusUpdateTasks: [String: Task<Void, Never>] = [:]
 
     convenience init(
         settings: SettingsStorageProtocol,
         makeGeneralSettingsViewModel: @MainActor () -> GeneralSettingsViewModel,
-        loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
         onCloudHotkeysChanged: @escaping (Hotkey?, Hotkey?, Hotkey?) -> Void,
@@ -48,52 +40,20 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.onCloudHotkeysChanged = onCloudHotkeysChanged
         self.onWindowOpen = onWindowOpen
         self.onWindowClose = onWindowClose
-        self.modelStatus.loadedModels = loadedModels
         window.delegate = self
 
+        // Loaded/loading state per model is observed live by the view model
+        // (GeneralSettingsViewModel.startObservingModelMemoryStates) — no snapshot
+        // or timer-based guessing here.
         let generalSettingsViewModel = makeGeneralSettingsViewModel()
         let settingsView = SettingsView(
             settings: settings,
             generalSettingsViewModel: generalSettingsViewModel,
-            loadedModels: Binding(
-                get: { [weak self] in self?.modelStatus.loadedModels ?? [] },
-                set: { [weak self] in self?.modelStatus.loadedModels = $0 }
-            ),
-            onModelToggle: { [weak self] model, enabled in
-                onModelToggle(model, enabled)
-                self?.scheduleModelStatusUpdate(model: model, enabled: enabled)
-            },
+            onModelToggle: onModelToggle,
             onLocalHotkeysChanged: onLocalHotkeysChanged,
             onCloudHotkeysChanged: onCloudHotkeysChanged
         )
         window.contentView = NSHostingView(rootView: settingsView)
-    }
-
-    func updateLoadedModels(_ models: Set<String>) {
-        cancelAllModelStatusUpdates()
-        modelStatus.loadedModels = models
-    }
-
-    private func scheduleModelStatusUpdate(model: String, enabled: Bool) {
-        cancelModelStatusUpdate(for: model)
-        let delayNanoseconds = UInt64(modelStatusUpdateDelay * 1_000_000_000)
-
-        modelStatusUpdateTasks[model] = Task { @MainActor [weak self] in
-            do {
-                try await Task.sleep(nanoseconds: delayNanoseconds)
-            } catch {
-                return
-            }
-
-            guard let self, !Task.isCancelled else { return }
-            defer { self.modelStatusUpdateTasks[model] = nil }
-
-            if enabled {
-                self.modelStatus.loadedModels.insert(model)
-            } else {
-                self.modelStatus.loadedModels.remove(model)
-            }
-        }
     }
 
     override func showWindow(_ sender: Any?) {
@@ -107,16 +67,11 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        cancelAllModelStatusUpdates()
         stopObservingLanguageChanges()
         onWindowClose?()
     }
 
     deinit {
-        for task in modelStatusUpdateTasks.values {
-            task.cancel()
-        }
-        modelStatusUpdateTasks.removeAll()
         AppLanguage.removeDidChangeObserver(self)
     }
 
@@ -138,17 +93,5 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
     @objc
     private func handleLanguageDidChangeNotification(_ notification: Notification) {
         window?.title = L10n.settingsTitle
-    }
-
-    private func cancelModelStatusUpdate(for model: String) {
-        modelStatusUpdateTasks[model]?.cancel()
-        modelStatusUpdateTasks[model] = nil
-    }
-
-    private func cancelAllModelStatusUpdates() {
-        for task in modelStatusUpdateTasks.values {
-            task.cancel()
-        }
-        modelStatusUpdateTasks.removeAll()
     }
 }

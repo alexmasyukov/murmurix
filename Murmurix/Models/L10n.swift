@@ -116,6 +116,25 @@ enum L10n {
     static var ready: String { tr("Ready!", "Готово!", "¡Listo!") }
     static var retry: String { tr("Retry", "Повторить", "Reintentar") }
     static var modelWorksCorrectly: String { tr("Model works correctly", "Модель работает корректно", "El modelo funciona correctamente") }
+    static var modelInMemory: String { tr("In memory", "В памяти", "En memoria") }
+    static var modelLoadingIntoMemory: String { tr("Loading into memory...", "Загружается в память...", "Cargando en memoria...") }
+    static var modelNotLoaded: String { tr("Not loaded", "Не загружена", "No cargado") }
+
+    static func testStepLoadingModel(seconds: Int) -> String {
+        tr(
+            "Step 1/2: loading model into memory (CoreML)… \(seconds)s",
+            "Шаг 1/2: загрузка модели в память (CoreML)… \(seconds) с",
+            "Paso 1/2: cargando el modelo en memoria (CoreML)… \(seconds)s"
+        )
+    }
+
+    static func testStepTranscribing(seconds: Int) -> String {
+        tr(
+            "Step 2/2: transcribing test audio… \(seconds)s",
+            "Шаг 2/2: распознавание тестового аудио… \(seconds) с",
+            "Paso 2/2: transcribiendo audio de prueba… \(seconds)s"
+        )
+    }
     static var connectionSuccessful: String { tr("Connection successful", "Подключение успешно", "Conexión exitosa") }
 
     static func downloading(progress: Int) -> String {

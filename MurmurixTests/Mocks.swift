@@ -264,6 +264,7 @@ final class MockRecordingCoordinatorDelegate: RecordingCoordinatorDelegate {
 
 final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     var loadedModelNames: Set<String> = []
+    var loadingModelNames: Set<String> = []
     var loadModelCallCount = 0
     var unloadModelCallCount = 0
     var unloadAllModelsCallCount = 0
@@ -276,6 +277,10 @@ final class MockWhisperKitService: WhisperKitServiceProtocol, @unchecked Sendabl
 
     func isModelLoaded(name: String) -> Bool {
         loadedModelNames.contains(name)
+    }
+
+    func isModelLoading(name: String) -> Bool {
+        loadingModelNames.contains(name)
     }
 
     var loadedModels: [String] {

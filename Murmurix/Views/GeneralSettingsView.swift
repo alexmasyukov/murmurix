@@ -11,7 +11,6 @@ struct GeneralSettingsView: View {
 
     @StateObject private var viewModel: GeneralSettingsViewModel
     @StateObject private var settingsStore: SettingsStore
-    @Binding var loadedModels: Set<String>
 
     var onModelToggle: ((String, Bool) -> Void)?
     var onLocalHotkeysChanged: (([String: Hotkey]) -> Void)?
@@ -20,13 +19,11 @@ struct GeneralSettingsView: View {
     init(
         viewModel: GeneralSettingsViewModel,
         settings: SettingsStorageProtocol,
-        loadedModels: Binding<Set<String>>,
         onModelToggle: ((String, Bool) -> Void)? = nil,
         onLocalHotkeysChanged: (([String: Hotkey]) -> Void)? = nil,
         onCloudHotkeysChanged: ((Hotkey?, Hotkey?, Hotkey?) -> Void)? = nil
     ) {
         let settingsStore = SettingsStore(settings: settings)
-        self._loadedModels = loadedModels
         self.onModelToggle = onModelToggle
         self.onLocalHotkeysChanged = onLocalHotkeysChanged
         self.onCloudHotkeysChanged = onCloudHotkeysChanged
@@ -53,6 +50,10 @@ struct GeneralSettingsView: View {
         .onAppear {
             viewModel.onLocalHotkeysChanged = onLocalHotkeysChanged
             viewModel.loadInstalledModels()
+            viewModel.startObservingModelMemoryStates()
+        }
+        .onDisappear {
+            viewModel.stopObservingModelMemoryStates()
         }
         .transaction { $0.animation = nil }
     }
@@ -372,7 +373,6 @@ struct GeneralSettingsView: View {
                     WhisperModelCardView(
                         model: model,
                         viewModel: viewModel,
-                        loadedModels: $loadedModels,
                         onModelToggle: onModelToggle
                     )
                 }

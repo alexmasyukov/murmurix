@@ -8,6 +8,7 @@ import WhisperKit
 
 protocol WhisperKitServiceProtocol: AnyObject, Sendable {
     func isModelLoaded(name: String) -> Bool
+    func isModelLoading(name: String) -> Bool
     var loadedModels: [String] { get }
     func loadModel(name: String) async throws
     func unloadModel(name: String) async
@@ -40,6 +41,14 @@ final class WhisperKitService: WhisperKitServiceProtocol, @unchecked Sendable {
     func isModelLoaded(name: String) -> Bool {
         lock.withLock {
             pipelines[name] != nil
+        }
+    }
+
+    /// Whether a load Task for this model is currently in flight. Lets the UI show
+    /// an honest "loading…" state instead of guessing from timers.
+    func isModelLoading(name: String) -> Bool {
+        lock.withLock {
+            loadingTasks[name] != nil
         }
     }
 

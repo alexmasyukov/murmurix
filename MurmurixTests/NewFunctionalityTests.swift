@@ -271,6 +271,52 @@ struct GeneralSettingsViewModelModelTests {
         #expect(viewModel.isModelInstalled("small") == false)
     }
 
+    // MARK: - Model memory state
+
+    @Test func memoryStateReflectsWhisperKitService() {
+        let mockWhisperKit = MockWhisperKitService()
+        mockWhisperKit.loadedModelNames = ["small"]
+        mockWhisperKit.loadingModelNames = ["tiny"]
+        let viewModel = makeGeneralSettingsViewModel(whisperKitService: mockWhisperKit)
+
+        viewModel.refreshModelMemoryStates()
+
+        #expect(viewModel.memoryState(for: "small") == .loaded)
+        #expect(viewModel.memoryState(for: "tiny") == .loading)
+        #expect(viewModel.memoryState(for: "base") == .notLoaded)
+    }
+
+    @Test func memoryStateDefaultsToNotLoadedBeforeRefresh() {
+        let viewModel = makeGeneralSettingsViewModel()
+
+        #expect(viewModel.memoryState(for: "small") == .notLoaded)
+    }
+
+    // MARK: - Test phases
+
+    @Test func testModelClearsPhaseAfterSuccess() async {
+        let service = MockTranscriptionService()
+        let viewModel = makeGeneralSettingsViewModel(
+            transcriptionServiceFactory: { service }
+        )
+        viewModel.installedModels = ["small"]
+
+        await viewModel.testModel("small")
+
+        #expect(viewModel.localTestResults["small"] == .success)
+        #expect(viewModel.testPhases["small"] == nil)
+        #expect(viewModel.testingModels.contains("small") == false)
+    }
+
+    @Test func testModelClearsPhaseWhenModelNotInstalled() async {
+        let viewModel = makeGeneralSettingsViewModel()
+
+        await viewModel.testModel("small")
+
+        #expect(viewModel.testPhases["small"] == nil)
+        #expect(viewModel.testingModels.contains("small") == false)
+    }
+
     // MARK: - cancelDownload
 
     @Test func cancelDownloadResetsToIdle() {

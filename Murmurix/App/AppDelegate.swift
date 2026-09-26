@@ -359,12 +359,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func showSettingsWindow() {
-        guard let transcriptionService else { return }
-
         windowManager?.showSettingsWindow(
             settings: settings,
             makeGeneralSettingsViewModel: makeGeneralSettingsViewModel,
-            loadedModels: Set(transcriptionService.loadedModelNames()),
             onModelToggle: { [weak self] model, enabled in
                 self?.handleModelToggle(model, enabled: enabled)
             },

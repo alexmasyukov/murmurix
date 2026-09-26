@@ -70,7 +70,6 @@ final class WindowManager {
     func showSettingsWindow(
         settings: SettingsStorageProtocol,
         makeGeneralSettingsViewModel: @MainActor () -> GeneralSettingsViewModel,
-        loadedModels: Set<String>,
         onModelToggle: @escaping (String, Bool) -> Void,
         onLocalHotkeysChanged: @escaping ([String: Hotkey]) -> Void,
         onCloudHotkeysChanged: @escaping (Hotkey?, Hotkey?, Hotkey?) -> Void,
@@ -81,7 +80,6 @@ final class WindowManager {
             settingsController = SettingsWindowController(
                 settings: settings,
                 makeGeneralSettingsViewModel: makeGeneralSettingsViewModel,
-                loadedModels: loadedModels,
                 onModelToggle: onModelToggle,
                 onLocalHotkeysChanged: onLocalHotkeysChanged,
                 onCloudHotkeysChanged: onCloudHotkeysChanged,
@@ -89,7 +87,6 @@ final class WindowManager {
                 onWindowClose: onWindowClose
             )
         } else {
-            settingsController?.updateLoadedModels(loadedModels)
             onWindowOpen()
         }
         settingsController?.showWindow(nil)

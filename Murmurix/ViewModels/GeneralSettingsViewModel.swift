@@ -20,6 +20,22 @@ enum TestService {
     case gemini
 }
 
+/// What the "Test" flow for a local model is doing right now. The heavy step is
+/// the CoreML load/compile (tens of seconds to minutes on a cold ANE), and with
+/// only a spinner the user has no idea what the app is waiting for.
+enum ModelTestPhase: Equatable {
+    case loadingModel(since: Date)
+    case transcribing(since: Date)
+}
+
+/// Where a model actually is with respect to memory — read from the service, not
+/// guessed from timers.
+enum ModelMemoryState: Equatable {
+    case loaded
+    case loading
+    case notLoaded
+}
+
 @MainActor
 final class GeneralSettingsViewModel: ObservableObject {
     @Published var installedModels: Set<String> = []
@@ -30,6 +46,12 @@ final class GeneralSettingsViewModel: ObservableObject {
     @Published var isTestingGemini = false
     @Published var localTestResults: [String: APITestResult] = [:]
     @Published var testingModels: Set<String> = []
+    @Published var testPhases: [String: ModelTestPhase] = [:]
+
+    /// Real memory state per model, refreshed by `refreshModelMemoryStates()` and the
+    /// polling task while the settings UI is visible. Replaces the old fake indicator
+    /// that turned green on a 1s timer regardless of the actual CoreML load.
+    @Published var modelMemoryStates: [String: ModelMemoryState] = [:]
     @Published var openaiTestResult: APITestResult?
     @Published var geminiTestResult: APITestResult?
 
@@ -47,6 +69,7 @@ final class GeneralSettingsViewModel: ObservableObject {
     private let modelLoadTimeout: TimeInterval
     private let modelOperationTimeout: TimeInterval
     private var statusResetTasks: [String: Task<Void, Never>] = [:]
+    private var memoryStatePollTask: Task<Void, Never>?
     let settings: SettingsStorageProtocol
 
     static func live(
@@ -100,6 +123,57 @@ final class GeneralSettingsViewModel: ObservableObject {
     func loadInstalledModels() {
         installedModels = Set(WhisperModel.allCases.filter { $0.isInstalled }.map { $0.rawValue })
         modelSettingsMap = settings.loadWhisperModelSettings()
+        refreshModelMemoryStates()
+    }
+
+    // MARK: - Model Memory State
+
+    func memoryState(for modelName: String) -> ModelMemoryState {
+        modelMemoryStates[modelName] ?? .notLoaded
+    }
+
+    func refreshModelMemoryStates() {
+        var states: [String: ModelMemoryState] = [:]
+        for model in WhisperModel.allCases {
+            let name = model.rawValue
+            if whisperKitService.isModelLoaded(name: name) {
+                states[name] = .loaded
+            } else if whisperKitService.isModelLoading(name: name) {
+                states[name] = .loading
+            } else {
+                states[name] = .notLoaded
+            }
+        }
+        // Only publish on change — this runs on a 1s poll and would otherwise
+        // re-render the settings UI every tick.
+        if states != modelMemoryStates {
+            modelMemoryStates = states
+        }
+    }
+
+    /// Polls the service while the settings UI is on screen so "loading…" flips to
+    /// "in memory" the moment the CoreML load actually finishes — loads run in
+    /// background Tasks (keep-loaded prewarm at launch, toggle, test) and there is
+    /// no completion signal wired to this view model.
+    func startObservingModelMemoryStates() {
+        refreshModelMemoryStates()
+        guard memoryStatePollTask == nil else { return }
+        memoryStatePollTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard let self else { return }
+                self.refreshModelMemoryStates()
+            }
+        }
+    }
+
+    func stopObservingModelMemoryStates() {
+        memoryStatePollTask?.cancel()
+        memoryStatePollTask = nil
+    }
+
+    deinit {
+        memoryStatePollTask?.cancel()
     }
 
     func isModelInstalled(_ modelName: String) -> Bool {
@@ -223,7 +297,10 @@ final class GeneralSettingsViewModel: ObservableObject {
     func testModel(_ modelName: String) async {
         testingModels.insert(modelName)
         localTestResults[modelName] = nil
-        defer { testingModels.remove(modelName) }
+        defer {
+            testingModels.remove(modelName)
+            testPhases[modelName] = nil
+        }
         Logger.Model.info("Local model test requested: \(modelName)")
         Logger.Model.debug("Local model test path: \(modelDirectory(modelName).path)")
 
@@ -233,17 +310,20 @@ final class GeneralSettingsViewModel: ObservableObject {
             return
         }
 
-        do {   
+        do {
             let service = transcriptionServiceFactory()
             if !service.isModelLoaded(name: modelName) {
                 Logger.Model.debug("Local model test needs to load model first: \(modelName)")
+                testPhases[modelName] = .loadingModel(since: Date())
                 try await runModelOperationWithTimeout("load \(modelName)", timeout: modelLoadTimeout) {
                     try await service.loadModel(name: modelName)
                 }
+                refreshModelMemoryStates()
             } else {
                 Logger.Model.debug("Local model test using already loaded model: \(modelName)")
             }
 
+            testPhases[modelName] = .transcribing(since: Date())
             let tempURL = AudioTestUtility.createTemporaryTestAudioURL()
             try AudioTestUtility.createSilentWavFile(at: tempURL, duration: 0.5)
             Logger.Model.debug("Local model test audio created at: \(tempURL.path)")
