@@ -5,6 +5,117 @@
 
 import Foundation
 import AVFoundation
+import CoreAudio
+
+/// Detects a *dead* input stream from meter readings taken while recording.
+///
+/// A dead stream (CoreAudio delivering all-zero buffers) meters at -120…-160 dB;
+/// a quiet room's noise floor stays far above that (~-40…-60 dB), and a natural
+/// pause in speech is room noise, not zeros. So `deadPowerThreshold` cleanly
+/// separates "the user stopped talking" from "the microphone stopped delivering" —
+/// the failure the user experiences as the equalizer going flat mid-sentence while
+/// the recording length stays intact (zeros are still samples, so the capture
+/// deficit reads ~0 even though speech in the window is gone).
+struct InputDropoutDetector {
+    /// Average power (dB) at or below which a meter tick counts as dead input.
+    static let deadPowerThreshold: Float = -90
+
+    /// Consecutive dead ticks before a dropout is declared (debounces one-off
+    /// metering hiccups). 4 ticks at the 0.05s meter interval = 0.2s.
+    static let minConsecutiveDeadTicks = 4
+
+    private(set) var dropoutCount = 0
+    private(set) var totalDeadTicks = 0
+    private(set) var isInDropout = false
+    private var consecutiveDeadTicks = 0
+
+    enum Event: Equatable {
+        case started
+        case ended(deadTicks: Int)
+    }
+
+    /// Feed one meter reading; returns an event when a dropout starts or ends.
+    mutating func tick(power: Float) -> Event? {
+        if power <= Self.deadPowerThreshold {
+            consecutiveDeadTicks += 1
+            if !isInDropout && consecutiveDeadTicks == Self.minConsecutiveDeadTicks {
+                isInDropout = true
+                dropoutCount += 1
+                return .started
+            }
+            return nil
+        }
+
+        defer { consecutiveDeadTicks = 0 }
+        if isInDropout {
+            isInDropout = false
+            totalDeadTicks += consecutiveDeadTicks
+            return .ended(deadTicks: consecutiveDeadTicks)
+        }
+        return nil
+    }
+
+    /// Closes out an in-flight dropout at stop time (so its ticks are counted).
+    mutating func finish() {
+        if isInDropout {
+            totalDeadTicks += consecutiveDeadTicks
+            isInDropout = false
+        }
+        consecutiveDeadTicks = 0
+    }
+}
+
+/// Reads and watches the system default input device, so recordings can be
+/// correlated with device switches (macOS re-routing to AirPods mid-dictation is
+/// a classic cause of an input stream going quiet or dead).
+enum DefaultAudioInput {
+    static var deviceName: String {
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = defaultInputAddress
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID
+        )
+        guard status == noErr, deviceID != 0 else { return "unknown" }
+
+        var nameAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioObjectPropertyName,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var cfName: CFString = "" as CFString
+        var nameSize = UInt32(MemoryLayout<CFString>.size)
+        let nameStatus = withUnsafeMutablePointer(to: &cfName) { pointer in
+            AudioObjectGetPropertyData(deviceID, &nameAddress, 0, nil, &nameSize, pointer)
+        }
+        guard nameStatus == noErr else { return "unknown" }
+        return cfName as String
+    }
+
+    private static var defaultInputAddress: AudioObjectPropertyAddress {
+        AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+    }
+
+    /// Registers a listener for default-input-device changes. Returns a token
+    /// closure that unregisters it.
+    static func observeChanges(_ onChange: @escaping () -> Void) -> () -> Void {
+        var address = defaultInputAddress
+        let block: AudioObjectPropertyListenerBlock = { _, _ in onChange() }
+        AudioObjectAddPropertyListenerBlock(
+            AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main, block
+        )
+        return {
+            var removeAddress = defaultInputAddress
+            AudioObjectRemovePropertyListenerBlock(
+                AudioObjectID(kAudioObjectSystemObject), &removeAddress, DispatchQueue.main, block
+            )
+        }
+    }
+}
 
 class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     @Published var isRecording = false
@@ -17,6 +128,41 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     /// Wall-clock moment record() returned true; used to compute the capture
     /// deficit (audio the hardware never delivered) at stop.
     private var recordingStartDate: Date?
+
+    /// Dead-input detection for the current recording. See InputDropoutDetector.
+    private var dropoutDetector = InputDropoutDetector()
+
+    /// Unregisters the default-input-device listener.
+    private var stopObservingInputDevice: (() -> Void)?
+
+    override init() {
+        super.init()
+        // Log device switches for the app's lifetime: a mid-dictation re-route
+        // (AirPods connecting, a USB mic waking) is the prime suspect whenever the
+        // input goes flat, and without a timestamped log line it's unprovable.
+        stopObservingInputDevice = DefaultAudioInput.observeChanges { [weak self] in
+            guard let self else { return }
+            let name = DefaultAudioInput.deviceName
+            Logger.Audio.error("Default input device changed to: \(name)\(self.isRecording ? " — DURING an active recording" : "")")
+
+            // The pre-primed recorder bound its audio queue when it was prepared —
+            // possibly hours ago, to a device that is now gone or asleep. Recording
+            // through it can yield a dead stream. Rebuild it against the new device.
+            if !self.isRecording, self.preparedRecorder != nil {
+                Logger.Audio.info("Re-priming recorder for the new input device")
+                self.preparedRecorder = nil
+                if let staleURL = self.preparedURL {
+                    try? FileManager.default.removeItem(at: staleURL)
+                    self.preparedURL = nil
+                }
+                self.prepare()
+            }
+        }
+    }
+
+    deinit {
+        stopObservingInputDevice?()
+    }
 
     /// A recorder built and prepared ahead of the hotkey press. See `prepare()`.
     private var preparedRecorder: AVAudioRecorder?
@@ -200,11 +346,12 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
             isRecording = true
             hadVoiceActivity = false  // Reset voice activity flag
             recordingStartDate = Date()
+            dropoutDetector = InputDropoutDetector()
 
             // Start monitoring audio levels
             startLevelMonitoring()
 
-            Logger.Audio.info("Recording started in \(String(format: "%.0f", recordLatencyMs))ms (warm: \(warm != nil)): \(fileURL.path)")
+            Logger.Audio.info("Recording started in \(String(format: "%.0f", recordLatencyMs))ms (warm: \(warm != nil), input: \(DefaultAudioInput.deviceName)): \(fileURL.path)")
         } catch {
             Logger.Audio.error("Failed to start recording: \(error)")
         }
@@ -232,6 +379,13 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
                 "Capture deficit \(String(format: "%.2f", deficitSeconds))s — the microphone came up late or dropped audio; speech in that window was never recorded"
             )
         }
+        dropoutDetector.finish()
+        if dropoutDetector.dropoutCount > 0 {
+            let deadSeconds = Double(dropoutDetector.totalDeadTicks) * AudioConfig.meterUpdateInterval
+            Logger.Audio.error(
+                "This recording had \(dropoutDetector.dropoutCount) input dropout(s), \(String(format: "%.1f", deadSeconds))s of dead audio total (input: \(DefaultAudioInput.deviceName))"
+            )
+        }
 
         // Prime the next recorder once this turn of the run loop is done, so the
         // warm-up cost lands between recordings instead of inside stop().
@@ -248,6 +402,20 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
 
             // Get average power in dB (range: -160 to 0)
             let avgPower = recorder.averagePower(forChannel: 0)
+
+            // Dead-input watchdog: all-zero buffers meter at -120…-160 dB, far
+            // below any real room. The user sees this as the equalizer going flat
+            // mid-sentence; speech in the window is silently lost while the file
+            // keeps growing (zeros are samples too, so the capture deficit stays 0).
+            switch self.dropoutDetector.tick(power: avgPower) {
+            case .started:
+                Logger.Audio.error("Input went DEAD mid-recording (meter \(String(format: "%.0f", avgPower))dB, input: \(DefaultAudioInput.deviceName)) — microphone stopped delivering audio")
+            case .ended(let deadTicks):
+                let seconds = Double(deadTicks) * AudioConfig.meterUpdateInterval
+                Logger.Audio.error("Input recovered after \(String(format: "%.1f", seconds))s dead — speech in that window was lost")
+            case nil:
+                break
+            }
 
             // Convert to 0-1 range with some smoothing
             // -50 dB = silence, 0 dB = max

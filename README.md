@@ -2,7 +2,7 @@
 
 A native macOS menubar app for voice-to-text transcription using local WhisperKit (CoreML), OpenAI, or Google Gemini.
 
-**Version 4.5.0** | 66 production files | 418 tests | Pure Swift, no Python
+**Version 4.5.0** | 66 production files | 422 tests | Pure Swift, no Python
 
 ## Features
 
@@ -145,7 +145,7 @@ CREATE TABLE transcriptions (
 
 ## Testing
 
-418 tests using Apple's Swift Testing framework:
+422 tests using Apple's Swift Testing framework:
 
 ```bash
 xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=macOS' test
@@ -155,7 +155,7 @@ xcodebuild -project Murmurix.xcodeproj -scheme Murmurix -destination 'platform=m
 |------|-------|--------|
 | Settings & model management | 95 | Settings persistence/migration, GeneralSettingsViewModel, download/test flows |
 | Recording flow & hotkeys | 75 | RecordingCoordinator, flow reducer, timer, hotkey managers |
-| Audio & anti-hallucination | 59 | AudioRecorder, decoder/compressor, SilenceTrimmer, HallucinationFilter |
+| Audio & anti-hallucination | 63 | AudioRecorder, decoder/compressor, SilenceTrimmer, HallucinationFilter |
 | Transcription services | 56 | WhisperKit/OpenAI/Gemini clients, prompt policy, serial transcriber |
 | Infrastructure | 48 | Error hierarchy, constants, Logger, DI, URLSession mocks |
 | History & storage | 38 | SQLite repository, HistoryService/ViewModel, Keychain |

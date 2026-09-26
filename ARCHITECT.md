@@ -348,6 +348,6 @@ Centralized via `os.log` with categories:
 
 ## Testing
 
-418 tests using Swift Testing framework (`@Test`, `#expect`).
+422 tests using Swift Testing framework (`@Test`, `#expect`).
 
 Coverage: services, ViewModels, models, settings, error hierarchy, constants, DI, recording state machine, file cleanup, transcription modes, model management, settings migration.

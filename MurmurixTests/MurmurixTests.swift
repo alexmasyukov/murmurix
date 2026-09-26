@@ -345,6 +345,54 @@ struct HotkeyTests {
 
 struct AudioRecorderTests {
 
+    // MARK: - InputDropoutDetector
+
+    @Test func dropoutDetectorIgnoresNormalSpeechAndPauses() {
+        var detector = InputDropoutDetector()
+        // Speech (-20dB) and a natural pause at room noise floor (-45dB): no events.
+        for power in [Float](repeating: -20, count: 10) + [Float](repeating: -45, count: 40) {
+            #expect(detector.tick(power: power) == nil)
+        }
+        #expect(detector.dropoutCount == 0)
+    }
+
+    @Test func dropoutDetectorFlagsDeadInputAfterDebounce() {
+        var detector = InputDropoutDetector()
+        _ = detector.tick(power: -20)
+        // Three dead ticks: still debouncing.
+        #expect(detector.tick(power: -160) == nil)
+        #expect(detector.tick(power: -160) == nil)
+        #expect(detector.tick(power: -160) == nil)
+        // Fourth dead tick: dropout declared.
+        #expect(detector.tick(power: -160) == .started)
+        // Recovery reports the full dead run length.
+        #expect(detector.tick(power: -160) == nil)
+        #expect(detector.tick(power: -18) == .ended(deadTicks: 5))
+        #expect(detector.dropoutCount == 1)
+        #expect(detector.totalDeadTicks == 5)
+    }
+
+    @Test func dropoutDetectorCountsInFlightDropoutOnFinish() {
+        var detector = InputDropoutDetector()
+        for _ in 0..<6 { _ = detector.tick(power: -160) }
+        #expect(detector.isInDropout == true)
+
+        detector.finish()
+
+        #expect(detector.isInDropout == false)
+        #expect(detector.dropoutCount == 1)
+        #expect(detector.totalDeadTicks == 6)
+    }
+
+    @Test func dropoutDetectorDebouncesBriefMeterGlitch() {
+        var detector = InputDropoutDetector()
+        // Two dead ticks then speech again: below the 4-tick debounce, no dropout.
+        _ = detector.tick(power: -160)
+        _ = detector.tick(power: -160)
+        #expect(detector.tick(power: -20) == nil)
+        #expect(detector.dropoutCount == 0)
+    }
+
     /// The sweep must never delete fresh files: the temp directory is shared with
     /// other live Murmurix processes (updater's second instance, the test host),
     /// and a fresh file may be an in-flight recording or the prepared stub.
