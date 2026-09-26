@@ -53,6 +53,45 @@ struct HallucinationFilterTests {
         #expect(HallucinationFilter.clean(text) == text)
     }
 
+    // MARK: - Interior (mid-text) filler removal
+    // Whisper hallucinates over long *pauses* mid-dictation too; the audio path
+    // deliberately leaves internal pauses alone, so the text filter must catch these.
+
+    @Test func stripsStandaloneFillerInTheMiddle() {
+        let result = HallucinationFilter.clean(
+            "Странноватая тема. Продолжение следует... Давай сделаем холодный старт."
+        )
+        #expect(result == "Странноватая тема. Давай сделаем холодный старт.")
+    }
+
+    @Test func stripsMultipleInteriorFillers() {
+        let result = HallucinationFilter.clean(
+            "Первая мысль. Продолжение следует... Вторая мысль. Спасибо за просмотр! Третья мысль."
+        )
+        #expect(result == "Первая мысль. Вторая мысль. Третья мысль.")
+    }
+
+    @Test func stripsInteriorFillerAtTextStart() {
+        let result = HallucinationFilter.clean("Продолжение следует... Привет, начнём работу.")
+        #expect(result == "Привет, начнём работу.")
+    }
+
+    @Test func keepsInteriorPhraseFollowedByLowercase() {
+        // Lowercase continuation means the user's own sentence goes on — keep it.
+        let text = "Тема закрыта. Продолжение следует и будет интересным."
+        #expect(HallucinationFilter.clean(text) == text)
+    }
+
+    @Test func keepsInteriorPhraseWithoutSentenceBoundaryBefore() {
+        let text = "Я хочу сказать спасибо за просмотр моего доклада. Дальше по делу."
+        #expect(HallucinationFilter.clean(text) == text)
+    }
+
+    @Test func keepsInteriorPhraseFollowedByComma() {
+        let text = "Вот так. Спасибо за просмотр, теперь перейдём к делу. Конец."
+        #expect(HallucinationFilter.clean(text) == text)
+    }
+
     @Test func handlesEmptyInput() {
         #expect(HallucinationFilter.clean("") == "")
     }

@@ -159,8 +159,12 @@ dictations reach the decoder whole — silent tail included.
   EnergyVAD can mis-bound the one word and trim it away, leaving nothing to
   decode.
 - `HallucinationFilter.clean(_:)` — deterministically strips known filler
-  phrases from the tail of the result. Local (WhisperKit) mode only — cloud
-  providers steer output with their own prompts and don't exhibit this.
+  phrases from the result: off the tail (loose boundary rules), and from the
+  middle when a phrase stands as its own sentence — Whisper hallucinates over
+  long mid-dictation *pauses* too, and the audio path deliberately leaves
+  internal pauses untouched, so the text filter is the only layer that can
+  catch those. Local (WhisperKit) mode only — cloud providers steer output
+  with their own prompts and don't exhibit this.
 
 ### APIServer / AudioDecoder
 Optional local HTTP API (Swifter) so other apps reuse Murmurix's in-memory
