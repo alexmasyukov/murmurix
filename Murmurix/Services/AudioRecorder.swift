@@ -14,6 +14,9 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     private var audioRecorder: AVAudioRecorder?
     private var currentRecordingURL: URL?
     private var levelTimer: Timer?
+    /// Wall-clock moment record() returned true; used to compute the capture
+    /// deficit (audio the hardware never delivered) at stop.
+    private var recordingStartDate: Date?
 
     /// A recorder built and prepared ahead of the hotkey press. See `prepare()`.
     private var preparedRecorder: AVAudioRecorder?
@@ -65,6 +68,34 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
     private func makeRecordingURL() -> URL {
         let fileName = "murmurix_recording_\(Date().timeIntervalSince1970).wav"
         return FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+    }
+
+    /// Deletes recordings left in the temp directory by previous runs. The normal
+    /// flow removes every file right after transcription; leftovers appear only
+    /// when the app quit or crashed mid-flight, or from the pre-primed recorder's
+    /// stub file (prepareToRecord() creates it). Call once at launch, before
+    /// `prepare()` creates the stub for this run.
+    static func sweepStaleRecordings() {
+        let fileManager = FileManager.default
+        let tempDir = fileManager.temporaryDirectory
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: tempDir,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else { return }
+
+        var removed = 0
+        for url in files where url.lastPathComponent.hasPrefix("murmurix_recording_") {
+            do {
+                try fileManager.removeItem(at: url)
+                removed += 1
+            } catch {
+                Logger.Audio.error("Failed to sweep stale recording \(url.lastPathComponent): \(error.localizedDescription)")
+            }
+        }
+        if removed > 0 {
+            Logger.Audio.info("Swept \(removed) stale recording file(s) from temp directory")
+        }
     }
 
     /// Builds and primes the recorder for the *next* recording, so the hotkey press
@@ -144,6 +175,7 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
             }
             isRecording = true
             hadVoiceActivity = false  // Reset voice activity flag
+            recordingStartDate = Date()
 
             // Start monitoring audio levels
             startLevelMonitoring()
@@ -156,11 +188,26 @@ class AudioRecorder: NSObject, ObservableObject, AudioRecorderProtocol {
 
     func stopRecording() -> URL {
         stopLevelMonitoring()
+        // currentTime is how much audio the recorder actually captured. Compared
+        // with wall-clock time it exposes the capture deficit: input-hardware
+        // spin-up at the start (speech during that window is simply never
+        // recorded) or a dropped tail buffer at the end.
+        let capturedSeconds = audioRecorder?.currentTime ?? 0
+        let wallSeconds = recordingStartDate.map { Date().timeIntervalSince($0) } ?? 0
+        let deficitSeconds = wallSeconds - capturedSeconds
         audioRecorder?.stop()
         audioRecorder = nil
         isRecording = false
         audioLevel = 0.0
-        Logger.Audio.info("Recording stopped: \(currentRecordingURL?.path ?? "unknown")")
+        recordingStartDate = nil
+        Logger.Audio.info(
+            "Recording stopped: captured \(String(format: "%.2f", capturedSeconds))s of \(String(format: "%.2f", wallSeconds))s wall (deficit \(String(format: "%.2f", deficitSeconds))s): \(currentRecordingURL?.path ?? "unknown")"
+        )
+        if deficitSeconds > 0.3 {
+            Logger.Audio.error(
+                "Capture deficit \(String(format: "%.2f", deficitSeconds))s — the microphone came up late or dropped audio; speech in that window was never recorded"
+            )
+        }
 
         // Prime the next recorder once this turn of the run loop is done, so the
         // warm-up cost lands between recordings instead of inside stop().

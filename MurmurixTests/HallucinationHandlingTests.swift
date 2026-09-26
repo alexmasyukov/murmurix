@@ -66,13 +66,14 @@ struct SilenceTrimmerTests {
     private let sampleRate = AudioConfig.whisperSampleRate // 16_000
 
     @Test func voiceRangePadsAroundSingleSegment() {
-        // Voice from 1.0s to 2.0s in a 5s buffer, 0.2s padding => 0.8s..2.2s.
+        // Voice from 1.0s to 2.0s in a 5s buffer: 0.2s leading pad => 0.8s,
+        // 0.5s trailing pad => 2.5s.
         let range = SilenceTrimmer.voiceRange(
             activeChunks: [(startIndex: 16_000, endIndex: 32_000)],
             totalSamples: 80_000,
             sampleRate: sampleRate
         )
-        #expect(range == 12_800..<35_200)
+        #expect(range == 12_800..<40_000)
     }
 
     @Test func voiceRangeSpansFromFirstToLastSegment() {
@@ -84,8 +85,50 @@ struct SilenceTrimmerTests {
             totalSamples: 80_000,
             sampleRate: sampleRate
         )
-        // start of first (16_000) - 3_200 = 12_800; end of last (60_000) + 3_200 = 63_200
-        #expect(range == 12_800..<63_200)
+        // start of first (16_000) - 3_200 = 12_800; end of last (60_000) + 8_000 = 68_000
+        #expect(range == 12_800..<68_000)
+    }
+
+    @Test func minEdgeCutKeepsTailWhenTrailingSilenceIsShort() {
+        // Hotkey pressed right after the last word: only 0.5s of buffer lies beyond
+        // the padded range — under the 1s minimum, so the tail is kept whole and a
+        // quiet last word misjudged by VAD survives.
+        let guarded = SilenceTrimmer.applyMinEdgeCut(
+            to: 0..<72_000,
+            totalSamples: 80_000,
+            sampleRate: sampleRate
+        )
+        #expect(guarded == 0..<80_000)
+    }
+
+    @Test func minEdgeCutStillTrimsLongSilentTail() {
+        // 3s of silence beyond the padded range — over the 1s minimum, trim applies.
+        let guarded = SilenceTrimmer.applyMinEdgeCut(
+            to: 0..<32_000,
+            totalSamples: 80_000,
+            sampleRate: sampleRate
+        )
+        #expect(guarded == 0..<32_000)
+    }
+
+    @Test func minEdgeCutGuardsEachEdgeIndependently() {
+        // Leading cut is 2s (kept), trailing cut is 0.5s (dropped).
+        let guarded = SilenceTrimmer.applyMinEdgeCut(
+            to: 32_000..<72_000,
+            totalSamples: 80_000,
+            sampleRate: sampleRate
+        )
+        #expect(guarded == 32_000..<80_000)
+    }
+
+    @Test func minEdgeCutKeepsShortLeadingSilence() {
+        // Leading cut of 0.9s — just under the minimum, start kept at 0.
+        let guarded = SilenceTrimmer.applyMinEdgeCut(
+            to: 14_400..<48_000,
+            totalSamples: 80_000,
+            sampleRate: sampleRate
+        )
+        #expect(guarded == 0..<48_000)
     }
 
     @Test func voiceRangeClampsPaddingToBufferBounds() {

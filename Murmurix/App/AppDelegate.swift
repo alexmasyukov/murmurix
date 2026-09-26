@@ -92,6 +92,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupAPIServer()
 
         coordinator?.loadModelsIfNeeded()
+        AudioRecorder.sweepStaleRecordings()
         audioRecorder?.prepare()
 
         AppLanguage.addDidChangeObserver(
@@ -576,16 +577,14 @@ extension AppDelegate: RecordingCoordinatorDelegate {
     func recordingDidStart() {
         guard let audioRecorder else { return }
 
-        // Capture focus once the microphone is already live, but before our own
-        // recording window can take it away — the ordering the paste step needs.
-        // AXUIElementCopyAttributeValue is a synchronous IPC round-trip into the
-        // focused app: a busy Chrome/Electron/JetBrains target can stall the main
-        // thread for hundreds of ms, and it used to do so *ahead* of record().
-        let focusContext = TextPaster.focusedContext()
-        shouldPasteDirectly = settings.alwaysPasteEnabled || focusContext.isTextInput
-        focusContextAtRecordingStart = focusContext
-
         hotkeyManager?.isRecording = true
+        // Show the window before capturing focus. TextPaster.focusedContext() is a
+        // synchronous AX IPC round-trip into the focused app; a busy Chrome/Electron/
+        // JetBrains target can stall the main thread for hundreds of ms, and with the
+        // window shown after it, the UI appeared "frozen" for that long even though
+        // the microphone was already live. The recording window is a borderless
+        // NSWindow that never becomes key, so ordering it front does not steal focus
+        // from the target app — the context read below still sees the user's field.
         windowManager?.showRecordingWindow(
             audioRecorder: audioRecorder,
             onStop: { [weak self] in
@@ -596,6 +595,10 @@ extension AppDelegate: RecordingCoordinatorDelegate {
                 self?.coordinator?.cancelTranscription()
             }
         )
+
+        let focusContext = TextPaster.focusedContext()
+        shouldPasteDirectly = settings.alwaysPasteEnabled || focusContext.isTextInput
+        focusContextAtRecordingStart = focusContext
     }
 
     func recordingDidStop() {

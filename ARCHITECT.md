@@ -150,9 +150,14 @@ dictations reach the decoder whole — silent tail included.
 
 - `SilenceTrimmer.trim(_:)` — loads the recording into a 16kHz buffer and trims
   leading/trailing silence via `EnergyVAD` before decoding, keeping internal
-  pauses and 0.2s edge padding. Recordings ≤2.5s (single-word dictations) are
-  passed through untouched — on such short clips EnergyVAD can mis-bound the one
-  word and trim it away, leaving nothing to decode.
+  pauses, 0.2s leading and 0.5s trailing padding. An edge is only cut when the
+  cut removes ≥1s (`minEdgeCutSeconds`): EnergyVAD compares 100ms frames against
+  an absolute RMS threshold (0.02), so the quiet decay of the last word is
+  routinely misread as silence — with the guard, pressing the hotkey right after
+  the last word trims nothing at all, and speech survives. Recordings ≤2.5s
+  (single-word dictations) are passed through untouched — on such short clips
+  EnergyVAD can mis-bound the one word and trim it away, leaving nothing to
+  decode.
 - `HallucinationFilter.clean(_:)` — deterministically strips known filler
   phrases from the tail of the result. Local (WhisperKit) mode only — cloud
   providers steer output with their own prompts and don't exhibit this.
